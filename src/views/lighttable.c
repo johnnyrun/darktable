@@ -375,6 +375,37 @@ static int _get_full_preview_id(dt_view_t *self)
   return lib->full_preview_id;
 }
 
+static void _show_panels_and_borders(dt_view_t *self)
+{
+  dt_library_t *lib = (dt_library_t *)self->data;
+  dt_ui_panel_show(darktable.gui->ui, DT_UI_PANEL_LEFT, (lib->full_preview & 1), FALSE);
+  dt_ui_panel_show(darktable.gui->ui, DT_UI_PANEL_RIGHT, (lib->full_preview & 2), FALSE);
+  dt_ui_panel_show(darktable.gui->ui, DT_UI_PANEL_CENTER_BOTTOM, (lib->full_preview & 4), FALSE);
+  dt_ui_panel_show(darktable.gui->ui, DT_UI_PANEL_CENTER_TOP, (lib->full_preview & 8), FALSE);
+  dt_ui_panel_show(darktable.gui->ui, DT_UI_PANEL_TOP, (lib->full_preview & 16), FALSE);
+  dt_ui_border_show(darktable.gui->ui,TRUE);
+  lib->full_preview = 0;
+}
+
+static void _hide_panels_and_borders(dt_view_t *self)
+{
+  dt_library_t *lib = (dt_library_t *)self->data;
+  dt_ui_border_show(darktable.gui->ui,FALSE);
+
+  lib->full_preview |= (dt_ui_panel_visible(darktable.gui->ui, DT_UI_PANEL_LEFT) & 1) << 0;
+  lib->full_preview |= (dt_ui_panel_visible(darktable.gui->ui, DT_UI_PANEL_RIGHT) & 1) << 1;
+  lib->full_preview |= (dt_ui_panel_visible(darktable.gui->ui, DT_UI_PANEL_CENTER_BOTTOM) & 1) << 2;
+  lib->full_preview |= (dt_ui_panel_visible(darktable.gui->ui, DT_UI_PANEL_CENTER_TOP) & 1) << 3;
+  lib->full_preview |= (dt_ui_panel_visible(darktable.gui->ui, DT_UI_PANEL_TOP) & 1) << 4;
+
+  dt_ui_panel_show(darktable.gui->ui, DT_UI_PANEL_LEFT, FALSE, FALSE);
+  dt_ui_panel_show(darktable.gui->ui, DT_UI_PANEL_RIGHT, FALSE, FALSE);
+  dt_ui_panel_show(darktable.gui->ui, DT_UI_PANEL_CENTER_BOTTOM, FALSE, FALSE);
+  dt_ui_panel_show(darktable.gui->ui, DT_UI_PANEL_CENTER_TOP, FALSE, FALSE);
+  dt_ui_panel_show(darktable.gui->ui, DT_UI_PANEL_TOP, FALSE, FALSE);
+}
+
+
 void init(dt_view_t *self)
 {
   self->data = calloc(1, sizeof(dt_library_t));
@@ -1882,13 +1913,13 @@ int key_released(dt_view_t *self, guint key, guint state)
     lib->full_preview_rowid = -1;
     dt_control_set_mouse_over_id(-1);
 
-    dt_ui_panel_show(darktable.gui->ui, DT_UI_PANEL_LEFT, (lib->full_preview & 1), FALSE);
-    dt_ui_panel_show(darktable.gui->ui, DT_UI_PANEL_RIGHT, (lib->full_preview & 2), FALSE);
-    dt_ui_panel_show(darktable.gui->ui, DT_UI_PANEL_CENTER_BOTTOM, (lib->full_preview & 4), FALSE);
-    dt_ui_panel_show(darktable.gui->ui, DT_UI_PANEL_CENTER_TOP, (lib->full_preview & 8), FALSE);
-    dt_ui_panel_show(darktable.gui->ui, DT_UI_PANEL_TOP, (lib->full_preview & 16), FALSE);
+    _show_panels_and_borders(self);
+    // fullscreen is not super fast
+    //GtkWidget *widget;
+    //widget = dt_ui_main_window(darktable.gui->ui);
+    //if (!dt_conf_get_bool("ui_last/fullscreen"))
+    //  gtk_window_unfullscreen(GTK_WINDOW(widget));
 
-    lib->full_preview = 0;
     lib->display_focus = 0;
   }
 
@@ -1917,13 +1948,8 @@ int key_pressed(dt_view_t *self, guint key, guint state)
     lib->full_preview_rowid = -1;
     dt_control_set_mouse_over_id(-1);
 
-    dt_ui_panel_show(darktable.gui->ui, DT_UI_PANEL_LEFT, (lib->full_preview & 1), FALSE);
-    dt_ui_panel_show(darktable.gui->ui, DT_UI_PANEL_RIGHT, (lib->full_preview & 2), FALSE);
-    dt_ui_panel_show(darktable.gui->ui, DT_UI_PANEL_CENTER_BOTTOM, (lib->full_preview & 4), FALSE);
-    dt_ui_panel_show(darktable.gui->ui, DT_UI_PANEL_CENTER_TOP, (lib->full_preview & 8), FALSE);
-    dt_ui_panel_show(darktable.gui->ui, DT_UI_PANEL_TOP, (lib->full_preview & 16), FALSE);
+    _hide_panels_and_borders(self);
 
-    lib->full_preview = 0;
     lib->display_focus = 0;
     return 1;
   }
@@ -1968,16 +1994,12 @@ int key_pressed(dt_view_t *self, guint key, guint state)
       }
 
       // let's hide some gui components
-      lib->full_preview |= (dt_ui_panel_visible(darktable.gui->ui, DT_UI_PANEL_LEFT) & 1) << 0;
-      dt_ui_panel_show(darktable.gui->ui, DT_UI_PANEL_LEFT, FALSE, FALSE);
-      lib->full_preview |= (dt_ui_panel_visible(darktable.gui->ui, DT_UI_PANEL_RIGHT) & 1) << 1;
-      dt_ui_panel_show(darktable.gui->ui, DT_UI_PANEL_RIGHT, FALSE, FALSE);
-      lib->full_preview |= (dt_ui_panel_visible(darktable.gui->ui, DT_UI_PANEL_CENTER_BOTTOM) & 1) << 2;
-      dt_ui_panel_show(darktable.gui->ui, DT_UI_PANEL_CENTER_BOTTOM, FALSE, FALSE);
-      lib->full_preview |= (dt_ui_panel_visible(darktable.gui->ui, DT_UI_PANEL_CENTER_TOP) & 1) << 3;
-      dt_ui_panel_show(darktable.gui->ui, DT_UI_PANEL_CENTER_TOP, FALSE, FALSE);
-      lib->full_preview |= (dt_ui_panel_visible(darktable.gui->ui, DT_UI_PANEL_TOP) & 1) << 4;
-      dt_ui_panel_show(darktable.gui->ui, DT_UI_PANEL_TOP, FALSE, FALSE);
+
+      _hide_panels_and_borders(self);
+      // fullscreen is not super fast
+      //GtkWidget *widget;
+      //widget = dt_ui_main_window(darktable.gui->ui);
+      //gtk_window_fullscreen(GTK_WINDOW(widget));
 
       // preview with focus detection
       if((key == accels->lighttable_preview_display_focus.accel_key
