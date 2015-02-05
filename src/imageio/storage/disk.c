@@ -44,6 +44,9 @@ typedef struct disk_t
 {
   GtkEntry *entry;
   GtkWidget *overwrite;
+  GtkWidget *reimport;
+  GtkWidget *open_external;
+  GtkWidget *hbox;
 } disk_t;
 
 // saved params
@@ -51,6 +54,8 @@ typedef struct dt_imageio_disk_t
 {
   char filename[DT_MAX_PATH_FOR_PARAMS];
   gboolean overwrite;
+  gboolean reimport;
+  gboolean open_external;
   dt_variables_params_t *vp;
 } dt_imageio_disk_t;
 
@@ -120,6 +125,34 @@ static void overwrite_toggle_callback(GtkWidget *widget, gpointer user_data)
   dt_conf_set_bool("plugins/imageio/storage/disk/overwrite", dt_bauhaus_combobox_get(widget) == 1);
 }
 
+static void reimport_toggle_callback(GtkWidget *widget, struct disk_t *d)
+{
+  int reimport;
+  reimport = (dt_bauhaus_combobox_get(widget) == 1);
+  dt_conf_set_bool("plugins/imageio/storage/disk/reimport", reimport);
+  if (reimport)
+  {
+    gtk_widget_hide(GTK_WIDGET(d->hbox));
+    gtk_widget_hide(GTK_WIDGET(d->entry));
+    gtk_widget_show(GTK_WIDGET(d->open_external));
+  }
+  else
+  {
+    gtk_widget_show(GTK_WIDGET(d->hbox));
+    gtk_widget_show(GTK_WIDGET(d->entry));
+    gtk_widget_hide(GTK_WIDGET(d->open_external));
+  }
+}
+
+static void open_external_toggle_callback(GtkWidget *widget, struct disk_t *d)
+{
+  int open_external = (dt_bauhaus_combobox_get(widget) == 1);
+  if (open_external)
+    dt_conf_set_string("plugins/imageio/storage/disk/external_command", "/usr/bin/gimp"); // TODO: let the user choose
+  else
+    dt_conf_set_string("plugins/imageio/storage/disk/external_command", "");
+}
+
 void gui_init(dt_imageio_module_storage_t *self)
 {
   disk_t *d = (disk_t *)malloc(sizeof(disk_t));
@@ -127,11 +160,11 @@ void gui_init(dt_imageio_module_storage_t *self)
   self->widget = gtk_box_new(GTK_ORIENTATION_VERTICAL, DT_PIXEL_APPLY_DPI(5));
   GtkWidget *widget;
 
-  GtkWidget *hbox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, DT_PIXEL_APPLY_DPI(8));
-  gtk_box_pack_start(GTK_BOX(self->widget), GTK_WIDGET(hbox), TRUE, FALSE, 0);
+  d->hbox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, DT_PIXEL_APPLY_DPI(8));
+  gtk_box_pack_start(GTK_BOX(self->widget), GTK_WIDGET(d->hbox), TRUE, FALSE, 0);
 
   widget = gtk_entry_new();
-  gtk_box_pack_start(GTK_BOX(hbox), widget, TRUE, TRUE, 0);
+  gtk_box_pack_start(GTK_BOX(d->hbox), widget, TRUE, TRUE, 0);
   gchar *dir = dt_conf_get_string("plugins/imageio/storage/disk/file_directory");
   if(dir)
   {
@@ -154,7 +187,7 @@ void gui_init(dt_imageio_module_storage_t *self)
   widget = dtgtk_button_new(dtgtk_cairo_paint_directory, CPF_DO_NOT_USE_BORDER);
   gtk_widget_set_size_request(widget, DT_PIXEL_APPLY_DPI(18), DT_PIXEL_APPLY_DPI(18));
   g_object_set(G_OBJECT(widget), "tooltip-text", _("select directory"), (char *)NULL);
-  gtk_box_pack_start(GTK_BOX(hbox), widget, FALSE, FALSE, 0);
+  gtk_box_pack_start(GTK_BOX(d->hbox), widget, FALSE, FALSE, 0);
   g_signal_connect(G_OBJECT(widget), "clicked", G_CALLBACK(button_clicked), self);
 
   d->overwrite = dt_bauhaus_combobox_new(NULL);
@@ -164,6 +197,32 @@ void gui_init(dt_imageio_module_storage_t *self)
   gtk_box_pack_start(GTK_BOX(self->widget), d->overwrite, TRUE, TRUE, 0);
   g_signal_connect(G_OBJECT(d->overwrite), "value-changed", G_CALLBACK(overwrite_toggle_callback), self);
   dt_bauhaus_combobox_set(d->overwrite, 0);
+
+  d->reimport = dt_bauhaus_combobox_new(NULL);
+  dt_bauhaus_widget_set_label(d->reimport, NULL, _("reimport"));
+  dt_bauhaus_combobox_add(d->reimport, _("off"));
+  dt_bauhaus_combobox_add(d->reimport, _("yes (export to same dir)"));
+  gtk_box_pack_start(GTK_BOX(self->widget), d->reimport, TRUE, TRUE, 0);
+  g_signal_connect(G_OBJECT(d->reimport), "value-changed", G_CALLBACK(reimport_toggle_callback), (gpointer)d);
+  dt_bauhaus_combobox_set(d->reimport, 0);
+
+
+
+  d->open_external = dt_bauhaus_combobox_new(NULL);
+
+  gchar *external_command = dt_conf_get_string("plugins/imageio/storage/disk/external_command");
+  if(external_command)
+  {
+    gtk_entry_set_text(GTK_ENTRY(widget), external_command);
+    g_free(external_command);
+  }
+  dt_bauhaus_widget_set_label(d->open_external, NULL, _("open with gimp after reimport"));
+  dt_bauhaus_combobox_add(d->open_external, _("no"));
+  dt_bauhaus_combobox_add(d->open_external, _("yes"));
+  gtk_box_pack_start(GTK_BOX(self->widget), d->open_external, TRUE, TRUE, 0);
+  g_signal_connect(G_OBJECT(d->open_external), "value-changed", G_CALLBACK(open_external_toggle_callback), (gpointer)d);
+  dt_bauhaus_combobox_set(d->open_external, 0);
+  gtk_widget_hide(GTK_WIDGET(d->open_external));
 
   g_free(tooltip_text);
 }
@@ -184,6 +243,10 @@ void gui_reset(dt_imageio_module_storage_t *self)
 
   // this should prevent users from unintentional image overwrite
   dt_bauhaus_combobox_set(d->overwrite, 0);
+  
+  // the same bad things for reimport
+  dt_bauhaus_combobox_set(d->reimport, 0);
+  dt_bauhaus_combobox_set(d->open_external, 0);
 }
 
 int store(dt_imageio_module_storage_t *self, dt_imageio_module_data_t *sdata, const int imgid,
@@ -197,9 +260,16 @@ int store(dt_imageio_module_storage_t *self, dt_imageio_module_data_t *sdata, co
   gboolean from_cache = FALSE;
   dt_image_full_path(imgid, dirname, sizeof(dirname), &from_cache);
   int fail = 0;
+  int reimporting = 0;
+  gchar *open_external;
+  reimporting = dt_conf_get_bool("plugins/imageio/storage/disk/reimport");
   // we're potentially called in parallel. have sequence number synchronized:
   dt_pthread_mutex_lock(&darktable.plugin_threadsafe);
   {
+
+    if (reimporting) {
+      sprintf(d->filename,"$(FILE_FOLDER)/$(FILE_NAME)_REIMPORT");
+    }
 
     // if filenamepattern is a directory just let att ${FILE_NAME} as default..
     if(g_file_test(d->filename, G_FILE_TEST_IS_DIR)
@@ -290,6 +360,23 @@ int store(dt_imageio_module_storage_t *self, dt_imageio_module_data_t *sdata, co
     return 1;
   }
 
+  if (reimporting) {
+    // get image filmid and do a import on that JPG/TIFF/whatelse
+    dt_image_t *exported_image;
+    exported_image = dt_image_cache_get(darktable.image_cache,imgid,'r');
+    dt_image_import(exported_image->film_id,filename,false);
+    open_external = dt_conf_get_string("plugins/imageio/storage/disk/external_command");
+    if (strcmp(open_external, "") != 0) 
+    {
+      open_external = dt_util_dstrcat(open_external, "%s", " ");
+      open_external = dt_util_dstrcat(open_external, "%s", filename);
+      open_external = dt_util_dstrcat(open_external, "%s", " &");
+      // TODO: write well
+      if(system(open_external))
+        dt_control_log(_("opening %s"), open_external);
+    }
+  }
+
   printf("[export_job] exported to `%s'\n", filename);
   char *trunc = filename + strlen(filename) - 32;
   if(trunc < filename) trunc = filename;
@@ -319,6 +406,7 @@ void *get_params(dt_imageio_module_storage_t *self)
   g_free(text);
 
   d->overwrite = dt_conf_get_bool("plugins/imageio/storage/disk/overwrite");
+  d->reimport = dt_conf_get_bool("plugins/imageio/storage/disk/reimport");
 
   d->vp = NULL;
   dt_variables_params_init(&d->vp);
