@@ -1733,6 +1733,10 @@ int key_pressed(dt_view_t *self, guint key, guint state)
     else
       return 0;
   }
+  else if (key == GDK_KEY_Right)
+    dt_dev_jump_image(lib, 1);
+  else if (key == GDK_KEY_Left)
+    dt_dev_jump_image(lib, -1);
   return 1;
 }
 
