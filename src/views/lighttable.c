@@ -1,4 +1,6 @@
 /*
+ *
+  dt_collection_set_filter_flags(collection,FILTRO);
     This file is part of darktable,
     copyright (c) 2009--2011 johannes hanika.
     copyright (c) 2011--2012 Henrik Andersson.
@@ -77,6 +79,7 @@ typedef struct dt_library_t
   int button;
   int key_jump_offset;
   int using_arrows;
+  int compare;
   int key_select;
   int key_select_direction;
   int layout;
@@ -275,6 +278,7 @@ static void _update_collected_images(dt_view_t *self)
   /* check if we can get a query from collection */
   const gchar *query = dt_collection_get_query(darktable.collection);
   if(!query) return;
+  printf("%s\n",query);
 
   // we have a new query for the collection of images to display. For speed reason we collect all images into
   // a temporary (in-memory) table (collected_images).
@@ -375,6 +379,37 @@ static int _get_full_preview_id(dt_view_t *self)
   return lib->full_preview_id;
 }
 
+static void _show_panels_and_borders(dt_view_t *self)
+{
+  dt_library_t *lib = (dt_library_t *)self->data;
+  dt_ui_panel_show(darktable.gui->ui, DT_UI_PANEL_LEFT, (lib->full_preview & 1), FALSE);
+  dt_ui_panel_show(darktable.gui->ui, DT_UI_PANEL_RIGHT, (lib->full_preview & 2), FALSE);
+  dt_ui_panel_show(darktable.gui->ui, DT_UI_PANEL_CENTER_BOTTOM, (lib->full_preview & 4), FALSE);
+  dt_ui_panel_show(darktable.gui->ui, DT_UI_PANEL_CENTER_TOP, (lib->full_preview & 8), FALSE);
+  dt_ui_panel_show(darktable.gui->ui, DT_UI_PANEL_TOP, (lib->full_preview & 16), FALSE);
+  dt_ui_border_show(darktable.gui->ui,TRUE);
+  lib->full_preview = 0;
+}
+
+static void _hide_panels_and_borders(dt_view_t *self)
+{
+  dt_library_t *lib = (dt_library_t *)self->data;
+  dt_ui_border_show(darktable.gui->ui,FALSE);
+
+  lib->full_preview |= (dt_ui_panel_visible(darktable.gui->ui, DT_UI_PANEL_LEFT) & 1) << 0;
+  lib->full_preview |= (dt_ui_panel_visible(darktable.gui->ui, DT_UI_PANEL_RIGHT) & 1) << 1;
+  lib->full_preview |= (dt_ui_panel_visible(darktable.gui->ui, DT_UI_PANEL_CENTER_BOTTOM) & 1) << 2;
+  lib->full_preview |= (dt_ui_panel_visible(darktable.gui->ui, DT_UI_PANEL_CENTER_TOP) & 1) << 3;
+  lib->full_preview |= (dt_ui_panel_visible(darktable.gui->ui, DT_UI_PANEL_TOP) & 1) << 4;
+
+  dt_ui_panel_show(darktable.gui->ui, DT_UI_PANEL_LEFT, FALSE, FALSE);
+  dt_ui_panel_show(darktable.gui->ui, DT_UI_PANEL_RIGHT, FALSE, FALSE);
+  dt_ui_panel_show(darktable.gui->ui, DT_UI_PANEL_CENTER_BOTTOM, FALSE, FALSE);
+  dt_ui_panel_show(darktable.gui->ui, DT_UI_PANEL_CENTER_TOP, FALSE, FALSE);
+  dt_ui_panel_show(darktable.gui->ui, DT_UI_PANEL_TOP, FALSE, FALSE);
+}
+
+
 void init(dt_view_t *self)
 {
   self->data = calloc(1, sizeof(dt_library_t));
@@ -404,6 +439,7 @@ void init(dt_view_t *self)
   lib->full_res_thumb = 0;
   lib->full_res_thumb_id = -1;
   lib->audio_player_id = -1;
+  lib->compare = 0;
 
   /* setup collection listener and initialize main_query statement */
   dt_control_signal_connect(darktable.signals, DT_SIGNAL_COLLECTION_CHANGED,
@@ -463,9 +499,33 @@ static int expose_filemanager(dt_view_t *self, cairo_t *cr, int32_t width, int32
   if(darktable.gui->center_tooltip == 1) darktable.gui->center_tooltip = 2;
 
   /* get grid stride */
-  const int iir = dt_conf_get_int("plugins/lighttable/images_in_row");
-  lib->images_in_row = iir;
 
+  int iir;
+  float wd;
+  float ht;
+  if (lib->compare && lib->collection_count)
+  {
+    if (lib->collection_count > 3)
+    {
+      iir = ceil(sqrt(lib->collection_count));
+      wd = width / (float)iir;
+      ht = height / (float)iir;
+    }
+    else 
+    {
+      iir = lib->collection_count;
+      wd = width / (float)iir;
+      ht = height;
+
+    }
+  }
+  else
+  {
+    iir = dt_conf_get_int("plugins/lighttable/images_in_row");
+    wd = width / (float)iir;
+    ht = width / (float)iir;
+  }
+  lib->images_in_row = iir;
   /* get image over id */
   lib->image_over = DT_VIEW_DESERT;
   int32_t mouse_over_id = dt_control_get_mouse_over_id(), mouse_over_group = -1;
@@ -476,8 +536,6 @@ static int expose_filemanager(dt_view_t *self, cairo_t *cr, int32_t width, int32
 
   offset_changed = lib->offset_changed;
 
-  const float wd = width / (float)iir;
-  const float ht = width / (float)iir;
 
   int pi = pointerx / (float)wd;
   int pj = pointery / (float)ht;
@@ -702,7 +760,11 @@ end_query_cache:
           // this single image.
           dt_selection_select_single(darktable.selection, id);
         }
-        missing += dt_view_image_expose(&(lib->image_over), id, cr, wd, iir == 1 ? height : ht, iir, img_pointerx,
+        if (lib->compare)
+          missing += dt_view_image_expose_compact(&(lib->image_over), id, cr, wd, iir == 1 ? height : ht, iir, img_pointerx,
+                             img_pointery, FALSE, FALSE);
+        else
+          missing += dt_view_image_expose(&(lib->image_over), id, cr, wd, iir == 1 ? height : ht, iir, img_pointerx,
                              img_pointery, FALSE, FALSE);
 
         cairo_restore(cr);
@@ -1452,6 +1514,38 @@ static gboolean go_pgdown_key_accel_callback(GtkAccelGroup *accel_group, GObject
   return TRUE;
 }
 
+static gboolean compare_key_accel_callback(GtkAccelGroup *accel_group, GObject *acceleratable, guint keyval,
+                                           GdkModifierType modifier, gpointer data)
+{
+  dt_view_t *self = (dt_view_t *)data;
+  dt_library_t *lib = (dt_library_t *)self->data;
+  lib->compare = !lib->compare;
+  //update images set flags=(flags & ~16); // unset the flag
+  //update images set flags=(flags |  16) where id in (select imgid from selected_images) // set the flag
+
+  DT_DEBUG_SQLITE3_EXEC(dt_database_get(darktable.db),
+      "update images set flags=(flags & ~16)",
+      NULL, NULL,NULL);
+
+  if (lib->compare) {
+    //TODO: check selection !empty
+    _hide_panels_and_borders(self);
+    DT_DEBUG_SQLITE3_EXEC(dt_database_get(darktable.db),
+        "update images set flags=(flags |  16) where id in (select imgid as id from selected_images)",
+        NULL, NULL,NULL);
+    dt_collection_set_filter_flags(darktable.collection, dt_collection_get_filter_flags(darktable.collection) | 64);
+  }
+  else
+  {
+    _show_panels_and_borders(self);
+    dt_collection_set_filter_flags(darktable.collection, dt_collection_get_filter_flags(darktable.collection) & ~64);
+  }
+  printf("UPDATE\n");
+  dt_collection_update(darktable.collection);
+  _update_collected_images(self);
+  return TRUE;
+}
+
 static gboolean realign_key_accel_callback(GtkAccelGroup *accel_group, GObject *acceleratable, guint keyval,
                                            GdkModifierType modifier, gpointer data)
 {
@@ -1883,13 +1977,13 @@ int key_released(dt_view_t *self, guint key, guint state)
     if(!lib->using_arrows)
       dt_control_set_mouse_over_id(-1);
 
-    dt_ui_panel_show(darktable.gui->ui, DT_UI_PANEL_LEFT, (lib->full_preview & 1), FALSE);
-    dt_ui_panel_show(darktable.gui->ui, DT_UI_PANEL_RIGHT, (lib->full_preview & 2), FALSE);
-    dt_ui_panel_show(darktable.gui->ui, DT_UI_PANEL_CENTER_BOTTOM, (lib->full_preview & 4), FALSE);
-    dt_ui_panel_show(darktable.gui->ui, DT_UI_PANEL_CENTER_TOP, (lib->full_preview & 8), FALSE);
-    dt_ui_panel_show(darktable.gui->ui, DT_UI_PANEL_TOP, (lib->full_preview & 16), FALSE);
+    _show_panels_and_borders(self);
+    // fullscreen is not super fast
+    //GtkWidget *widget;
+    //widget = dt_ui_main_window(darktable.gui->ui);
+    //if (!dt_conf_get_bool("ui_last/fullscreen"))
+    //  gtk_window_unfullscreen(GTK_WINDOW(widget));
 
-    lib->full_preview = 0;
     lib->display_focus = 0;
   }
 
@@ -1919,13 +2013,8 @@ int key_pressed(dt_view_t *self, guint key, guint state)
     if(!lib->using_arrows)
       dt_control_set_mouse_over_id(-1);
 
-    dt_ui_panel_show(darktable.gui->ui, DT_UI_PANEL_LEFT, (lib->full_preview & 1), FALSE);
-    dt_ui_panel_show(darktable.gui->ui, DT_UI_PANEL_RIGHT, (lib->full_preview & 2), FALSE);
-    dt_ui_panel_show(darktable.gui->ui, DT_UI_PANEL_CENTER_BOTTOM, (lib->full_preview & 4), FALSE);
-    dt_ui_panel_show(darktable.gui->ui, DT_UI_PANEL_CENTER_TOP, (lib->full_preview & 8), FALSE);
-    dt_ui_panel_show(darktable.gui->ui, DT_UI_PANEL_TOP, (lib->full_preview & 16), FALSE);
+    _hide_panels_and_borders(self);
 
-    lib->full_preview = 0;
     lib->display_focus = 0;
     return 1;
   }
@@ -1970,16 +2059,12 @@ int key_pressed(dt_view_t *self, guint key, guint state)
       }
 
       // let's hide some gui components
-      lib->full_preview |= (dt_ui_panel_visible(darktable.gui->ui, DT_UI_PANEL_LEFT) & 1) << 0;
-      dt_ui_panel_show(darktable.gui->ui, DT_UI_PANEL_LEFT, FALSE, FALSE);
-      lib->full_preview |= (dt_ui_panel_visible(darktable.gui->ui, DT_UI_PANEL_RIGHT) & 1) << 1;
-      dt_ui_panel_show(darktable.gui->ui, DT_UI_PANEL_RIGHT, FALSE, FALSE);
-      lib->full_preview |= (dt_ui_panel_visible(darktable.gui->ui, DT_UI_PANEL_CENTER_BOTTOM) & 1) << 2;
-      dt_ui_panel_show(darktable.gui->ui, DT_UI_PANEL_CENTER_BOTTOM, FALSE, FALSE);
-      lib->full_preview |= (dt_ui_panel_visible(darktable.gui->ui, DT_UI_PANEL_CENTER_TOP) & 1) << 3;
-      dt_ui_panel_show(darktable.gui->ui, DT_UI_PANEL_CENTER_TOP, FALSE, FALSE);
-      lib->full_preview |= (dt_ui_panel_visible(darktable.gui->ui, DT_UI_PANEL_TOP) & 1) << 4;
-      dt_ui_panel_show(darktable.gui->ui, DT_UI_PANEL_TOP, FALSE, FALSE);
+
+      _hide_panels_and_borders(self);
+      // fullscreen is not super fast
+      //GtkWidget *widget;
+      //widget = dt_ui_main_window(darktable.gui->ui);
+      //gtk_window_fullscreen(GTK_WINDOW(widget));
 
       // preview with focus detection
       if((key == accels->lighttable_preview_display_focus.accel_key
@@ -2155,6 +2240,9 @@ void init_key_accels(dt_view_t *self)
   dt_accel_register_view(self, NC_("accel", "sticky preview"), 0, 0);
   dt_accel_register_view(self, NC_("accel", "sticky preview with focus detection"), 0, 0);
   dt_accel_register_view(self, NC_("accel", "exit sticky preview"), 0, 0);
+  
+  // compare
+  dt_accel_register_view(self, NC_("accel", "compare images"), GDK_KEY_c, 0);
 }
 
 void connect_key_accels(dt_view_t *self)
@@ -2203,6 +2291,9 @@ void connect_key_accels(dt_view_t *self)
   dt_accel_connect_view(self, "color blue", closure);
   closure = g_cclosure_new(G_CALLBACK(dt_colorlabels_key_accel_callback), GINT_TO_POINTER(4), NULL);
   dt_accel_connect_view(self, "color purple", closure);
+  // compare
+  closure = g_cclosure_new(G_CALLBACK(compare_key_accel_callback), (gpointer)self, NULL);
+  dt_accel_connect_view(self, "compare images", closure);
 }
 
 // modelines: These editor modelines have been set for all relevant files by tools/update_modelines.sh
