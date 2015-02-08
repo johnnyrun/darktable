@@ -1,4 +1,6 @@
 /*
+ *
+  dt_collection_set_filter_flags(collection,FILTRO);
     This file is part of darktable,
     copyright (c) 2009--2011 johannes hanika.
     copyright (c) 2011--2012 Henrik Andersson.
@@ -77,6 +79,7 @@ typedef struct dt_library_t
   int button;
   int key_jump_offset;
   int using_arrows;
+  int compare;
   int key_select;
   int key_select_direction;
   int layout;
@@ -275,6 +278,7 @@ static void _update_collected_images(dt_view_t *self)
   /* check if we can get a query from collection */
   const gchar *query = dt_collection_get_query(darktable.collection);
   if(!query) return;
+  printf("%s\n",query);
 
   // we have a new query for the collection of images to display. For speed reason we collect all images into
   // a temporary (in-memory) table (collected_images).
@@ -435,6 +439,7 @@ void init(dt_view_t *self)
   lib->full_res_thumb = 0;
   lib->full_res_thumb_id = -1;
   lib->audio_player_id = -1;
+  lib->compare = 0;
 
   /* setup collection listener and initialize main_query statement */
   dt_control_signal_connect(darktable.signals, DT_SIGNAL_COLLECTION_CHANGED,
@@ -494,9 +499,33 @@ static int expose_filemanager(dt_view_t *self, cairo_t *cr, int32_t width, int32
   if(darktable.gui->center_tooltip == 1) darktable.gui->center_tooltip = 2;
 
   /* get grid stride */
-  const int iir = dt_conf_get_int("plugins/lighttable/images_in_row");
-  lib->images_in_row = iir;
 
+  int iir;
+  float wd;
+  float ht;
+  if (lib->compare && lib->collection_count)
+  {
+    if (lib->collection_count > 3)
+    {
+      iir = ceil(sqrt(lib->collection_count));
+      wd = width / (float)iir;
+      ht = height / (float)iir;
+    }
+    else 
+    {
+      iir = lib->collection_count;
+      wd = width / (float)iir;
+      ht = height;
+
+    }
+  }
+  else
+  {
+    iir = dt_conf_get_int("plugins/lighttable/images_in_row");
+    wd = width / (float)iir;
+    ht = width / (float)iir;
+  }
+  lib->images_in_row = iir;
   /* get image over id */
   lib->image_over = DT_VIEW_DESERT;
   int32_t mouse_over_id = dt_control_get_mouse_over_id(), mouse_over_group = -1;
@@ -507,8 +536,6 @@ static int expose_filemanager(dt_view_t *self, cairo_t *cr, int32_t width, int32
 
   offset_changed = lib->offset_changed;
 
-  const float wd = width / (float)iir;
-  const float ht = width / (float)iir;
 
   int pi = pointerx / (float)wd;
   int pj = pointery / (float)ht;
@@ -733,7 +760,11 @@ end_query_cache:
           // this single image.
           dt_selection_select_single(darktable.selection, id);
         }
-        missing += dt_view_image_expose(&(lib->image_over), id, cr, wd, iir == 1 ? height : ht, iir, img_pointerx,
+        if (lib->compare)
+          missing += dt_view_image_expose_compare(&(lib->image_over), id, cr, wd, iir == 1 ? height : ht, iir, img_pointerx,
+                             img_pointery, FALSE, FALSE);
+        else
+          missing += dt_view_image_expose(&(lib->image_over), id, cr, wd, iir == 1 ? height : ht, iir, img_pointerx,
                              img_pointery, FALSE, FALSE);
 
         cairo_restore(cr);
@@ -1483,6 +1514,38 @@ static gboolean go_pgdown_key_accel_callback(GtkAccelGroup *accel_group, GObject
   return TRUE;
 }
 
+static gboolean compare_key_accel_callback(GtkAccelGroup *accel_group, GObject *acceleratable, guint keyval,
+                                           GdkModifierType modifier, gpointer data)
+{
+  dt_view_t *self = (dt_view_t *)data;
+  dt_library_t *lib = (dt_library_t *)self->data;
+  lib->compare = !lib->compare;
+  //update images set flags=(flags & ~16); // unset the flag
+  //update images set flags=(flags |  16) where id in (select imgid from selected_images) // set the flag
+
+  DT_DEBUG_SQLITE3_EXEC(dt_database_get(darktable.db),
+      "update images set flags=(flags & ~16)",
+      NULL, NULL,NULL);
+
+  if (lib->compare) {
+    //TODO: check selection !empty
+    _hide_panels_and_borders(self);
+    DT_DEBUG_SQLITE3_EXEC(dt_database_get(darktable.db),
+        "update images set flags=(flags |  16) where id in (select imgid as id from selected_images)",
+        NULL, NULL,NULL);
+    dt_collection_set_filter_flags(darktable.collection, dt_collection_get_filter_flags(darktable.collection) | 64);
+  }
+  else
+  {
+    _show_panels_and_borders(self);
+    dt_collection_set_filter_flags(darktable.collection, dt_collection_get_filter_flags(darktable.collection) & ~64);
+  }
+  printf("UPDATE\n");
+  dt_collection_update(darktable.collection);
+  _update_collected_images(self);
+  return TRUE;
+}
+
 static gboolean realign_key_accel_callback(GtkAccelGroup *accel_group, GObject *acceleratable, guint keyval,
                                            GdkModifierType modifier, gpointer data)
 {
@@ -2175,6 +2238,9 @@ void init_key_accels(dt_view_t *self)
   dt_accel_register_view(self, NC_("accel", "sticky preview"), 0, 0);
   dt_accel_register_view(self, NC_("accel", "sticky preview with focus detection"), 0, 0);
   dt_accel_register_view(self, NC_("accel", "exit sticky preview"), 0, 0);
+  
+  // compare
+  dt_accel_register_view(self, NC_("accel", "compare images"), GDK_KEY_c, 0);
 }
 
 void connect_key_accels(dt_view_t *self)
@@ -2223,6 +2289,9 @@ void connect_key_accels(dt_view_t *self)
   dt_accel_connect_view(self, "color blue", closure);
   closure = g_cclosure_new(G_CALLBACK(dt_colorlabels_key_accel_callback), GINT_TO_POINTER(4), NULL);
   dt_accel_connect_view(self, "color purple", closure);
+  // compare
+  closure = g_cclosure_new(G_CALLBACK(compare_key_accel_callback), (gpointer)self, NULL);
+  dt_accel_connect_view(self, "compare images", closure);
 }
 
 // modelines: These editor modelines have been set for all relevant files by tools/update_modelines.sh
