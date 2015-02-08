@@ -718,7 +718,7 @@ int32_t dt_view_get_image_to_act_on()
 }
 
 
-int dt_view_image_expose_compare(dt_view_image_over_t *image_over, uint32_t imgid, cairo_t *cr, int32_t width,
+int dt_view_image_expose_compact(dt_view_image_over_t *image_over, uint32_t imgid, cairo_t *cr, int32_t width,
                          int32_t height, int32_t zoom, int32_t px, int32_t py, gboolean full_preview, gboolean image_only)
 {
   int missing = 0;
@@ -733,7 +733,8 @@ int dt_view_image_expose_compare(dt_view_image_over_t *image_over, uint32_t imgi
   const gboolean draw_grouping = !image_only;
   const gboolean draw_selected = !image_only;
   const gboolean draw_history = !image_only;
-  const gboolean draw_metadata = !image_only;
+  //const gboolean draw_metadata = !image_only;
+  const gboolean draw_metadata = FALSE;
   const gboolean draw_audio = !image_only;
 
   cairo_save(cr);
@@ -779,7 +780,7 @@ int dt_view_image_expose_compare(dt_view_image_over_t *image_over, uint32_t imgi
   }
 
   float imgwd = 0.90f;
-  if (image_only || TRUE)
+  if (image_only)
   {
     imgwd = 1.0;
   }
@@ -812,7 +813,7 @@ int dt_view_image_expose_compare(dt_view_image_over_t *image_over, uint32_t imgi
     cairo_set_source_rgb(cr, outlinecol, outlinecol, outlinecol);
     cairo_stroke(cr);
 
-    if(img)
+    if(img && FALSE)
     {
       const char *ext = img->filename + strlen(img->filename);
       while(ext > img->filename && *ext != '.') ext--;
@@ -909,7 +910,6 @@ int dt_view_image_expose_compare(dt_view_image_over_t *image_over, uint32_t imgi
     {
       // border around image
       cairo_set_source_rgb(cr, bordercol, bordercol, bordercol);
-      zoom=1;
       if(buf.buf && (selected || zoom == 1))
       {
         const float border = zoom == 1 ? 16 / scale : 2 / scale;

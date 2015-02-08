@@ -761,7 +761,7 @@ end_query_cache:
           dt_selection_select_single(darktable.selection, id);
         }
         if (lib->compare)
-          missing += dt_view_image_expose_compare(&(lib->image_over), id, cr, wd, iir == 1 ? height : ht, iir, img_pointerx,
+          missing += dt_view_image_expose_compact(&(lib->image_over), id, cr, wd, iir == 1 ? height : ht, iir, img_pointerx,
                              img_pointery, FALSE, FALSE);
         else
           missing += dt_view_image_expose(&(lib->image_over), id, cr, wd, iir == 1 ? height : ht, iir, img_pointerx,
