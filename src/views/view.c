@@ -722,6 +722,8 @@ int dt_view_image_expose_compact(dt_view_image_over_t *image_over, uint32_t imgi
                          int32_t height, int32_t zoom, int32_t px, int32_t py, gboolean full_preview, gboolean image_only)
 {
   int missing = 0;
+  full_preview = 1;
+  zoom=1;
   const double start = dt_get_wtime();
 // some performance tuning stuff, for your pleasure.
 // on my machine with 7 image per row it seems grouping has the largest
@@ -733,8 +735,7 @@ int dt_view_image_expose_compact(dt_view_image_over_t *image_over, uint32_t imgi
   const gboolean draw_grouping = !image_only;
   const gboolean draw_selected = !image_only;
   const gboolean draw_history = !image_only;
-  //const gboolean draw_metadata = !image_only;
-  const gboolean draw_metadata = FALSE;
+  const gboolean draw_metadata = !image_only;
   const gboolean draw_audio = !image_only;
 
   cairo_save(cr);
