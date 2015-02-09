@@ -1577,6 +1577,7 @@ static gboolean star_key_accel_callback(GtkAccelGroup *accel_group, GObject *acc
                                         GdkModifierType modifier, gpointer data)
 {
   dt_view_t *self = darktable.view_manager->proxy.lighttable.view;
+  dt_library_t *lib = (dt_library_t *)self->data;
   int num = GPOINTER_TO_INT(data);
   int32_t mouse_over_id;
 
@@ -1586,6 +1587,9 @@ static gboolean star_key_accel_callback(GtkAccelGroup *accel_group, GObject *acc
     dt_ratings_apply_to_selection(num);
   else
     dt_ratings_apply_to_image(mouse_over_id, num);
+
+  if (lib->compare)
+    dt_collection_update(darktable.collection);
   _update_collected_images(self);
   return TRUE;
 }
