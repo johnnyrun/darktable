@@ -1530,9 +1530,20 @@ static gboolean compare_key_accel_callback(GtkAccelGroup *accel_group, GObject *
   if (lib->compare) {
     //TODO: check selection !empty
     _hide_panels_and_borders(self);
-    DT_DEBUG_SQLITE3_EXEC(dt_database_get(darktable.db),
-        "update images set flags=(flags |  16) where id in (select imgid as id from selected_images)",
-        NULL, NULL,NULL);
+
+
+    sqlite3_stmt *stmt;
+    DT_DEBUG_SQLITE3_PREPARE_V2(dt_database_get(darktable.db),
+        "SELECT imgid FROM selected_images", -1, &stmt,
+        NULL);
+    dt_image_t *selected_image;
+    while(sqlite3_step(stmt) == SQLITE_ROW)
+    {
+      selected_image = dt_image_cache_get(darktable.image_cache, sqlite3_column_int(stmt, 0), 'w');
+      selected_image->flags  = selected_image->flags | 16;
+      dt_image_cache_write_release(darktable.image_cache, selected_image, DT_IMAGE_CACHE_SAFE);
+    }
+    sqlite3_finalize(stmt);
     dt_collection_set_filter_flags(darktable.collection, dt_collection_get_filter_flags(darktable.collection) | 64);
   }
   else
