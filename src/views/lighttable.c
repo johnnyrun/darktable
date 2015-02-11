@@ -1887,6 +1887,8 @@ int button_pressed(dt_view_t *self, double x, double y, double pressure, int whi
             image->flags |= lib->image_over;
           }
           dt_image_cache_write_release(darktable.image_cache, image, DT_IMAGE_CACHE_SAFE);
+          if (lib->compare)
+            dt_collection_update(darktable.collection); // may be collection_count is changed
         }
         else
           dt_image_cache_write_release(darktable.image_cache, image, DT_IMAGE_CACHE_RELAXED);
