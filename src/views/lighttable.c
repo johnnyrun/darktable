@@ -278,7 +278,6 @@ static void _update_collected_images(dt_view_t *self)
   /* check if we can get a query from collection */
   const gchar *query = dt_collection_get_query(darktable.collection);
   if(!query) return;
-  printf("%s\n",query);
 
   // we have a new query for the collection of images to display. For speed reason we collect all images into
   // a temporary (in-memory) table (collected_images).
@@ -602,6 +601,8 @@ static int expose_filemanager(dt_view_t *self, cairo_t *cr, int32_t width, int32
 
   int32_t offset = lib->offset
       = MIN(lib->first_visible_filemanager, ((lib->collection_count + iir - 1) / iir - 1) * iir);
+  if (lib->compare)
+    offset = 0;
 
   int32_t drawing_offset = 0;
   if(offset < 0)
@@ -1654,14 +1655,11 @@ void enter(dt_view_t *self)
   lib->pan = 0;
   dt_collection_hint_message(darktable.collection);
 
-  if (lib->compare)
-  {
-    // from darkroom to lighttable avoid come back to compare
-    lib->compare = 0;
-    dt_collection_set_filter_flags(darktable.collection, dt_collection_get_filter_flags(darktable.collection) & ~64);
-    dt_collection_update(darktable.collection);
-    _update_collected_images(self);
-  }
+  // if I brutally close compare avoid to display a non-full collection
+  lib->compare = 0;
+  dt_collection_set_filter_flags(darktable.collection, dt_collection_get_filter_flags(darktable.collection) & ~64);
+  dt_collection_update(darktable.collection);
+  _update_collected_images(self);
 
   // hide panel if we are in full preview mode
   if(lib->full_preview_id != -1)
