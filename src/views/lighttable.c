@@ -1551,7 +1551,6 @@ static gboolean compare_key_accel_callback(GtkAccelGroup *accel_group, GObject *
     _show_panels_and_borders(self);
     dt_collection_set_filter_flags(darktable.collection, dt_collection_get_filter_flags(darktable.collection) & ~64);
   }
-  printf("UPDATE\n");
   dt_collection_update(darktable.collection);
   _update_collected_images(self);
   return TRUE;
@@ -1654,6 +1653,15 @@ void enter(dt_view_t *self)
   lib->button = 0;
   lib->pan = 0;
   dt_collection_hint_message(darktable.collection);
+
+  if (lib->compare)
+  {
+    // from darkroom to lighttable avoid come back to compare
+    lib->compare = 0;
+    dt_collection_set_filter_flags(darktable.collection, dt_collection_get_filter_flags(darktable.collection) & ~64);
+    dt_collection_update(darktable.collection);
+    _update_collected_images(self);
+  }
 
   // hide panel if we are in full preview mode
   if(lib->full_preview_id != -1)
