@@ -509,7 +509,7 @@ static int expose_filemanager(dt_view_t *self, cairo_t *cr, int32_t width, int32
     {
       iir = ceil(sqrt(lib->collection_count));
       wd = width / (float)iir;
-      ht = height / (float)iir;
+      ht = height / ceil((float)lib->collection_count/(float)iir); // height / num rows
     }
     else 
     {
