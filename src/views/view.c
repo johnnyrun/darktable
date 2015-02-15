@@ -738,21 +738,21 @@ int dt_view_image_expose_compact(dt_view_image_over_t *image_over, uint32_t imgi
   const gboolean draw_history = !image_only;
   const gboolean draw_metadata = !image_only;
   const gboolean draw_audio = !image_only;
-  const gboolean draw_rating = (imgsel == imgid || full_preview || darktable.gui->show_overlays || zoom == 1);
-  const gboolean draw_exif_data = (draw_metadata && img && (zoom == 1));
+  //const gboolean draw_rating = (imgsel == imgid || full_preview || darktable.gui->show_overlays || zoom == 1);
+  //const gboolean draw_exif_data = (draw_metadata && img && (zoom == 1));
   const gboolean draw_custom_metadata = (draw_metadata && img && (img->flags & DT_IMAGE_HAS_TXT) && dt_conf_get_bool("plugins/lighttable/draw_custom_metadata") && (zoom == 1));
-  const gboolean draw_extension = TRUE;
+  //const gboolean draw_extension = TRUE;
   const gboolean set_colors = (selected == 1 && zoom != 1);
   const gboolean highlight_image = (imgsel == imgid || zoom == 1);
-  const gboolean bottom_rating = (zoom != 1);
-  const gboolean big_rating = (zoom != 1);
+  //const gboolean bottom_rating = (zoom != 1);
+  //const gboolean big_rating = (zoom != 1);
 
   // override
-  //const gboolean draw_rating = TRUE;
-  //const gboolean draw_exif_data = TRUE;
-  //const gboolean draw_extension = FALSE;
-  //const gboolean bottom_rating = FALSE;
-  //const gboolean big_rating = FALSE;
+  const gboolean draw_rating = TRUE;
+  const gboolean draw_exif_data = TRUE;
+  const gboolean draw_extension = FALSE;
+  const gboolean bottom_rating = FALSE;
+  const gboolean big_rating = FALSE;
   // end override
 
   gboolean draw_mouse_over_border = TRUE;
