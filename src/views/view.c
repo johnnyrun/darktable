@@ -727,21 +727,39 @@ int dt_view_image_expose_compact(dt_view_image_over_t *image_over, uint32_t imgi
 // on my machine with 7 image per row it seems grouping has the largest
 // impact from around 400ms -> 55ms per redraw.
 
+  int selected = 0, altered = 0, is_grouped = 0;
+  int imgsel = dt_control_get_mouse_over_id(); //  darktable.control->global_settings.lib_image_mouse_over_id;
+  const dt_image_t *img = dt_image_cache_testget(darktable.image_cache, imgid, 'r');
   const gboolean draw_thumb = TRUE;
   const gboolean draw_colorlabels = !image_only;
   const gboolean draw_local_copy = !image_only;
   const gboolean draw_grouping = !image_only;
   const gboolean draw_selected = !image_only;
   const gboolean draw_history = !image_only;
-  //const gboolean draw_metadata = !image_only;
-  const gboolean draw_metadata = FALSE;
+  const gboolean draw_metadata = !image_only;
   const gboolean draw_audio = !image_only;
+  //const gboolean draw_rating = (imgsel == imgid || full_preview || darktable.gui->show_overlays || zoom == 1);
+  //const gboolean draw_exif_data = (draw_metadata && img && (zoom == 1));
+  const gboolean draw_custom_metadata = (draw_metadata && img && (img->flags & DT_IMAGE_HAS_TXT) && dt_conf_get_bool("plugins/lighttable/draw_custom_metadata") && (zoom == 1));
+  //const gboolean draw_extension = TRUE;
+  const gboolean set_colors = (selected == 1 && zoom != 1);
+  const gboolean highlight_image = (imgsel == imgid || zoom == 1);
+  //const gboolean bottom_rating = (zoom != 1);
+  //const gboolean big_rating = (zoom != 1);
+
+  // override
+  const gboolean draw_rating = TRUE;
+  const gboolean draw_exif_data = TRUE;
+  const gboolean draw_extension = FALSE;
+  const gboolean bottom_rating = FALSE;
+  const gboolean big_rating = FALSE;
+  // end override
+
+  gboolean draw_mouse_over_border = TRUE;
 
   cairo_save(cr);
   float bgcol = 0.4, fontcol = 0.425, bordercol = 0.1, outlinecol = 0.2;
-  int selected = 0, altered = 0, imgsel = -1, is_grouped = 0;
   // this is a gui thread only thing. no mutex required:
-  imgsel = dt_control_get_mouse_over_id(); //  darktable.control->global_settings.lib_image_mouse_over_id;
 
   if (draw_selected)
   {
@@ -755,19 +773,18 @@ int dt_view_image_expose_compact(dt_view_image_over_t *image_over, uint32_t imgi
   }
 
   dt_image_t buffered_image;
-  const dt_image_t *img = dt_image_cache_testget(darktable.image_cache, imgid, 'r');
 
-  if(selected == 1 && zoom != 1) // If zoom == 1 there is no need to set colors here
+  if(set_colors) // If zoom == 1 there is no need to set colors here
   {
     outlinecol = 0.4;
     bgcol = 0.6;
     fontcol = 0.5;
   }
-  if(imgsel == imgid || zoom == 1)
+  if(highlight_image)
   {
+    outlinecol = 0.6;
     bgcol = 0.8; // mouse over
     fontcol = 0.7;
-    outlinecol = 0.6;
     // if the user points at this image, we really want it:
     if(!img) img = dt_image_cache_get(darktable.image_cache, imgid, 'r');
   }
@@ -783,14 +800,17 @@ int dt_view_image_expose_compact(dt_view_image_over_t *image_over, uint32_t imgi
   if (image_only)
   {
     imgwd = 1.0;
+    draw_mouse_over_border = 0;
   }
   else if(zoom == 1)
   {
     imgwd = .97f;
+    draw_mouse_over_border = 0;
     // cairo_set_antialias(cr, CAIRO_ANTIALIAS_NONE);
   }
-  else
+  if (draw_mouse_over_border)
   {
+    // draw mouse over border
     double x0 = 1, y0 = 1, rect_width = width - 2, rect_height = height - 2, radius = 5;
     double x1, y1, off, off1;
 
@@ -813,7 +833,7 @@ int dt_view_image_expose_compact(dt_view_image_over_t *image_over, uint32_t imgi
     cairo_set_source_rgb(cr, outlinecol, outlinecol, outlinecol);
     cairo_stroke(cr);
 
-    if(img && FALSE)
+    if(img && draw_extension)
     {
       const char *ext = img->filename + strlen(img->filename);
       while(ext > img->filename && *ext != '.') ext--;
@@ -956,7 +976,7 @@ int dt_view_image_expose_compact(dt_view_image_over_t *image_over, uint32_t imgi
   cairo_save(cr);
 
   const float fscale = fminf(width, height);
-  if(imgsel == imgid || full_preview || darktable.gui->show_overlays || zoom == 1)
+  if(draw_rating)
   {
     if(draw_metadata && width > DECORATION_SIZE_LIMIT)
     {
@@ -965,7 +985,7 @@ int dt_view_image_expose_compact(dt_view_image_over_t *image_over, uint32_t imgi
       cairo_set_source_rgb(cr, outlinecol, outlinecol, outlinecol);
       cairo_set_line_join(cr, CAIRO_LINE_JOIN_ROUND);
       float r1, r2;
-      if(zoom != 1)
+      if(big_rating)
       {
         r1 = 0.05 * width;
         r2 = 0.022 * width;
@@ -977,7 +997,7 @@ int dt_view_image_expose_compact(dt_view_image_over_t *image_over, uint32_t imgi
       }
 
       float x, y;
-      if(zoom != 1)
+      if(bottom_rating)
         y = 0.90 * height;
       else
         y = .12 * fscale;
@@ -986,7 +1006,7 @@ int dt_view_image_expose_compact(dt_view_image_over_t *image_over, uint32_t imgi
       if(img)
         for(int k = 0; k < 5; k++)
         {
-          if(zoom != 1)
+          if(big_rating)
             x = (0.41 + k * 0.12) * width;
           else
             x = (.08 + k * 0.04) * fscale;
@@ -1014,7 +1034,7 @@ int dt_view_image_expose_compact(dt_view_image_over_t *image_over, uint32_t imgi
         }
 
       // Image rejected?
-      if(zoom != 1)
+      if(big_rating)
         x = 0.11 * width;
       else
         x = .04 * fscale;
@@ -1188,7 +1208,7 @@ int dt_view_image_expose_compact(dt_view_image_over_t *image_over, uint32_t imgi
     }
   }
 
-  if(draw_metadata && img && (zoom == 1))
+  if(draw_exif_data)
   {
     // some exif data
     cairo_set_source_rgb(cr, .7, .7, .7);
@@ -1209,8 +1229,7 @@ int dt_view_image_expose_compact(dt_view_image_over_t *image_over, uint32_t imgi
   }
 
   // draw custom metadata from accompanying text file:
-  if(draw_metadata && img && (img->flags & DT_IMAGE_HAS_TXT) && dt_conf_get_bool("plugins/lighttable/draw_custom_metadata")
-     && (zoom == 1))
+  if (draw_custom_metadata)
   {
     char *path = dt_image_get_text_path(img->id);
     if(path)

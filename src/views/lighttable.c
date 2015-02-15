@@ -278,7 +278,6 @@ static void _update_collected_images(dt_view_t *self)
   /* check if we can get a query from collection */
   const gchar *query = dt_collection_get_query(darktable.collection);
   if(!query) return;
-  printf("%s\n",query);
 
   // we have a new query for the collection of images to display. For speed reason we collect all images into
   // a temporary (in-memory) table (collected_images).
@@ -509,7 +508,7 @@ static int expose_filemanager(dt_view_t *self, cairo_t *cr, int32_t width, int32
     {
       iir = ceil(sqrt(lib->collection_count));
       wd = width / (float)iir;
-      ht = height / (float)iir;
+      ht = height / ceil((float)lib->collection_count/(float)iir); // height / num rows
     }
     else 
     {
@@ -602,6 +601,8 @@ static int expose_filemanager(dt_view_t *self, cairo_t *cr, int32_t width, int32
 
   int32_t offset = lib->offset
       = MIN(lib->first_visible_filemanager, ((lib->collection_count + iir - 1) / iir - 1) * iir);
+  if (lib->compare)
+    offset = 0;
 
   int32_t drawing_offset = 0;
   if(offset < 0)
@@ -761,8 +762,13 @@ end_query_cache:
           dt_selection_select_single(darktable.selection, id);
         }
         if (lib->compare)
+        {
           missing += dt_view_image_expose_compact(&(lib->image_over), id, cr, wd, iir == 1 ? height : ht, iir, img_pointerx,
                              img_pointery, FALSE, FALSE);
+          // normal huge preview
+          //missing += dt_view_image_expose(&(lib->image_over), id, cr, wd, iir == 1 ? height : ht, iir, img_pointerx,
+          //                   img_pointery, FALSE, FALSE);
+        }
         else
           missing += dt_view_image_expose(&(lib->image_over), id, cr, wd, iir == 1 ? height : ht, iir, img_pointerx,
                              img_pointery, FALSE, FALSE);
@@ -1530,9 +1536,20 @@ static gboolean compare_key_accel_callback(GtkAccelGroup *accel_group, GObject *
   if (lib->compare) {
     //TODO: check selection !empty
     _hide_panels_and_borders(self);
-    DT_DEBUG_SQLITE3_EXEC(dt_database_get(darktable.db),
-        "update images set flags=(flags |  16) where id in (select imgid as id from selected_images)",
-        NULL, NULL,NULL);
+
+
+    sqlite3_stmt *stmt;
+    DT_DEBUG_SQLITE3_PREPARE_V2(dt_database_get(darktable.db),
+        "SELECT imgid FROM selected_images", -1, &stmt,
+        NULL);
+    dt_image_t *selected_image;
+    while(sqlite3_step(stmt) == SQLITE_ROW)
+    {
+      selected_image = dt_image_cache_get(darktable.image_cache, sqlite3_column_int(stmt, 0), 'w');
+      selected_image->flags  = selected_image->flags | 16;
+      dt_image_cache_write_release(darktable.image_cache, selected_image, DT_IMAGE_CACHE_SAFE);
+    }
+    sqlite3_finalize(stmt);
     dt_collection_set_filter_flags(darktable.collection, dt_collection_get_filter_flags(darktable.collection) | 64);
   }
   else
@@ -1540,7 +1557,6 @@ static gboolean compare_key_accel_callback(GtkAccelGroup *accel_group, GObject *
     _show_panels_and_borders(self);
     dt_collection_set_filter_flags(darktable.collection, dt_collection_get_filter_flags(darktable.collection) & ~64);
   }
-  printf("UPDATE\n");
   dt_collection_update(darktable.collection);
   _update_collected_images(self);
   return TRUE;
@@ -1577,6 +1593,7 @@ static gboolean star_key_accel_callback(GtkAccelGroup *accel_group, GObject *acc
                                         GdkModifierType modifier, gpointer data)
 {
   dt_view_t *self = darktable.view_manager->proxy.lighttable.view;
+  dt_library_t *lib = (dt_library_t *)self->data;
   int num = GPOINTER_TO_INT(data);
   int32_t mouse_over_id;
 
@@ -1586,6 +1603,9 @@ static gboolean star_key_accel_callback(GtkAccelGroup *accel_group, GObject *acc
     dt_ratings_apply_to_selection(num);
   else
     dt_ratings_apply_to_image(mouse_over_id, num);
+
+  if (lib->compare)
+    dt_collection_update(darktable.collection);
   _update_collected_images(self);
   return TRUE;
 }
@@ -1639,6 +1659,12 @@ void enter(dt_view_t *self)
   lib->button = 0;
   lib->pan = 0;
   dt_collection_hint_message(darktable.collection);
+
+  // if I brutally close compare avoid to display a non-full collection
+  lib->compare = 0;
+  dt_collection_set_filter_flags(darktable.collection, dt_collection_get_filter_flags(darktable.collection) & ~64);
+  dt_collection_update(darktable.collection);
+  _update_collected_images(self);
 
   // hide panel if we are in full preview mode
   if(lib->full_preview_id != -1)
@@ -1866,6 +1892,8 @@ int button_pressed(dt_view_t *self, double x, double y, double pressure, int whi
             image->flags |= lib->image_over;
           }
           dt_image_cache_write_release(darktable.image_cache, image, DT_IMAGE_CACHE_SAFE);
+          if (lib->compare)
+            dt_collection_update(darktable.collection); // may be collection_count is changed
         }
         else
           dt_image_cache_write_release(darktable.image_cache, image, DT_IMAGE_CACHE_RELAXED);
