@@ -281,8 +281,9 @@ _print_button_clicked (GtkWidget *widget, gpointer user_data)
     if (dt_apply_printer_profile(imgid, (void **)&(dat.ps->buf), dat.width, dat.height, dat.bpp,
                                  ps->v_piccprofile, ps->v_pintent, ps->v_black_point_compensation))
     {
-      free (dat.ps->buf);
+      free(dat.ps->buf);
       dt_control_log(_("cannot apply printer profile `%s'"), ps->v_piccprofile);
+      fprintf(stderr, "cannot apply printer profile `%s'\n", ps->v_piccprofile);
       dt_control_queue_redraw();
       return;
     }
@@ -290,7 +291,20 @@ _print_button_clicked (GtkWidget *widget, gpointer user_data)
   const float page_width  = dt_pdf_mm_to_point(width);
   const float page_height = dt_pdf_mm_to_point(height);
 
-  char *filename = tempnam(NULL, "pf");
+  char filename[PATH_MAX] = { 0 };
+  dt_loc_get_tmp_dir(filename, sizeof(filename));
+  g_strlcat(filename, "/pf.XXXXXX.pdf", sizeof(filename));
+
+  gint fd = g_mkstemp(filename);
+  if(fd == -1)
+  {
+    free(dat.ps->buf);
+    dt_control_log("failed to create temporary pdf for printing");
+    fprintf(stderr, "failed to create temporary pdf for printing\n");
+    dt_control_queue_redraw();
+    return;
+  }
+  close(fd);
 
   const int icc_id = 0;
 
@@ -328,7 +342,6 @@ _print_button_clicked (GtkWidget *widget, gpointer user_data)
   dt_print_file (imgid, filename, &ps->prt);
 
   unlink(filename);
-  free(filename);
 
   // add tag for this image
 
@@ -1059,7 +1072,7 @@ gui_init (dt_lib_module_t *self)
 
   //// papers
 
-  dt_bauhaus_widget_set_label(d->papers, NULL, _("paper"));
+  dt_bauhaus_widget_set_label(d->papers, NULL, _("paper size"));
 
   g_signal_connect(G_OBJECT(d->papers), "value-changed", G_CALLBACK(_paper_changed), self);
   gtk_box_pack_start(GTK_BOX(self->widget), GTK_WIDGET(d->papers), TRUE, TRUE, 0);
@@ -1562,6 +1575,10 @@ void
 gui_cleanup (dt_lib_module_t *self)
 {
   dt_lib_print_settings_t *ps = (dt_lib_print_settings_t *)self->data;
+
+  dt_control_signal_disconnect(darktable.signals,
+                               G_CALLBACK(_print_settings_filmstrip_activate_callback),
+                               self);
 
   g_list_free_full(ps->profiles, g_free);
   g_list_free_full(ps->paper_list, g_free);

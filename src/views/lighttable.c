@@ -2121,8 +2121,12 @@ int key_pressed(dt_view_t *self, guint key, guint state)
     else if(layout == 1)
     {
       if (zoom == 1)
+      {
         move_view(lib, UP);
-      else {
+        lib->using_arrows = 0;
+      }
+      else
+      {
         lib->using_arrows = 1;
         lib->key_jump_offset = -1;
         lib->track = -1;
@@ -2141,8 +2145,12 @@ int key_pressed(dt_view_t *self, guint key, guint state)
     else if(layout == 1)
     {
       if (zoom == 1)
+      {
         move_view(lib, DOWN);
-      else  {
+        lib->using_arrows = 0;
+      }
+      else
+      {
         lib->using_arrows = 1;
         lib->key_jump_offset = 1;
         lib->track = -1;
@@ -2159,9 +2167,15 @@ int key_pressed(dt_view_t *self, guint key, guint state)
       lib->track = -DT_LIBRARY_MAX_ZOOM;
     else if(layout == 1)
     {
-      lib->using_arrows = 1;
-      lib->key_jump_offset = zoom*-1;
-      //move_view(lib, UP);
+      if (zoom == 1)
+      {
+        move_view(lib, UP);
+        lib->using_arrows = 0;
+      }
+      else {
+        lib->using_arrows = 1;
+        lib->key_jump_offset = zoom*-1;
+      }
     }
     else
       lib->track = -DT_LIBRARY_MAX_ZOOM;
@@ -2174,9 +2188,16 @@ int key_pressed(dt_view_t *self, guint key, guint state)
       lib->track = +DT_LIBRARY_MAX_ZOOM;
     else if(layout == 1) 
     {
-      lib->using_arrows = 1;
-      lib->key_jump_offset = zoom;
-      //move_view(lib, DOWN);
+      if (zoom == 1)
+      {
+        move_view(lib, DOWN);
+        lib->using_arrows = 0;
+      }
+      else
+      {
+        lib->using_arrows = 1;
+        lib->key_jump_offset = zoom;
+      }
     }
     else
       lib->track = DT_LIBRARY_MAX_ZOOM;

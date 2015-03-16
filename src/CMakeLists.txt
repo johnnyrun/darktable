@@ -43,6 +43,7 @@ FILE(GLOB SOURCE_FILES
   "common/interpolation.c"
   "common/metadata.c"
   "common/mipmap_cache.c"
+  "common/noiseprofiles.c"
   "common/pdf.c"
   "common/styles.c"
   "common/selection.c"
@@ -142,6 +143,15 @@ include_directories(SYSTEM ${LIBXML2_INCLUDE_DIR})
 list(APPEND LIBS ${LIBXML2_LIBRARIES})
 add_definitions(${LIBXML2_DEFINITIONS})
 
+# used to launch a tiny http server, used by facebook exporter
+find_package(LibSoup2)
+if(LIBSOUP2_FOUND)
+  include_directories(SYSTEM ${LIBSOUP2_INCLUDE_DIRS})
+  list(APPEND LIBS ${LIBSOUP2_LIBRARIES})
+  add_definitions(${LIBSOUP2_DEFINITIONS})
+  add_definitions("-DHAVE_HTTP_SERVER")
+  list(APPEND SOURCES "common/http_server.c")
+endif(LIBSOUP2_FOUND)
 
 if(USE_CAMERA_SUPPORT)
   find_package(Gphoto2)
@@ -178,7 +188,7 @@ if(USE_WEBP)
   else(USE_WEBP)
 endif(USE_WEBP)
 
-foreach(lib ${OUR_LIBS} LensFun GIO GThread GModule PangoCairo PThread Rsvg2 LibXml2 Sqlite3 Exiv2 CURL PNG JPEG TIFF LCMS2)
+foreach(lib ${OUR_LIBS} LensFun GIO GThread GModule PangoCairo PThread Rsvg2 LibXml2 Sqlite3 Exiv2 CURL PNG JPEG TIFF LCMS2 JsonGlib)
   find_package(${lib} REQUIRED)
   include_directories(SYSTEM ${${lib}_INCLUDE_DIRS})
   list(APPEND LIBS ${${lib}_LIBRARIES})
@@ -205,14 +215,6 @@ if(USE_FLICKR)
     add_definitions(${FLICKCURL_DEFINITIONS})
   endif(FLICKCURL_FOUND)
 endif(USE_FLICKR)
-
-if(USE_GLIBJSON)
-  find_package(JsonGlib)
-  if(JsonGlib_FOUND)
-    include_directories(SYSTEM ${JsonGlib_INCLUDE_DIRS})
-    list(APPEND LIBS ${JsonGlib_LIBRARIES})
-  endif(JsonGlib_FOUND)
-endif(USE_GLIBJSON)
 
 if(USE_OPENJPEG)
   find_package(OpenJPEG)
@@ -403,8 +405,14 @@ if(NOT CUSTOM_CFLAGS)
   set(CMAKE_C_FLAGS_RELWITHDEBINFO "${CMAKE_C_FLAGS_RELWITHDEBINFO} -O2")
   set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -O3 -ffast-math -fno-finite-math-only")
   if(CMAKE_COMPILER_IS_GNUCC)
+    execute_process(COMMAND ${CMAKE_C_COMPILER} -dumpversion OUTPUT_VARIABLE GCC_VERSION)
+
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -mfpmath=sse")
-    set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -Og -g3 -ggdb3")
+    if(GCC_VERSION VERSION_LESS 4.8)
+      set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -O0 -g3 -ggdb3")
+    else()
+      set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -Og -g3 -ggdb3")
+    endif()
     set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -fexpensive-optimizations")
   else()
     set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -O0")
@@ -414,8 +422,14 @@ if(NOT CUSTOM_CFLAGS)
   set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO} -O2")
   set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3 -ffast-math -fno-finite-math-only")
   if(CMAKE_COMPILER_IS_GNUCXX)
+    execute_process(COMMAND ${CMAKE_CXX_COMPILER} -dumpversion OUTPUT_VARIABLE GCC_VERSION)
+
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mfpmath=sse")
-    set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -Og -g3 -ggdb3")
+    if(GCC_VERSION VERSION_LESS 4.8)
+      set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -O0 -g3 -ggdb3")
+    else()
+      set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -Os -g3 -ggdb3")
+    endif()
     set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -fexpensive-optimizations")
   else()
     set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -O0")

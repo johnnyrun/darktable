@@ -403,6 +403,7 @@ static int32_t async_callback_job(dt_job_t *job)
         luaA_push_type(L,luaA_type_find(L,type_elt->data),&data_elt->data);
         break;
       case LUA_ASYNC_DONE:
+      default:
         // should never happen
         g_assert(false);
         break;
@@ -441,7 +442,6 @@ void dt_lua_do_chunk_async(lua_CFunction pusher,dt_lua_async_call_arg_type arg_t
           data->extra=g_list_append(data->extra,va_arg(ap,char *));
           data->extra=g_list_append(data->extra,va_arg(ap,gpointer));
           break;
-        case LUA_ASYNC_DONE:
         default:
           // should never happen
           g_assert(false);
