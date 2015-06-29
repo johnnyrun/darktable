@@ -24,11 +24,11 @@
 #include "stdarg.h"
 /**
   TODO
-  generic property member registration
   use name to save/restore states as pref like other widgets
   have a way to save presets
   luastorage can't save presets
-
+dt_ui_section_label : make new lua widget
+widget names : implement for CSS ?
   */
 
 dt_lua_widget_type_t widget_type = {
@@ -47,6 +47,15 @@ static void init_widget_sub(lua_State *L,dt_lua_widget_type_t*widget_type) {
   if(widget_type->gui_init) 
     widget_type->gui_init(L);
 }
+
+/*
+static void on_destroy(GtkWidget *widget, gpointer user_data)
+{
+  lua_widget lwidget = (lua_widget)user_data;
+  printf("%s of type %s destroyed\n",gtk_widget_get_name(widget),lwidget->type->name);
+}
+*/
+
 static int get_widget_params(lua_State *L)
 {
   struct dt_lua_widget_type_t *widget_type = lua_touserdata(L, lua_upvalueindex(1));
@@ -70,6 +79,7 @@ static int get_widget_params(lua_State *L)
     lua_pop(L,1);
   }
   lua_pop(L,1);
+  //g_signal_connect(widget->widget,"destroy",G_CALLBACK(on_destroy),widget);
   return 1;
 }
 
@@ -146,6 +156,7 @@ int dt_lua_widget_trigger_callback(lua_State *L)
       lua_pushvalue(L,i+3);
     }
     dt_lua_do_chunk_silent(L,nargs+1,0);
+    dt_lua_redraw_screen();
   }
   return 0;
 }
@@ -234,8 +245,22 @@ int widget_call(lua_State *L)
   return 1;
 }
 
+void dt_lua_widget_bind(lua_State *L, lua_widget widget)
+{
+  lua_getfield(L, LUA_REGISTRYINDEX,"dt_lua_widget_bind_table");
+  lua_pushlightuserdata(L,widget);
+  luaA_push(L,lua_widget,&widget);
+  lua_settable(L,-3);
+  lua_pop(L,1);
+}
+
+
 int dt_lua_init_widget(lua_State* L)
 {
+
+  lua_newtable(L);
+  lua_setfield(L, LUA_REGISTRYINDEX,"dt_lua_widget_bind_table");
+
   dt_lua_module_new(L,"widget");
 
   widget_type.associated_type = dt_lua_init_gpointer_type(L,lua_widget);
@@ -263,6 +288,7 @@ int dt_lua_init_widget(lua_State* L)
   dt_lua_init_widget_entry(L);
   dt_lua_init_widget_file_chooser_button(L);
   dt_lua_init_widget_separator(L);
+  dt_lua_init_widget_slider(L);
   dt_lua_init_widget_stack(L);
 
   luaA_enum(L,dt_lua_orientation_t);

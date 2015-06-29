@@ -38,11 +38,13 @@ public:
     SCALE_VALUES = 1, FIX_BAD_PIXELS = 2, APPLY_LOOKUP = 3 | 0x1000, FULL_IMAGE = 0x1000
   } RawImageWorkerTask;
   RawImageWorker(RawImageData *img, RawImageWorkerTask task, int start_y, int end_y);
+  ~RawImageWorker();
   void startThread();
   void waitForThread();
   void performTask();
 protected:
   pthread_t threadid;
+  pthread_attr_t attr;
   RawImageData* data;
   RawImageWorkerTask task;
   int start_y;
@@ -81,6 +83,11 @@ public:
   string make;
   string model;
   string mode;
+
+  string canonical_make;
+  string canonical_model;
+  string canonical_alias;
+  string canonical_id;
 
   // ISO speed. If known the value is set, otherwise it will be '0'.
   int isoSpeed;
@@ -200,8 +207,8 @@ protected:
  public:
    static RawImage create(RawImageType type = TYPE_USHORT16);
    static RawImage create(iPoint2D dim, RawImageType type = TYPE_USHORT16, uint32 componentsPerPixel = 1);
-   RawImageData* operator-> ();
-   RawImageData& operator* ();
+   RawImageData* operator-> (){ return p_; };
+   RawImageData& operator* (){ return *p_; };
    RawImage(RawImageData* p);  // p must not be NULL
   ~RawImage();
    RawImage(const RawImage& p);

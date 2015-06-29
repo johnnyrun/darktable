@@ -99,7 +99,7 @@
 darktable_t darktable;
 const char dt_supported_extensions[] = "3fr,arw,bay,bmq,cap,cine,cr2,crw,cs1,dc2,dcr,dng,erf,fff,exr,ia,iiq,"
                                        "jpeg,jpg,k25,kc2,kdc,mdc,mef,mos,mrw,nef,nrw,orf,pef,pfm,pxn,qtk,raf,"
-                                       "raw,rdc,rw2,rwl,sr2,srf,srw,sti,tif,tiff,x3f,png"
+                                       "raw,rdc,rw2,rwl,sr2,srf,srw,sti,tif,tiff,x3f,png,ari"
 #ifdef HAVE_OPENJPEG
                                        ",j2c,j2k,jp2,jpc"
 #endif
@@ -667,6 +667,8 @@ int dt_init(int argc, char *argv[], const int init_gui, lua_State *L)
       else if(!strcmp(argv[k], "--"))
       {
         no_more_options = TRUE;
+        // "--" confuses the argument parser of glib/gtk. remove it.
+        *argv[k] = '\0';
       }
       else
         return usage(argv[0]); // fail on unrecognized options
@@ -733,8 +735,7 @@ int dt_init(int argc, char *argv[], const int init_gui, lua_State *L)
   g_slist_free_full(config_override, g_free);
 
   // set the interface language
-  const gchar *lang = dt_conf_get_string(
-      "ui_last/gui_language"); // we may not g_free 'lang' since it is owned by setlocale afterwards
+  const gchar *lang = dt_conf_get_string("ui_last/gui_language");
   if(lang != NULL && lang[0] != '\0')
   {
     setenv("LANGUAGE", lang, 1);
@@ -742,6 +743,7 @@ int dt_init(int argc, char *argv[], const int init_gui, lua_State *L)
     setlocale(LC_MESSAGES, lang);
     setenv("LANG", lang, 1);
   }
+  g_free((gchar *)lang);
 
   // initialize the database
   darktable.db = dt_database_init(dbfilename_from_command);
@@ -815,7 +817,6 @@ int dt_init(int argc, char *argv[], const int init_gui, lua_State *L)
   }
 
   // initialize collection query
-  darktable.collection_listeners = NULL;
   darktable.collection = dt_collection_new(NULL);
 
   /* initialize selection */
@@ -891,6 +892,8 @@ int dt_init(int argc, char *argv[], const int init_gui, lua_State *L)
 
   if(init_gui)
   {
+    // init the gui part of views
+    dt_view_manager_gui_init(darktable.view_manager);
     // Loading the keybindings
     char keyfile[PATH_MAX] = { 0 };
 
@@ -1021,7 +1024,10 @@ void dt_cleanup()
 
   dt_database_destroy(darktable.db);
 
-  dt_bauhaus_cleanup();
+  if(init_gui)
+  {
+    dt_bauhaus_cleanup();
+  }
 
   dt_capabilities_cleanup();
 
@@ -1120,14 +1126,12 @@ void dt_configure_defaults()
   {
     fprintf(stderr, "[defaults] setting high quality defaults\n");
     dt_conf_set_int("worker_threads", 8);
-    dt_conf_set_int64("cache_memory", 1u << 30);
     dt_conf_set_bool("plugins/lighttable/low_quality_thumbnails", FALSE);
   }
   if(mem < (1u << 20) || threads <= 2 || bits < 64 || atom_cores > 0)
   {
     fprintf(stderr, "[defaults] setting very conservative defaults\n");
     dt_conf_set_int("worker_threads", 1);
-    dt_conf_set_int64("cache_memory", 200u << 20);
     dt_conf_set_int("host_memory_limit", 500);
     dt_conf_set_int("singlebuffer_limit", 8);
     dt_conf_set_string("plugins/darkroom/demosaic/quality", "always bilinear (fast)");

@@ -698,8 +698,8 @@ static int32_t dt_control_delete_images_job_run(dt_job_t *job)
     if(duplicates == 1)
     {
       // there are no further duplicates so we can remove the source data file
-      (void)g_unlink(filename);
       dt_image_remove(imgid);
+      (void)g_unlink(filename);
 
       // all sidecar files - including left-overs - can be deleted;
       // left-overs can result when previously duplicates have been REMOVED;
@@ -975,6 +975,7 @@ static int32_t dt_control_export_job_run(dt_job_t *job)
       goto end;
     }
     mformat->set_params(mformat, fdata, mformat->params_size(mformat));
+    mstorage->set_params(mstorage, sdata, mstorage->params_size(mstorage));
   }
 
   // Get max dimensions...
@@ -1355,7 +1356,6 @@ void dt_control_export(GList *imgid_list, int max_width, int max_height, int for
   g_strlcpy(data->style, style, sizeof(data->style));
   data->style_append = style_append;
   params->data = data;
-  dt_control_signal_raise(darktable.signals, DT_SIGNAL_IMAGE_EXPORT_MULTIPLE, params);
   dt_control_add_job(darktable.control, DT_JOB_QUEUE_USER_FG, job);
 
   // tell the storage that we got its params for an export so it can reset itself to a safe state

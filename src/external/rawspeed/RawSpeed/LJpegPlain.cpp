@@ -766,12 +766,19 @@ void LJpegPlain::decodeScanLeft3Comps() {
 #define COMPS 4
 
 void LJpegPlain::decodeScanLeft4Comps() {
-  uchar8 *draw = mRaw->getData();
   // First line
   HuffmanTable *dctbl1 = &huff[frame.compInfo[0].dcTblNo];
   HuffmanTable *dctbl2 = &huff[frame.compInfo[1].dcTblNo];
   HuffmanTable *dctbl3 = &huff[frame.compInfo[2].dcTblNo];
   HuffmanTable *dctbl4 = &huff[frame.compInfo[3].dcTblNo];
+
+  if (mCanonDoubleHeight) {
+    frame.h *= 2;
+    mRaw->dim = iPoint2D(frame.w * 2, frame.h);
+    mRaw->destroyData();
+    mRaw->createData();
+  }
+  uchar8 *draw = mRaw->getData();
 
   //Prepare slices (for CR2)
   uint32 slices = (uint32)slicesW.size() * (frame.h - skipY);
@@ -822,6 +829,9 @@ void LJpegPlain::decodeScanLeft4Comps() {
 
   uint32 cw = (frame.w - skipX);
   uint32 x = 1;                            // Skip first pixels on first line.
+
+  if (mCanonDoubleHeight)
+    skipY = frame.h >> 1;
 
   for (uint32 y = 0;y < (frame.h - skipY);y++) {
     for (; x < cw ; x++) {

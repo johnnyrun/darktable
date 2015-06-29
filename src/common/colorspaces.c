@@ -247,6 +247,8 @@ cmsHPROFILE dt_colorspaces_create_srgb_profile()
   cmsLinkTag(hsRGB, cmsSigGreenTRCTag, cmsSigRedTRCTag);
   cmsLinkTag(hsRGB, cmsSigBlueTRCTag, cmsSigRedTRCTag);
 
+  cmsFreeToneCurve(transferFunction);
+
   return hsRGB;
 }
 
@@ -300,8 +302,10 @@ cmsHPROFILE dt_colorspaces_create_adobergb_profile(void)
   cmsWriteTag(hAdobeRGB, cmsSigBlueColorantTag, (void *)&Colorants.Blue);
 
   cmsWriteTag(hAdobeRGB, cmsSigRedTRCTag, (void *)transferFunction);
-  cmsWriteTag(hAdobeRGB, cmsSigGreenTRCTag, (void *)transferFunction);
-  cmsWriteTag(hAdobeRGB, cmsSigBlueTRCTag, (void *)transferFunction);
+  cmsLinkTag(hAdobeRGB, cmsSigGreenTRCTag, cmsSigRedTRCTag);
+  cmsLinkTag(hAdobeRGB, cmsSigBlueTRCTag, cmsSigRedTRCTag);
+
+  cmsFreeToneCurve(transferFunction);
 
   return hAdobeRGB;
 }
@@ -672,8 +676,10 @@ cmsHPROFILE dt_colorspaces_create_linear_rec709_rgb_profile(void)
   cmsWriteTag(hRec709RGB, cmsSigBlueColorantTag, (void *)&Colorants.Blue);
 
   cmsWriteTag(hRec709RGB, cmsSigRedTRCTag, (void *)transferFunction);
-  cmsWriteTag(hRec709RGB, cmsSigGreenTRCTag, (void *)transferFunction);
-  cmsWriteTag(hRec709RGB, cmsSigBlueTRCTag, (void *)transferFunction);
+  cmsLinkTag(hRec709RGB, cmsSigGreenTRCTag, cmsSigRedTRCTag);
+  cmsLinkTag(hRec709RGB, cmsSigBlueTRCTag, cmsSigRedTRCTag);
+
+  cmsFreeToneCurve(transferFunction);
 
   return hRec709RGB;
 }
@@ -726,8 +732,10 @@ cmsHPROFILE dt_colorspaces_create_linear_rec2020_rgb_profile(void)
   cmsWriteTag(hRec2020RGB, cmsSigBlueColorantTag, (void *)&Colorants.Blue);
 
   cmsWriteTag(hRec2020RGB, cmsSigRedTRCTag, (void *)transferFunction);
-  cmsWriteTag(hRec2020RGB, cmsSigGreenTRCTag, (void *)transferFunction);
-  cmsWriteTag(hRec2020RGB, cmsSigBlueTRCTag, (void *)transferFunction);
+  cmsLinkTag(hRec2020RGB, cmsSigGreenTRCTag, cmsSigRedTRCTag);
+  cmsLinkTag(hRec2020RGB, cmsSigBlueTRCTag, cmsSigRedTRCTag);
+
+  cmsFreeToneCurve(transferFunction);
 
   return hRec2020RGB;
 }
@@ -940,72 +948,6 @@ cmsHPROFILE dt_colorspaces_create_xyzmatrix_profile(float mat[3][3])
 void dt_colorspaces_cleanup_profile(cmsHPROFILE p)
 {
   cmsCloseProfile(p);
-}
-
-void dt_colorspaces_get_makermodel(char *makermodel, size_t makermodel_len, const char *const maker,
-                                   const char *const model)
-{
-  // if first word in maker == first word in model, use just model.
-  const char *c, *d;
-  char *e;
-  c = maker;
-  d = model;
-  int match = 1;
-  const char *end = maker + strlen(maker);
-  while(*c != ' ' && c < end)
-    if(*(c++) != *(d++))
-    {
-      match = 0;
-      break;
-    }
-  if(match)
-  {
-    snprintf(makermodel, makermodel_len, "%s", model);
-  }
-  else if(!strcmp(maker, "KONICA MINOLTA")
-          && (!strncmp(model, "MAXXUM", 6) || !strncmp(model, "DYNAX", 5) || !strncmp(model, "ALPHA", 5)))
-  {
-    // Use the dcraw name name for the Konica Minolta 5D/7D (without Konica)
-    int numoffset = !strncmp(model, "MAXXUM", 6) ? 7 : 6;
-    snprintf(makermodel, makermodel_len, "MINOLTA DYNAX %s", model + numoffset);
-  }
-  else if(!strncmp(maker, "Konica Minolta", 14) || !strncmp(maker, "KONICA MINOLTA", 14))
-  {
-    // Identify Konica Minolta cameras as just Minolta internally
-    snprintf(makermodel, makermodel_len, "Minolta %s", model);
-  }
-  else
-  {
-    // else need to append first word of the maker:
-    c = maker;
-    d = model;
-    const char *end = maker + strlen(maker);
-    for(e = makermodel; c < end && *c != ' '; c++, e++) *e = *c;
-    // separate with space
-    *(e++) = ' ';
-    // and continue with model.
-    // need FinePix gone from some fuji cameras to match dcraws description:
-    if(!strncmp(model, "FinePix", 7))
-      snprintf(e, makermodel_len - (d - maker), "%s", model + 8);
-    else
-      snprintf(e, makermodel_len - (d - maker), "%s", model);
-  }
-  // strip trailing spaces
-  e = makermodel + strlen(makermodel) - 1;
-  while(e > makermodel && *e == ' ') e--;
-  e[1] = '\0';
-}
-
-void dt_colorspaces_get_makermodel_split(char *makermodel, size_t makermodel_len, char **modelo,
-                                         const char *const maker, const char *const model)
-{
-  dt_colorspaces_get_makermodel(makermodel, makermodel_len, maker, model);
-  *modelo = makermodel;
-  const char *end = makermodel + strlen(makermodel);
-  for(; **modelo != ' ' && *modelo < end; (*modelo)++)
-    ;
-  **modelo = '\0';
-  (*modelo)++;
 }
 
 void dt_colorspaces_get_profile_name(cmsHPROFILE p, const char *language, const char *country, char *name,

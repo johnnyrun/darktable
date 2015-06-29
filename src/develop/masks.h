@@ -367,7 +367,8 @@ float dt_masks_dynbuf_get(dt_masks_dynbuf_t *a, int offset)
 {
   assert(a != NULL);
   // offset: must be negative distance relative to end of buffer or zero
-  assert(offset <= 0 && a->pos + offset >= 0);
+  assert(offset <= 0);
+  // assert(a->pos + offset >= 0);
   return (a->buffer[a->pos + offset]);
 }
 
@@ -376,7 +377,8 @@ void dt_masks_dynbuf_set(dt_masks_dynbuf_t *a, int offset, float value)
 {
   assert(a != NULL);
   // offset: must be negative distance relative to end of buffer or zero
-  assert(offset <= 0 && a->pos + offset >= 0);
+  assert(offset <= 0);
+  // assert(a->pos + offset >= 0);
   a->buffer[a->pos + offset] = value;
 }
 
@@ -392,6 +394,13 @@ size_t dt_masks_dynbuf_position(dt_masks_dynbuf_t *a)
 {
   assert(a != NULL);
   return a->pos;
+}
+
+static inline
+void dt_masks_dynbuf_reset(dt_masks_dynbuf_t *a)
+{
+  assert(a != NULL);
+  a->pos = 0;
 }
 
 static inline

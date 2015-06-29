@@ -107,6 +107,8 @@ void dt_dev_init(dt_develop_t *dev, int32_t gui_attached)
   dev->iop_instance = 0;
   dev->iop = NULL;
 
+  dev->proxy.exposure = NULL;
+
   dev->overexposed.enabled = FALSE;
   dev->overexposed.colorscheme = dt_conf_get_int("darkroom/ui/overexposed/colorscheme");
   dev->overexposed.lower = dt_conf_get_float("darkroom/ui/overexposed/lower");
@@ -147,6 +149,8 @@ void dt_dev_cleanup(dt_develop_t *dev)
   free(dev->histogram);
   free(dev->histogram_pre_tonecurve);
   free(dev->histogram_pre_levels);
+
+  g_list_free_full(dev->proxy.exposure, g_free);
 
   dt_conf_set_int("darkroom/ui/overexposed/colorscheme", dev->overexposed.colorscheme);
   dt_conf_set_float("darkroom/ui/overexposed/lower", dev->overexposed.lower);
@@ -549,10 +553,11 @@ void dt_dev_add_history_item(dt_develop_t *dev, dt_iop_module_t *module, gboolea
     }
     history = g_list_nth(dev->history, dev->history_end - 1);
     dt_dev_history_item_t *hist = history ? (dt_dev_history_item_t *)(history->data) : 0;
-    if(!history || // if no history yet, push new item for sure.
-       (( module->instance != hist->module->instance             // add new item for different op
+    if(!history // if no history yet, push new item for sure.
+       || module != hist->module
+       || module->instance != hist->module->instance             // add new item for different op
        || module->multi_priority != hist->module->multi_priority // or instance
-       || dev->focus_hash != hist->focus_hash)                   // or if focused out and in
+       || ((dev->focus_hash != hist->focus_hash)                 // or if focused out and in
        && (// but only add item if there is a difference at all for the same module
          (module->params_size != hist->module->params_size) ||
          (module->params_size == hist->module->params_size && memcmp(hist->params, module->params, module->params_size)))))
@@ -789,13 +794,21 @@ void dt_dev_write_history(dt_develop_t *dev)
   sqlite3_step(stmt);
   sqlite3_finalize(stmt);
   GList *history = dev->history;
-  for(int i = 0; i < dev->history_end && history; i++)
+  for(int i = 0; history; i++)
   {
     dt_dev_history_item_t *hist = (dt_dev_history_item_t *)(history->data);
     (void)dt_dev_write_history_item(&dev->image_storage, hist, i);
     history = g_list_next(history);
     changed = TRUE;
   }
+
+  DT_DEBUG_SQLITE3_PREPARE_V2(dt_database_get(darktable.db),
+                              "UPDATE images SET history_end = ?1 where id = ?2", -1,
+                              &stmt, NULL);
+  DT_DEBUG_SQLITE3_BIND_INT(stmt, 1, dev->history_end);
+  DT_DEBUG_SQLITE3_BIND_INT(stmt, 2, dev->image_storage.id);
+  sqlite3_step(stmt);
+  sqlite3_finalize(stmt);
 
   /* attach / detach changed tag reflecting actual change */
   guint tagid = 0;
@@ -836,11 +849,11 @@ static void auto_apply_presets(dt_develop_t *dev)
   snprintf(query, sizeof(query), "insert into memory.history select ?1, 0, op_version, operation, op_params, "
                                  "enabled, blendop_params, blendop_version, multi_priority, multi_name "
                                  "from %s where autoapply=1 and "
-                                 "?2 like model and ?3 like maker and ?4 like lens and "
-                                 "?5 between iso_min and iso_max and "
-                                 "?6 between exposure_min and exposure_max and "
-                                 "?7 between aperture_min and aperture_max and "
-                                 "?8 between focal_length_min and focal_length_max and "
+                                 "((?2 like model and ?3 like maker) or (?4 like model and ?5 like maker)) and"
+                                 "?6 like lens and ?7 between iso_min and iso_max and "
+                                 "?8 between exposure_min and exposure_max and "
+                                 "?9 between aperture_min and aperture_max and "
+                                 "?10 between focal_length_min and focal_length_max and "
                                  "(format = 0 or format&?9!=0) order by writeprotect desc, "
                                  "length(model), length(maker), length(lens)",
            preset_table[legacy]);
@@ -850,11 +863,13 @@ static void auto_apply_presets(dt_develop_t *dev)
   DT_DEBUG_SQLITE3_BIND_INT(stmt, 1, imgid);
   DT_DEBUG_SQLITE3_BIND_TEXT(stmt, 2, image->exif_model, -1, SQLITE_TRANSIENT);
   DT_DEBUG_SQLITE3_BIND_TEXT(stmt, 3, image->exif_maker, -1, SQLITE_TRANSIENT);
-  DT_DEBUG_SQLITE3_BIND_TEXT(stmt, 4, image->exif_lens, -1, SQLITE_TRANSIENT);
-  DT_DEBUG_SQLITE3_BIND_DOUBLE(stmt, 5, fmaxf(0.0f, fminf(1000000, image->exif_iso)));
-  DT_DEBUG_SQLITE3_BIND_DOUBLE(stmt, 6, fmaxf(0.0f, fminf(1000000, image->exif_exposure)));
-  DT_DEBUG_SQLITE3_BIND_DOUBLE(stmt, 7, fmaxf(0.0f, fminf(1000000, image->exif_aperture)));
-  DT_DEBUG_SQLITE3_BIND_DOUBLE(stmt, 8, fmaxf(0.0f, fminf(1000000, image->exif_focal_length)));
+  DT_DEBUG_SQLITE3_BIND_TEXT(stmt, 4, image->camera_alias, -1, SQLITE_TRANSIENT);
+  DT_DEBUG_SQLITE3_BIND_TEXT(stmt, 5, image->camera_maker, -1, SQLITE_TRANSIENT);
+  DT_DEBUG_SQLITE3_BIND_TEXT(stmt, 6, image->exif_lens, -1, SQLITE_TRANSIENT);
+  DT_DEBUG_SQLITE3_BIND_DOUBLE(stmt, 7, fmaxf(0.0f, fminf(1000000, image->exif_iso)));
+  DT_DEBUG_SQLITE3_BIND_DOUBLE(stmt, 8, fmaxf(0.0f, fminf(1000000, image->exif_exposure)));
+  DT_DEBUG_SQLITE3_BIND_DOUBLE(stmt, 9, fmaxf(0.0f, fminf(1000000, image->exif_aperture)));
+  DT_DEBUG_SQLITE3_BIND_DOUBLE(stmt, 10, fmaxf(0.0f, fminf(1000000, image->exif_focal_length)));
   // 0: dontcare, 1: ldr, 2: raw
   DT_DEBUG_SQLITE3_BIND_DOUBLE(
       stmt, 9, dt_image_is_ldr(image) ? FOR_LDR : (dt_image_is_raw(image) ? FOR_RAW : FOR_HDR));
@@ -870,6 +885,38 @@ static void auto_apply_presets(dt_develop_t *dev)
     {
       // if there is anything..
       cnt = sqlite3_column_int(stmt, 0);
+
+      // workaround a sqlite3 "feature". The above statement to insert items into memory.history is complex and in
+      // this case sqlite does not give rowid a linear increment. But the following code really expect that the rowid in
+      // this table starts from 0 and increment one by one. So in the following code we rewrite the num values.
+
+      {
+        sqlite3_stmt *stmt;
+
+        // get all rowids
+        GList *rowids = NULL;
+
+        DT_DEBUG_SQLITE3_PREPARE_V2(dt_database_get(darktable.db),
+                                    "SELECT rowid FROM memory.history ORDER BY rowid ASC", -1, &stmt, NULL);
+        while(sqlite3_step(stmt) == SQLITE_ROW)
+          rowids = g_list_append(rowids, (void *)(long)sqlite3_column_int(stmt, 0));
+        sqlite3_finalize(stmt);
+
+        // update num accordingly
+        int v = 0;
+        GList *r = rowids;
+        char query[512];
+
+        while(r)
+        {
+          snprintf(query, sizeof(query), "UPDATE memory.history SET num=%d WHERE rowid=%ld", v, (long)(r->data));
+          DT_DEBUG_SQLITE3_EXEC(dt_database_get(darktable.db), query, NULL, NULL, NULL);
+          v++;
+          r = g_list_next(r);
+        }
+        g_list_free(rowids);
+      }
+
       sqlite3_finalize(stmt);
       // fprintf(stderr, "[auto_apply_presets] imageid %d found %d matching presets (legacy %d)\n", imgid,
       // cnt, legacy);
@@ -881,14 +928,23 @@ static void auto_apply_presets(dt_develop_t *dev)
 
       if(sqlite3_step(stmt) == SQLITE_DONE)
       {
-        // and finally prepend the rest with increasing numbers (starting at 0)
         sqlite3_finalize(stmt);
-        DT_DEBUG_SQLITE3_PREPARE_V2(
-            dt_database_get(darktable.db),
-            "insert into history select imgid, rowid-1, module, operation, op_params, enabled, "
-            "blendop_params, blendop_version, multi_priority, multi_name from memory.history",
-            -1, &stmt, NULL);
-        sqlite3_step(stmt);
+        DT_DEBUG_SQLITE3_PREPARE_V2(dt_database_get(darktable.db),
+                                    "UPDATE images SET history_end=history_end+?1 where id=?2",
+                                    -1, &stmt, NULL);
+        DT_DEBUG_SQLITE3_BIND_INT(stmt, 1, cnt);
+        DT_DEBUG_SQLITE3_BIND_INT(stmt, 2, imgid);
+        if(sqlite3_step(stmt) == SQLITE_DONE)
+        {
+          // and finally prepend the rest with increasing numbers (starting at 0)
+          sqlite3_finalize(stmt);
+          DT_DEBUG_SQLITE3_PREPARE_V2(
+              dt_database_get(darktable.db),
+              "INSERT INTO history SELECT imgid, num, module, operation, op_params, enabled, "
+              "blendop_params, blendop_version, multi_priority, multi_name FROM memory.history",
+              -1, &stmt, NULL);
+          sqlite3_step(stmt);
+        }
       }
     }
   }
@@ -967,7 +1023,7 @@ void dt_dev_read_history(dt_develop_t *dev)
     if(!hist->module && find_op)
     {
       // we have to add a new instance of this module and set index to modindex
-      dt_iop_module_t *new_module = (dt_iop_module_t *)malloc(sizeof(dt_iop_module_t));
+      dt_iop_module_t *new_module = (dt_iop_module_t *)calloc(1, sizeof(dt_iop_module_t));
       if(!dt_iop_load_module(new_module, find_op->so, dev))
       {
         new_module->multi_priority = multi_priority;
@@ -1084,6 +1140,15 @@ void dt_dev_read_history(dt_develop_t *dev)
     // *)hist->params, *(((float*)hist->params)+1));
     dev->history = g_list_append(dev->history, hist);
     dev->history_end++;
+  }
+  sqlite3_finalize(stmt);
+
+  DT_DEBUG_SQLITE3_PREPARE_V2(dt_database_get(darktable.db), "SELECT history_end FROM images WHERE id = ?1",
+                              -1, &stmt, NULL);
+  DT_DEBUG_SQLITE3_BIND_INT(stmt, 1, dev->image_storage.id);
+  if(sqlite3_step(stmt) == SQLITE_ROW) // seriously, this should never fail
+  {
+    dev->history_end = sqlite3_column_int(stmt, 0);
   }
 
   if(dev->gui_attached)
@@ -1234,11 +1299,33 @@ int dt_dev_is_current_image(dt_develop_t *dev, uint32_t imgid)
   return (dev->image_storage.id == imgid) ? 1 : 0;
 }
 
+gint dt_dev_exposure_hooks_sort(gconstpointer a, gconstpointer b)
+{
+  const dt_dev_proxy_exposure_t *ai = (const dt_dev_proxy_exposure_t *)a;
+  const dt_dev_proxy_exposure_t *bi = (const dt_dev_proxy_exposure_t *)b;
+  const dt_iop_module_t *am = (const dt_iop_module_t *)ai->module;
+  const dt_iop_module_t *bm = (const dt_iop_module_t *)bi->module;
+  if(am->priority == bm->priority) return bm->multi_priority - am->multi_priority;
+  return am->priority - bm->priority;
+}
+
+static dt_dev_proxy_exposure_t *find_last_exposure_instance(dt_develop_t *dev)
+{
+  if(!dev->proxy.exposure) return NULL;
+
+  dev->proxy.exposure = g_list_sort(dev->proxy.exposure, dt_dev_exposure_hooks_sort);
+  dt_dev_proxy_exposure_t *instance = (dt_dev_proxy_exposure_t *)(g_list_last(dev->proxy.exposure)->data);
+
+  return instance;
+};
+
 gboolean dt_dev_exposure_hooks_available(dt_develop_t *dev)
 {
+  dt_dev_proxy_exposure_t *instance = find_last_exposure_instance(dev);
+
   /* check if exposure iop module has registered its hooks */
-  if(dev->proxy.exposure.module && dev->proxy.exposure.set_black && dev->proxy.exposure.get_black
-     && dev->proxy.exposure.set_white && dev->proxy.exposure.get_white)
+  if(instance && instance->module && instance->set_black && instance->get_black && instance->set_white
+     && instance->get_white)
     return TRUE;
 
   return FALSE;
@@ -1246,9 +1333,13 @@ gboolean dt_dev_exposure_hooks_available(dt_develop_t *dev)
 
 void dt_dev_exposure_reset_defaults(dt_develop_t *dev)
 {
-  if(!dev->proxy.exposure.module) return;
+  if(!dev->proxy.exposure) return;
 
-  dt_iop_module_t *exposure = dev->proxy.exposure.module;
+  dt_dev_proxy_exposure_t *instance = find_last_exposure_instance(dev);
+
+  if(!(instance && instance->module)) return;
+
+  dt_iop_module_t *exposure = instance->module;
   memcpy(exposure->params, exposure->default_params, exposure->params_size);
   exposure->gui_update(exposure);
   dt_dev_add_history_item(exposure->dev, exposure, TRUE);
@@ -1256,28 +1347,32 @@ void dt_dev_exposure_reset_defaults(dt_develop_t *dev)
 
 void dt_dev_exposure_set_white(dt_develop_t *dev, const float white)
 {
-  if(dev->proxy.exposure.module && dev->proxy.exposure.set_white)
-    dev->proxy.exposure.set_white(dev->proxy.exposure.module, white);
+  dt_dev_proxy_exposure_t *instance = find_last_exposure_instance(dev);
+
+  if(instance && instance->module && instance->set_white) instance->set_white(instance->module, white);
 }
 
 float dt_dev_exposure_get_white(dt_develop_t *dev)
 {
-  if(dev->proxy.exposure.module && dev->proxy.exposure.set_white)
-    return dev->proxy.exposure.get_white(dev->proxy.exposure.module);
+  dt_dev_proxy_exposure_t *instance = find_last_exposure_instance(dev);
+
+  if(instance && instance->module && instance->get_white) return instance->get_white(instance->module);
 
   return 0.0;
 }
 
 void dt_dev_exposure_set_black(dt_develop_t *dev, const float black)
 {
-  if(dev->proxy.exposure.module && dev->proxy.exposure.set_black)
-    dev->proxy.exposure.set_black(dev->proxy.exposure.module, black);
+  dt_dev_proxy_exposure_t *instance = find_last_exposure_instance(dev);
+
+  if(instance && instance->module && instance->set_black) instance->set_black(instance->module, black);
 }
 
 float dt_dev_exposure_get_black(dt_develop_t *dev)
 {
-  if(dev->proxy.exposure.module && dev->proxy.exposure.set_black)
-    return dev->proxy.exposure.get_black(dev->proxy.exposure.module);
+  dt_dev_proxy_exposure_t *instance = find_last_exposure_instance(dev);
+
+  if(instance && instance->module && instance->get_black) return instance->get_black(instance->module);
 
   return 0.0;
 }
@@ -1364,7 +1459,7 @@ void dt_dev_average_delay_update(const dt_times_t *start, uint32_t *average_dela
 dt_iop_module_t *dt_dev_module_duplicate(dt_develop_t *dev, dt_iop_module_t *base, int priority)
 {
   // we create the new module
-  dt_iop_module_t *module = (dt_iop_module_t *)malloc(sizeof(dt_iop_module_t));
+  dt_iop_module_t *module = (dt_iop_module_t *)calloc(1, sizeof(dt_iop_module_t));
   if(dt_iop_load_module(module, base->so, base->dev)) return NULL;
   module->instance = base->instance;
 
@@ -1438,15 +1533,16 @@ void dt_dev_module_remove(dt_develop_t *dev, dt_iop_module_t *module)
   int del = 0;
   if(dev->gui_attached)
   {
-    int pos = 0;
-    for(guint i = 0; i < g_list_length(dev->history); i++)
+    GList *elem = g_list_first(dev->history);
+    while(elem != NULL)
     {
-      GList *elem = g_list_nth(dev->history, pos);
-
+      GList *next = g_list_next(elem);
       dt_dev_history_item_t *hist = (dt_dev_history_item_t *)(elem->data);
 
-      if(module->instance == hist->module->instance && module->multi_priority == hist->module->multi_priority)
+      if(module == hist->module)
       {
+        // printf("removing obsoleted history item: %s %s %p %p\n", hist->module->op, hist->module->multi_name,
+        //        module, hist->module);
         free(hist->params);
         free(hist->blend_params);
         free(hist);
@@ -1454,10 +1550,7 @@ void dt_dev_module_remove(dt_develop_t *dev, dt_iop_module_t *module)
         dev->history_end--;
         del = 1;
       }
-      else
-      {
-        pos++;
-      }
+      elem = next;
     }
   }
 

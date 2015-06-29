@@ -329,9 +329,6 @@ static int dt_iop_load_module_by_so(dt_iop_module_t *module, dt_iop_module_so_t 
   module->hide_enable_button = 0;
   module->request_color_pick = DT_REQUEST_COLORPICK_OFF;
   module->request_histogram = DT_REQUEST_ONLY_IN_GUI;
-  module->request_histogram_source = DT_DEV_PIXELPIPE_PREVIEW;
-  module->histogram_params.roi = NULL;
-  module->histogram_params.bins_count = 64;
   module->histogram_stats.bins_count = 0;
   module->histogram_stats.pixels = 0;
   module->multi_priority = 0;
@@ -888,6 +885,7 @@ static void dt_iop_gui_off_callback(GtkToggleButton *togglebutton, gpointer user
            module_label);
   g_free(module_label);
   g_object_set(G_OBJECT(togglebutton), "tooltip-text", tooltip, (char *)NULL);
+  gtk_widget_queue_draw(GTK_WIDGET(togglebutton));
 }
 
 gboolean dt_iop_is_hidden(dt_iop_module_t *module)
@@ -1650,13 +1648,6 @@ void dt_iop_gui_update_expanded(dt_iop_module_t *module)
   dtgtk_expander_set_expanded(DTGTK_EXPANDER(module->expander), expanded);
 }
 
-
-static gboolean _iop_plugin_body_scrolled(GtkWidget *w, GdkEvent *e, gpointer user_data)
-{
-  // just make sure nothing happens:
-  return TRUE;
-}
-
 static gboolean _iop_plugin_body_button_press(GtkWidget *w, GdkEventButton *e, gpointer user_data)
 {
   dt_iop_module_t *module = (dt_iop_module_t *)user_data;
@@ -1677,6 +1668,8 @@ static gboolean _iop_plugin_body_button_press(GtkWidget *w, GdkEventButton *e, g
 
 static gboolean _iop_plugin_header_button_press(GtkWidget *w, GdkEventButton *e, gpointer user_data)
 {
+  if(e->type == GDK_2BUTTON_PRESS || e->type == GDK_3BUTTON_PRESS) return TRUE;
+
   dt_iop_module_t *module = (dt_iop_module_t *)user_data;
 
   if(e->button == 1)
@@ -1719,26 +1712,24 @@ GtkWidget *dt_iop_gui_get_expander(dt_iop_module_t *module)
   char tooltip[512];
 
   GtkWidget *header = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
-  GtkWidget *pluginui = gtk_event_box_new();
-  GtkWidget *expander = dtgtk_expander_new(header, pluginui);
+  GtkWidget *iopw = gtk_box_new(GTK_ORIENTATION_VERTICAL, 3 * DT_BAUHAUS_SPACE);
+
+  GtkWidget *expander = dtgtk_expander_new(header, iopw);
+
   GtkWidget *header_evb = dtgtk_expander_get_header_event_box(DTGTK_EXPANDER(expander));
+  GtkWidget *body_evb = dtgtk_expander_get_body_event_box(DTGTK_EXPANDER(expander));
   GtkWidget *pluginui_frame = dtgtk_expander_get_frame(DTGTK_EXPANDER(expander));
 
   gtk_widget_set_name(pluginui_frame, "iop-plugin-ui");
 
   module->header = header;
-  /* connect mouse button callbacks for focus and presets */
-  g_signal_connect(G_OBJECT(pluginui), "button-press-event", G_CALLBACK(_iop_plugin_body_button_press),
-                   module);
-  /* avoid scrolling with wheel, it's distracting (you'll end up over a control, and scroll it's value) */
-  g_signal_connect(G_OBJECT(pluginui_frame), "scroll-event", G_CALLBACK(_iop_plugin_body_scrolled), module);
-  g_signal_connect(G_OBJECT(pluginui), "scroll-event", G_CALLBACK(_iop_plugin_body_scrolled), module);
-  g_signal_connect(G_OBJECT(header_evb), "scroll-event", G_CALLBACK(_iop_plugin_body_scrolled), module);
-  g_signal_connect(G_OBJECT(expander), "scroll-event", G_CALLBACK(_iop_plugin_body_scrolled), module);
-  g_signal_connect(G_OBJECT(header), "scroll-event", G_CALLBACK(_iop_plugin_body_scrolled), module);
 
   /* setup the header box */
   g_signal_connect(G_OBJECT(header_evb), "button-press-event", G_CALLBACK(_iop_plugin_header_button_press),
+                   module);
+
+  /* connect mouse button callbacks for focus and presets */
+  g_signal_connect(G_OBJECT(body_evb), "button-press-event", G_CALLBACK(_iop_plugin_body_button_press),
                    module);
 
   /*
@@ -1855,19 +1846,17 @@ got_image:
   dtgtk_icon_set_paint(hw[0], dtgtk_cairo_paint_solid_arrow, CPF_DIRECTION_LEFT);
 
   /* add the blending ui if supported */
-  GtkWidget *iopw = gtk_box_new(GTK_ORIENTATION_VERTICAL, 3 * DT_BAUHAUS_SPACE);
   gtk_box_pack_start(GTK_BOX(iopw), module->widget, TRUE, TRUE, 0);
   dt_iop_gui_init_blending(iopw, module);
 
 
   /* add empty space around module widget */
-  gtk_container_add(GTK_CONTAINER(pluginui), iopw);
   gtk_widget_set_margin_start(iopw, DT_PIXEL_APPLY_DPI(8));
   gtk_widget_set_margin_end(iopw, DT_PIXEL_APPLY_DPI(8));
   gtk_widget_set_margin_top(iopw, DT_PIXEL_APPLY_DPI(8));
   gtk_widget_set_margin_bottom(iopw, DT_PIXEL_APPLY_DPI(24));
 
-  gtk_widget_hide(pluginui);
+  gtk_widget_hide(iopw);
 
   module->expander = expander;
 
@@ -2011,21 +2000,45 @@ void dt_iop_clip_and_zoom_8(const uint8_t *i, int32_t ix, int32_t iy, int32_t iw
   }
 }
 
+// apply clip and zoom on parts of a supplied full image.
+// roi_in and roi_out define which part to work on.
 void dt_iop_clip_and_zoom(float *out, const float *const in, const dt_iop_roi_t *const roi_out,
                           const dt_iop_roi_t *const roi_in, const int32_t out_stride, const int32_t in_stride)
 {
   const struct dt_interpolation *itor = dt_interpolation_new(DT_INTERPOLATION_USERPREF);
   dt_interpolation_resample(itor, out, roi_out, out_stride * 4 * sizeof(float), in, roi_in,
-                            in_stride * 4 * sizeof(float));
+                                in_stride * 4 * sizeof(float));
+}
+
+// apply clip and zoom on the image region supplied in the input buffer.
+// roi_in and roi_out describe which part of the full image this relates to.
+void dt_iop_clip_and_zoom_roi(float *out, const float *const in, const dt_iop_roi_t *const roi_out,
+                              const dt_iop_roi_t *const roi_in, const int32_t out_stride, const int32_t in_stride)
+{
+  const struct dt_interpolation *itor = dt_interpolation_new(DT_INTERPOLATION_USERPREF);
+  dt_interpolation_resample_roi(itor, out, roi_out, out_stride * 4 * sizeof(float), in, roi_in,
+                                in_stride * 4 * sizeof(float));
 }
 
 #ifdef HAVE_OPENCL
+// apply clip and zoom on parts of a supplied full image.
+// roi_in and roi_out define which part to work on.
 int dt_iop_clip_and_zoom_cl(int devid, cl_mem dev_out, cl_mem dev_in, const dt_iop_roi_t *const roi_out,
                             const dt_iop_roi_t *const roi_in)
 {
   const struct dt_interpolation *itor = dt_interpolation_new(DT_INTERPOLATION_USERPREF);
   return dt_interpolation_resample_cl(itor, devid, dev_out, roi_out, dev_in, roi_in);
 }
+
+// apply clip and zoom on the image region supplied in the input buffer.
+// roi_in and roi_out describe which part of the full image this relates to.
+int dt_iop_clip_and_zoom_roi_cl(int devid, cl_mem dev_out, cl_mem dev_in, const dt_iop_roi_t *const roi_out,
+                                const dt_iop_roi_t *const roi_in)
+{
+  const struct dt_interpolation *itor = dt_interpolation_new(DT_INTERPOLATION_USERPREF);
+  return dt_interpolation_resample_roi_cl(itor, devid, dev_out, roi_out, dev_in, roi_in);
+}
+
 #endif
 
 
