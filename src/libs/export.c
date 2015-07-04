@@ -119,16 +119,19 @@ static void export_button_clicked(GtkWidget *widget, gpointer user_data)
     g_free(tmp);
   }
 
+  GList *list = dt_collection_get_selected(darktable.collection, -1);
   int imgid = dt_view_get_image_to_act_on();
-  GList *list = NULL;
-
-  if(imgid != -1)
+  if (!list && imgid != -1)
     list = g_list_append(list, GINT_TO_POINTER(imgid));
-  else
-    list = dt_collection_get_selected(darktable.collection, -1);
-
-  dt_control_export(list, max_width, max_height, format_index, storage_index, high_quality, upscale,
+  if(list)
+    dt_control_export(list, max_width, max_height, format_index, storage_index, high_quality, upscale,
                     style, style_append);
+  else
+  {
+    dt_control_log(gettext("Nothing to export"));
+    char message[128] = { 0 };
+    snprintf(message, sizeof(message), gettext("Nothing to export"));
+  }
 }
 
 static void width_changed(GtkSpinButton *spin, gpointer user_data)
