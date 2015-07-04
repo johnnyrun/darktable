@@ -1405,7 +1405,10 @@ int dt_view_image_expose(dt_view_image_over_t *image_over, uint32_t imgid, cairo
     cairo_set_source_rgb(cr, bgcol, bgcol, bgcol);
     cairo_fill_preserve(cr);
     cairo_set_line_width(cr, 0.005 * width);
-    cairo_set_source_rgb(cr, outlinecol, outlinecol, outlinecol);
+    if(selected)
+      cairo_set_source_rgb(cr, 0.31, 0.26, 1);
+    else
+      cairo_set_source_rgb(cr, outlinecol, outlinecol, outlinecol);
     cairo_stroke(cr);
 
     if(img)
