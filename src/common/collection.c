@@ -151,6 +151,12 @@ int dt_collection_update(const dt_collection_t *collection)
     /* add where ext if wanted */
     if((collection->params.query_flags & COLLECTION_QUERY_USE_WHERE_EXT))
       wq = dt_util_dstrcat(wq, " %s %s", (need_operator) ? "and" : "", collection->where_ext);
+
+    if(collection->params.filter_flags & COLLECTION_FILTER_COMPARABLE) 
+    {
+      wq = dt_util_dstrcat(wq, " %s (flags & 16)",
+                           (need_operator) ? "and" : ((need_operator = 1) ? "" : ""));
+    }
   }
   else
     wq = dt_util_dstrcat(wq, "%s", collection->where_ext);

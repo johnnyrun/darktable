@@ -40,7 +40,8 @@ typedef enum dt_collection_filter_comparator_t
   COLLECTION_FILTER_ALTERED = 1 << 3,        // show only altered images
   COLLECTION_FILTER_UNALTERED = 1 << 4,      // show only unaltered images
   COLLECTION_FILTER_CUSTOM_COMPARE
-  = 1 << 5 // use the comparator defined in the comparator field to filter stars
+  = 1 << 5, // use the comparator defined in the comparator field to filter stars
+  COLLECTION_FILTER_COMPARABLE = 1 << 6      // show comparable images
 } dt_collection_filter_comparator_t;
 
 typedef enum dt_collection_filter_t
