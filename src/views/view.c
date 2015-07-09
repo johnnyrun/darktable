@@ -375,6 +375,7 @@ int dt_view_manager_switch(dt_view_manager_t *vm, int k)
     }
 
     /* hide/show modules as last config */
+    gchar *view_name = nv->module_name;
     plugins = g_list_last(darktable.lib->plugins);
     while(plugins)
     {
@@ -387,7 +388,7 @@ int dt_view_manager_switch(dt_view_manager_t *vm, int k)
         gboolean visible = dt_lib_is_visible(plugin);
         if(plugin->expandable(plugin))
         {
-          snprintf(var, sizeof(var), "plugins/lighttable/%s/expanded", plugin->plugin_name);
+          snprintf(var, sizeof(var), "plugins/%s/%s/expanded", view_name, plugin->plugin_name);
           expanded = dt_conf_get_bool(var);
 
           dt_lib_gui_set_expanded(plugin, expanded);
@@ -729,12 +730,12 @@ int32_t dt_view_get_image_to_act_on()
   //   in which case it affects the whole selection.
   // - if the mouse is outside the center view (or no image hovered over otherwise)
   //   it only affects the selection.
-  int32_t mouse_over_id = dt_control_get_mouse_over_id();
+  const int32_t mouse_over_id = dt_control_get_mouse_over_id();
 
-  int zoom = darktable.view_manager->proxy.lighttable.get_images_in_row(
+  const int zoom = darktable.view_manager->proxy.lighttable.get_images_in_row(
       darktable.view_manager->proxy.lighttable.view);
 
-  int full_preview_id = darktable.view_manager->proxy.lighttable.get_full_preview_id(
+  const int full_preview_id = darktable.view_manager->proxy.lighttable.get_full_preview_id(
       darktable.view_manager->proxy.lighttable.view);
 
   if(zoom == 1 || full_preview_id > 1)
@@ -1337,9 +1338,9 @@ int dt_view_image_expose(dt_view_image_over_t *image_over, uint32_t imgid, cairo
 
   cairo_save(cr);
   float bgcol = 0.4, fontcol = 0.425, bordercol = 0.1, outlinecol = 0.2;
-  int selected = 0, altered = 0, imgsel = -1, is_grouped = 0;
+  int selected = 0, altered = 0, is_grouped = 0;
   // this is a gui thread only thing. no mutex required:
-  imgsel = dt_control_get_mouse_over_id(); //  darktable.control->global_settings.lib_image_mouse_over_id;
+  const int imgsel = dt_control_get_mouse_over_id(); //  darktable.control->global_settings.lib_image_mouse_over_id;
 
   if (draw_selected)
   {
@@ -1477,8 +1478,10 @@ int dt_view_image_expose(dt_view_image_over_t *image_over, uint32_t imgid, cairo
 
     // draw centered and fitted:
     cairo_save(cr);
-
-    cairo_translate(cr, width / 2.0, height / 2.0);
+    if (image_only) // in this case we want to display the picture exactly at (px, py)
+      cairo_translate(cr, px, py);
+    else
+      cairo_translate(cr, width / 2.0, height / 2.0);
 
     cairo_scale(cr, scale, scale);
 
@@ -1505,7 +1508,6 @@ int dt_view_image_expose(dt_view_image_over_t *image_over, uint32_t imgid, cairo
       cairo_restore(cr);
       cairo_save(cr);
       cairo_new_path(cr);
-      cairo_restore(cr);
     }
     else
     {
@@ -1582,7 +1584,7 @@ int dt_view_image_expose(dt_view_image_over_t *image_over, uint32_t imgid, cairo
         y = 0.90 * height;
       else
         y = .12 * fscale;
-      gboolean image_is_rejected = (img && ((img->flags & 0x7) == 6));
+      const gboolean image_is_rejected = (img && ((img->flags & 0x7) == 6));
 
       if(img)
         for(int k = 0; k < 5; k++)
@@ -1651,7 +1653,7 @@ int dt_view_image_expose(dt_view_image_over_t *image_over, uint32_t imgid, cairo
         if(img && (img->flags & DT_IMAGE_HAS_WAV))
         {
           // align to right
-          float s = (r1 + r2) * .5;
+          const float s = (r1 + r2) * .5;
           if(zoom != 1)
           {
             x = width * 0.9 - s * 5;
@@ -1684,7 +1686,7 @@ int dt_view_image_expose(dt_view_image_over_t *image_over, uint32_t imgid, cairo
       {
         // draw grouping icon and border if the current group is expanded
         // align to the right, left of altered
-        float s = (r1 + r2) * .6;
+        const float s = (r1 + r2) * .6;
         float _x, _y;
         if(zoom != 1)
         {
@@ -1719,7 +1721,7 @@ int dt_view_image_expose(dt_view_image_over_t *image_over, uint32_t imgid, cairo
       if(draw_metadata && altered)
       {
         // align to right
-        float s = (r1 + r2) * .5;
+        const float s = (r1 + r2) * .5;
         if(zoom != 1)
         {
           x = width * 0.9;
@@ -1765,7 +1767,7 @@ int dt_view_image_expose(dt_view_image_over_t *image_over, uint32_t imgid, cairo
       while(sqlite3_step(darktable.view_manager->statements.get_color) == SQLITE_ROW)
       {
         cairo_save(cr);
-        int col = sqlite3_column_int(darktable.view_manager->statements.get_color, 0);
+        const int col = sqlite3_column_int(darktable.view_manager->statements.get_color, 0);
         // see src/dtgtk/paint.c
         dtgtk_cairo_paint_label(cr, x + (3 * r * col) - 5 * r, y - r, r * 2, r * 2, col);
         cairo_restore(cr);
@@ -1782,7 +1784,7 @@ int dt_view_image_expose(dt_view_image_over_t *image_over, uint32_t imgid, cairo
       const float y = zoom == 1 ? 0.17 * fscale : 0.1 * height;
       const float r = zoom == 1 ? 0.01 * fscale : 0.03 * width;
       const int xoffset = 6;
-      gboolean has_local_copy = (img && (img->flags & DT_IMAGE_LOCAL_COPY));
+      const gboolean has_local_copy = (img && (img->flags & DT_IMAGE_LOCAL_COPY));
       cairo_save(cr);
       dtgtk_cairo_paint_local_copy(cr, x + (3 * r * xoffset) - 5 * r, y - r, r * 2, r * 2, has_local_copy);
       cairo_restore(cr);
@@ -1827,7 +1829,7 @@ int dt_view_image_expose(dt_view_image_over_t *image_over, uint32_t imgid, cairo
         while(!feof(f))
         {
           gchar *line_pattern = g_strdup_printf("%%%zu[^\n]", sizeof(line) - 1);
-          int read = fscanf(f, line_pattern, line);
+          const int read = fscanf(f, line_pattern, line);
           g_free(line_pattern);
           if(read != 1) break;
           fgetc(f); // munch \n
@@ -1962,7 +1964,6 @@ void dt_view_filmstrip_scroll_relative(const int diff, int offset)
   const gchar *qin = dt_collection_get_query(darktable.collection);
   if(qin)
   {
-    int imgid = -1;
     sqlite3_stmt *stmt;
 
     DT_DEBUG_SQLITE3_PREPARE_V2(dt_database_get(darktable.db), qin, -1, &stmt, NULL);
@@ -1970,7 +1971,7 @@ void dt_view_filmstrip_scroll_relative(const int diff, int offset)
     DT_DEBUG_SQLITE3_BIND_INT(stmt, 2, 1);
     if(sqlite3_step(stmt) == SQLITE_ROW)
     {
-      imgid = sqlite3_column_int(stmt, 0);
+      const int imgid = sqlite3_column_int(stmt, 0);
 
       if(!darktable.develop->image_loading)
       {

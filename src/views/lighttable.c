@@ -772,9 +772,6 @@ end_query_cache:
         {
           missing += dt_view_image_expose_compact(&(lib->image_over), id, cr, wd, iir == 1 ? height : ht, iir, img_pointerx,
                              img_pointery, FALSE, FALSE);
-          // normal huge preview
-          //missing += dt_view_image_expose(&(lib->image_over), id, cr, wd, iir == 1 ? height : ht, iir, img_pointerx,
-          //                   img_pointery, FALSE, FALSE);
         }
         else
           missing += dt_view_image_expose(&(lib->image_over), id, cr, wd, iir == 1 ? height : ht, iir, img_pointerx,
@@ -1600,11 +1597,11 @@ static gboolean star_key_accel_callback(GtkAccelGroup *accel_group, GObject *acc
                                         GdkModifierType modifier, gpointer data)
 {
   dt_view_t *self = darktable.view_manager->proxy.lighttable.view;
+  dt_library_t *lib = (dt_library_t *)self->data;
   int num = GPOINTER_TO_INT(data);
   int32_t mouse_over_id;
   int next_image_rowid = -1;
 
-  dt_library_t *lib = (dt_library_t *)self->data;
   if (lib->using_arrows)
   {
     // if using arrows may be the image I'm rating is going to disappear from the collection. So, store where may be we need to jump
