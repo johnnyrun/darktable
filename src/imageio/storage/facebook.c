@@ -590,7 +590,7 @@ static gboolean _open_browser(const char *callback_url)
   GError *error = NULL;
   char *url = g_strdup_printf(FB_WS_BASE_URL "dialog/oauth?"
                                              "client_id=" FB_API_KEY "&redirect_uri=%s"
-                                             "&scope=user_photos,publish_stream"
+                                             "&scope=user_photos,publish_actions"
                                              "&response_type=token",
                               callback_url);
   if(!gtk_show_uri(gdk_screen_get_default(), url, gtk_get_current_event_time(), &error))
@@ -1407,6 +1407,7 @@ void *get_params(struct dt_imageio_module_storage_t *self)
 
 void free_params(struct dt_imageio_module_storage_t *self, dt_imageio_module_data_t *data)
 {
+  if(!data) return;
   dt_storage_facebook_param_t *p = (dt_storage_facebook_param_t *)data;
   fb_api_destroy(p->facebook_ctx);
   g_free(p);

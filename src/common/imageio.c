@@ -388,6 +388,12 @@ static const uint8_t _imageio_ldr_magic[] = {
   // Older Canon RAW format with TIF Extension (i.e. DCS1)
   0x01, 0x00, 0x0a, 0x49, 0x49, 0x2a, 0x00, 0x00, 0x03, 0x00, 0x00, 0xff, 0x01,
 
+  // Older Kodak RAW format with TIF Extension (i.e. DCS560C)
+  0x01, 0x00, 0x0a, 0x4d, 0x4d, 0x00, 0x2a, 0x00, 0x00, 0x11, 0x76, 0x00, 0x04,
+
+  // Older Kodak RAW format with TIF Extension (i.e. DCS460D)
+  0x01, 0x00, 0x0a, 0x49, 0x49, 0x2a, 0x00, 0x00, 0x03, 0x00, 0x00, 0x7c, 0x01,
+
   /* tiff image, intel */
   0x00, 0x00, 0x04, 0x4d, 0x4d, 0x00, 0x2a,
 
@@ -552,18 +558,14 @@ int dt_imageio_export_with_flags(const uint32_t imgid, const char *filename,
     dt_control_log(
         _("failed to allocate memory for %s, please lower the threads used for export or buy more memory."),
         thumbnail_export ? C_("noun", "thumbnail export") : C_("noun", "export"));
-    dt_dev_cleanup(&dev);
-    dt_mipmap_cache_release(darktable.mipmap_cache, &buf);
-    return 1;
+    goto error;
   }
 
   if(!buf.buf)
   {
     fprintf(stderr, "allocation failed???\n");
     dt_control_log(_("image `%s' is not available!"), img->filename);
-    dt_mipmap_cache_release(darktable.mipmap_cache, &buf);
-    dt_dev_cleanup(&dev);
-    return 1;
+    goto error;
   }
 
   //  If a style is to be applied during export, add the iop params into the history
@@ -577,9 +579,7 @@ int dt_imageio_export_with_flags(const uint32_t imgid, const char *filename,
     if((stls = dt_styles_get_item_list(format_params->style, TRUE, -1)) == 0)
     {
       dt_control_log(_("cannot find the style '%s' to apply during export."), format_params->style);
-      dt_dev_cleanup(&dev);
-      dt_mipmap_cache_release(darktable.mipmap_cache, &buf);
-      return 1;
+      goto error;
     }
 
     // remove everything above history_end
@@ -619,7 +619,7 @@ int dt_imageio_export_with_flags(const uint32_t imgid, const char *filename,
             if(!sty_module)
             {
               free(h);
-              return 1;
+              goto error;
             }
           }
 
@@ -653,7 +653,8 @@ int dt_imageio_export_with_flags(const uint32_t imgid, const char *filename,
     g_list_free(stls);
   }
 
-  dt_dev_pixelpipe_set_input(&pipe, &dev, (float *)buf.buf, buf.width, buf.height, 1.0);
+  dt_dev_pixelpipe_set_input(&pipe, &dev, (float *)buf.buf, buf.width, buf.height, 1.0,
+                             buf.pre_monochrome_demosaiced);
   dt_dev_pixelpipe_create_nodes(&pipe, &dev);
   dt_dev_pixelpipe_synch_all(&pipe, &dev);
   dt_dev_pixelpipe_get_dimensions(&pipe, &dev, pipe.iwidth, pipe.iheight, &pipe.processed_width,
@@ -866,7 +867,14 @@ int dt_imageio_export_with_flags(const uint32_t imgid, const char *filename,
     dt_control_signal_raise(darktable.signals, DT_SIGNAL_IMAGE_EXPORT_TMPFILE, imgid, filename, format,
                             format_params, storage, storage_params);
   }
+
   return res;
+
+error:
+  dt_dev_pixelpipe_cleanup(&pipe);
+  dt_dev_cleanup(&dev);
+  dt_mipmap_cache_release(darktable.mipmap_cache, &buf);
+  return 1;
 }
 
 

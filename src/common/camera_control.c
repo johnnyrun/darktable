@@ -218,7 +218,7 @@ static void _message_func_dispatch(GPContext *context, const char *format, va_li
 static gboolean _camera_timeout_job(gpointer data)
 {
   dt_camera_t *cam = (dt_camera_t *)data;
-  dt_print(DT_DEBUG_CAMCTL, "[camera_control] Calling timeout func for camera 0x%x.\n", cam);
+  dt_print(DT_DEBUG_CAMCTL, "[camera_control] Calling timeout func for camera %p.\n", cam);
   cam->timeout(cam->gpcam, cam->gpcontext);
   return TRUE;
 }
@@ -226,7 +226,7 @@ static gboolean _camera_timeout_job(gpointer data)
 static int _camera_start_timeout_func(Camera *c, unsigned int timeout, CameraTimeoutFunc func, void *data)
 {
   dt_print(DT_DEBUG_CAMCTL,
-           "[camera_control] start timeout %d seconds for camera 0x%x requested by driver.\n", timeout, data);
+           "[camera_control] start timeout %d seconds for camera %p requested by driver.\n", timeout, data);
   dt_camera_t *cam = (dt_camera_t *)data;
   cam->timeout = func;
   return g_timeout_add_seconds(timeout, _camera_timeout_job, cam);
@@ -235,7 +235,7 @@ static int _camera_start_timeout_func(Camera *c, unsigned int timeout, CameraTim
 static void _camera_stop_timeout_func(Camera *c, int id, void *data)
 {
   dt_camera_t *cam = (dt_camera_t *)data;
-  dt_print(DT_DEBUG_CAMCTL, "[camera_control] Removing timeout %d for camera 0x%x.\n", id, cam);
+  dt_print(DT_DEBUG_CAMCTL, "[camera_control] Removing timeout %d for camera %p.\n", id, cam);
   g_source_remove(id);
   cam->timeout = NULL;
 }
@@ -417,7 +417,7 @@ static void _camera_process_job(const dt_camctl_t *c, const dt_camera_t *camera,
     break;
 
     default:
-      dt_print(DT_DEBUG_CAMCTL, "[camera_control] process of unknown job type %p\n", j->type);
+      dt_print(DT_DEBUG_CAMCTL, "[camera_control] process of unknown job type 0x%x\n", j->type);
       break;
   }
 
@@ -557,7 +557,7 @@ dt_camctl_t *dt_camctl_new()
   dt_job_t *job = dt_control_job_create(&_detect_cameras_callback, "detect connected cameras");
   if(job)
   {
-    dt_control_job_set_params(job, camctl);
+    dt_control_job_set_params(job, camctl, NULL);
     dt_control_add_job(darktable.control, DT_JOB_QUEUE_SYSTEM_BG, job);
   }
 
@@ -576,11 +576,14 @@ static void dt_camctl_camera_destroy(dt_camera_t *cam)
   }
   g_free(cam->model);
   g_free(cam->port);
+  dt_pthread_mutex_destroy(&cam->config_lock);
+  dt_pthread_mutex_destroy(&cam->live_view_pixbuf_mutex);
+  dt_pthread_mutex_destroy(&cam->live_view_synch);
   // TODO: cam->jobqueue
   g_free(cam);
 }
 
-void dt_camctl_destroy(const dt_camctl_t *camctl)
+void dt_camctl_destroy(dt_camctl_t *camctl)
 {
   // Go thru all c->cameras and release them..
   for(GList *it = g_list_first(camctl->cameras); it != NULL; it = g_list_delete_link(it, it))
@@ -590,6 +593,9 @@ void dt_camctl_destroy(const dt_camctl_t *camctl)
   gp_context_unref(camctl->gpcontext);
   gp_abilities_list_free(camctl->gpcams);
   gp_port_info_list_free(camctl->gpports);
+  dt_pthread_mutex_destroy(&camctl->lock);
+  dt_pthread_mutex_destroy(&camctl->listeners_lock);
+  g_free(camctl);
 }
 
 
@@ -753,7 +759,7 @@ static void *_camera_event_thread(void *data)
 
   const dt_camera_t *camera = camctl->active_camera;
 
-  dt_print(DT_DEBUG_CAMCTL, "[camera_control] starting camera event thread %p of context %p\n",
+  dt_print(DT_DEBUG_CAMCTL, "[camera_control] starting camera event thread 0x%lx of context %p\n",
            camctl->camera_event_thread, data);
 
   while(camera->is_tethering == TRUE)
@@ -769,7 +775,7 @@ static void *_camera_event_thread(void *data)
     if(camera->config_changed == TRUE) _camera_configuration_commit(camctl, camera);
   }
 
-  dt_print(DT_DEBUG_CAMCTL, "[camera_control] exiting camera thread %p.\n", camctl->camera_event_thread);
+  dt_print(DT_DEBUG_CAMCTL, "[camera_control] exiting camera thread 0x%lx.\n", camctl->camera_event_thread);
 
   return NULL;
 }

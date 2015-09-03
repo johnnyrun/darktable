@@ -111,7 +111,7 @@ const char dt_supported_extensions[] = "3fr,arw,bay,bmq,cap,cine,cr2,crw,cs1,dc2
 static int usage(const char *argv0)
 {
   printf("usage: %s [-d "
-         "{all,cache,camctl,control,dev,fswatch,input,lighttable,masks,memory,nan,opencl,perf,pwstorage,sql}]"
+         "{all,cache,camctl,camsupport,control,dev,fswatch,input,lighttable,masks,memory,nan,opencl,perf,pwstorage,print,sql}]"
          " [IMG_1234.{RAW,..}|image_folder/]",
          argv0);
 #ifdef HAVE_OPENCL
@@ -141,7 +141,7 @@ static dt_signal_handler_t *_dt_sigsegv_old_handler = NULL;
 
 #if(defined(__FreeBSD_version) && (__FreeBSD_version < 800071)) || (defined(OpenBSD) && (OpenBSD < 201305))  \
     || defined(__SUNOS__)
-static int dprintf(int fd, const char *fmt, ...)
+static int dprintf(int fd, const char *fmt, ...) __attribute__((format(printf, 2, 3)))
 {
   va_list ap;
   FILE *f = fdopen(fd, "a");
@@ -621,6 +621,8 @@ int dt_init(int argc, char *argv[], const int init_gui, lua_State *L)
           darktable.unmuted |= DT_DEBUG_LUA; // lua errors are reported on console
         else if(!strcmp(argv[k + 1], "print"))
           darktable.unmuted |= DT_DEBUG_PRINT; // print errors are reported on console
+        else if(!strcmp(argv[k + 1], "camsupport"))
+          darktable.unmuted |= DT_DEBUG_CAMERA_SUPPORT; // camera support warnings are reported on console
         else
           return usage(argv[0]);
         k++;
@@ -1017,7 +1019,7 @@ void dt_cleanup()
   dt_opencl_cleanup(darktable.opencl);
   free(darktable.opencl);
 #ifdef HAVE_GPHOTO2
-  dt_camctl_destroy(darktable.camctl);
+  dt_camctl_destroy((dt_camctl_t *)darktable.camctl);
 #endif
   dt_pwstorage_destroy(darktable.pwstorage);
   dt_fswatch_destroy(darktable.fswatch);
@@ -1088,11 +1090,6 @@ void dt_free_align(void *mem)
   _aligned_free(mem);
 }
 #endif
-
-inline gboolean dt_is_aligned(const void *pointer, size_t byte_count)
-{
-  return (uintptr_t)pointer % byte_count == 0;
-}
 
 void dt_show_times(const dt_times_t *start, const char *prefix, const char *suffix, ...)
 {

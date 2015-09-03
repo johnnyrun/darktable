@@ -471,8 +471,8 @@ static bool dt_exif_read_exif_data(dt_image_t *img, Exiv2::ExifData &exifData)
     /* Read focal length  */
     if((pos = Exiv2::focalLength(exifData)) != exifData.end() && pos->size())
     {
-      // Exiv2 returns the CRW FocalLength field as a whole, even though only
-      // the second value is the actual focal length
+      // This works around a bug in exiv2 the developers refuse to fix
+      // For details see http://dev.exiv2.org/issues/1083
       if (pos->key() == "Exif.Canon.FocalLength" && pos->count() == 4)
         img->exif_focal_length = pos->toFloat(1);
       else
@@ -1136,6 +1136,10 @@ int dt_exif_read_blob(uint8_t *buf, const char *path, const int imgid, const int
     if(!dng_mode)
     {
       /* Delete various MakerNote fields only applicable to the raw file */
+
+      // Canon color space info
+      if((pos = exifData.findKey(Exiv2::ExifKey("Exif.Canon.ColorSpace"))) != exifData.end())
+        exifData.erase(pos);
 
       // Nikon thumbnail data
       if((pos = exifData.findKey(Exiv2::ExifKey("Exif.Nikon3.Preview"))) != exifData.end())
@@ -2347,13 +2351,16 @@ int dt_exif_xmp_write(const int imgid, const char *filename)
 
 static void dt_exif_log_handler(int log_level, const char *message)
 {
-  if(log_level >= Exiv2::LogMsg::level()) fprintf(stderr, "[exiv2] %s\n", message);
+  if(log_level >= Exiv2::LogMsg::level())
+  {
+    // We don't seem to need \n in the format string as exiv2 includes it
+    // in the messages themselves
+    dt_print(DT_DEBUG_CAMERA_SUPPORT, "[exiv2] %s", message);
+  }
 }
 
 void dt_exif_init()
 {
-  // mute exiv2:
-  //   Exiv2::LogMsg::setLevel(Exiv2::LogMsg::mute);
   // preface the exiv2 messages with "[exiv2] "
   Exiv2::LogMsg::setHandler(&dt_exif_log_handler);
 
