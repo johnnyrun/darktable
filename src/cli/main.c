@@ -45,11 +45,13 @@
 #include <inttypes.h>
 #include <libintl.h>
 
-static void generate_thumbnail_cache()
+static void generate_thumbnail_cache(char * other_sql, gboolean overwrite,gboolean verbose)
 {
   const int max_mip = DT_MIPMAP_2;
   fprintf(stderr, _("creating cache directories\n"));
   char filename[PATH_MAX] = {0};
+  gchar *query = NULL;
+
   for(int k=DT_MIPMAP_0;k<=max_mip;k++)
   {
     snprintf(filename, sizeof(filename), "%s.d/%d", darktable.mipmap_cache->cachedir, k);
@@ -64,13 +66,17 @@ static void generate_thumbnail_cache()
   // some progress counter
   sqlite3_stmt *stmt;
   size_t image_count = 0, counter = 0;
-  DT_DEBUG_SQLITE3_PREPARE_V2(dt_database_get(darktable.db), "select count(id) from images", -1, &stmt, 0);
+  query = dt_util_dstrcat(query, "select count(images.id) from images %s", other_sql);
+
+  DT_DEBUG_SQLITE3_PREPARE_V2(dt_database_get(darktable.db), query , -1, &stmt, 0);
   if(sqlite3_step(stmt) == SQLITE_ROW)
     image_count = sqlite3_column_int(stmt, 0);
   sqlite3_finalize(stmt);
 
+  query = NULL;
+  query = dt_util_dstrcat(query, "select images.id from images %s", other_sql);
   // go through all images:
-  DT_DEBUG_SQLITE3_PREPARE_V2(dt_database_get(darktable.db), "select id from images", -1, &stmt, 0);
+  DT_DEBUG_SQLITE3_PREPARE_V2(dt_database_get(darktable.db), query, -1, &stmt, 0);
   // could only alloc max_mip-1, but would need to detect the special case that max==0.
   const size_t bufsize = (size_t)4 * darktable.mipmap_cache->max_width[max_mip]
                          * darktable.mipmap_cache->max_height[max_mip];
@@ -92,7 +98,7 @@ static void generate_thumbnail_cache()
       snprintf(filename, sizeof(filename), "%s.d/%d/%d.jpg", darktable.mipmap_cache->cachedir, k, imgid);
       all_exist &= !access(filename, R_OK); 
     }
-    if(all_exist) goto next;
+    if(all_exist && !overwrite) goto next;
     dt_mipmap_buffer_t buf;
     // get largest thumbnail for this image
     // this one will take care of itself, we'll just write out the lower thumbs manually:
@@ -122,6 +128,8 @@ static void generate_thumbnail_cache()
 write_error:
           unlink(filename);
         }
+        if (verbose)
+          fprintf(stderr,"wrote %s\n",filename);
         free(blob);
         fclose(f);
       }
@@ -156,9 +164,10 @@ int main(int argc, char *arg[])
   char *image_filename = NULL;
   char *xmp_filename = NULL;
   char *output_filename = NULL;
+  char *custom_sql = "";
   int file_counter = 0;
   int width = 0, height = 0, bpp = 0;
-  gboolean verbose = FALSE, high_quality = TRUE, upscale = FALSE, generate_cache = FALSE;
+  gboolean verbose = FALSE, high_quality = TRUE, upscale = FALSE, generate_cache = FALSE, cache_overwrite = FALSE;
 
   int k;
   for(k = 1; k < argc; k++)
@@ -178,6 +187,16 @@ int main(int argc, char *arg[])
       else if(!strcmp(arg[k], "--generate-cache"))
       {
         generate_cache = TRUE;
+      }
+      else if(!strcmp(arg[k], "--generate-cache-w"))
+      {
+        generate_cache = TRUE;
+        k++;
+        custom_sql = arg[k];
+      }
+      else if(!strcmp(arg[k], "--generate-cache-overwrite"))
+      {
+        cache_overwrite = TRUE;
       }
       else if(!strcmp(arg[k], "--width"))
       {
@@ -288,7 +307,8 @@ int main(int argc, char *arg[])
   if(generate_cache)
   {
     fprintf(stderr, _("creating complete lighttable thumbnail cache\n"));
-    generate_thumbnail_cache();
+    // check if custom sql is passed on the commandline
+    generate_thumbnail_cache(custom_sql,cache_overwrite,verbose);
     dt_cleanup();
     exit(0);
   }
