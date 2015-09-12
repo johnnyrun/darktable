@@ -654,7 +654,7 @@ void dt_mipmap_cache_get_with_caller(
       }
       else
       {
-        // 8-bit thumbs
+        // 8-bit image or thumb
         _init_8((uint8_t *)(dsc + 1), &dsc->width, &dsc->height, imgid, mip);
       }
       dsc->pre_monochrome_demosaiced = buf->pre_monochrome_demosaiced;
@@ -1044,7 +1044,7 @@ static void _init_8(uint8_t *buf, uint32_t *width, uint32_t *height, const uint3
   const dt_image_t *cimg = dt_image_cache_get(darktable.image_cache, imgid, 'r');
   // the orientation for this camera is not read correctly from exiv2, so we need
   // to go the full path (as the thumbnail will be flipped the wrong way round)
-  const int incompatible = !strncmp(cimg->exif_maker, "Phase One", 9);
+  const int incompatible = !strncmp(cimg->exif_maker, "Phase One", 9) || cimg->colorspace;
   dt_image_cache_read_release(darktable.image_cache, cimg);
 
   if(!altered && !dt_conf_get_bool("never_use_embedded_thumb") && !incompatible)
