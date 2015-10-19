@@ -188,12 +188,18 @@ if(USE_WEBP)
   else(USE_WEBP)
 endif(USE_WEBP)
 
-foreach(lib ${OUR_LIBS} LensFun GIO GThread GModule PangoCairo PThread Rsvg2 LibXml2 Sqlite3 Exiv2 CURL PNG JPEG TIFF LCMS2 JsonGlib)
+foreach(lib ${OUR_LIBS} LensFun GIO GThread GModule PangoCairo PThread Rsvg2 LibXml2 Sqlite3 CURL PNG JPEG TIFF LCMS2 JsonGlib)
   find_package(${lib} REQUIRED)
   include_directories(SYSTEM ${${lib}_INCLUDE_DIRS})
   list(APPEND LIBS ${${lib}_LIBRARIES})
   add_definitions(${${lib}_DEFINITIONS})
 endforeach(lib)
+
+# Require exiv2 >= 0.23 to make sure everything we need is available
+find_package(Exiv2 0.23 REQUIRED)
+include_directories(SYSTEM ${Exiv2_INCLUDE_DIRS})
+list(APPEND LIBS ${Exiv2_LIBRARIES})
+add_definitions(${Exiv2_DEFINITIONS})
 
 if(USE_NLS)
   find_package(Gettext)
@@ -382,7 +388,9 @@ if(NOT CUSTOM_CFLAGS)
   #we MUST always specify our requred instruction set, native might not detect it
   set(DT_REQ_INSTRUCTIONS "-msse3")
 
-  if(NOT BINARY_PACKAGE_BUILD AND (NOT APPLE OR CMAKE_C_COMPILER_ID STREQUAL "Clang"))
+  if(CMAKE_SYSTEM_NAME STREQUAL "SunOS")
+    set(MARCH "-msse4.2")
+  elseif(NOT BINARY_PACKAGE_BUILD AND (NOT APPLE OR CMAKE_C_COMPILER_ID STREQUAL "Clang"))
     MESSAGE("-- Checking for -march=native support")
     CHECK_C_COMPILER_FLAG("-march=native" MARCHNATIVE)
     if (MARCHNATIVE)
@@ -408,11 +416,7 @@ if(NOT CUSTOM_CFLAGS)
     execute_process(COMMAND ${CMAKE_C_COMPILER} -dumpversion OUTPUT_VARIABLE GCC_VERSION)
 
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -mfpmath=sse")
-    if(GCC_VERSION VERSION_LESS 4.8)
-      set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -O0 -g3 -ggdb3")
-    else()
-      set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -Og -g3 -ggdb3")
-    endif()
+    set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -O0 -g3 -ggdb3")
     set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -fexpensive-optimizations")
   else()
     set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -O0")
@@ -425,11 +429,7 @@ if(NOT CUSTOM_CFLAGS)
     execute_process(COMMAND ${CMAKE_CXX_COMPILER} -dumpversion OUTPUT_VARIABLE GCC_VERSION)
 
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mfpmath=sse")
-    if(GCC_VERSION VERSION_LESS 4.8)
-      set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -O0 -g3 -ggdb3")
-    else()
-      set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -Os -g3 -ggdb3")
-    endif()
+    set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -O0 -g3 -ggdb3")
     set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -fexpensive-optimizations")
   else()
     set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -O0")
@@ -450,14 +450,14 @@ include_directories("${CMAKE_CURRENT_BINARY_DIR}" "${CMAKE_CURRENT_SOURCE_DIR}")
 # Build external deps
 #
 if(USE_LUA)
-  find_package(Lua52 5.2) # add EXACT if 5.3 doesn't work for us
+  find_package(Lua52 5.2)
   if(LUA52_FOUND)
     message(STATUS "Lua support: Enabled")
     include_directories(SYSTEM ${LUA52_INCLUDE_DIRS})
     list(APPEND LIBS ${LUA52_LDFLAGS})
   else()
     if(DONT_USE_INTERNAL_LUA)
-      message(STATUS "Lua support: System library not found (to use darktable's version use -DDONT_USE_INTERNAL_LUA=Off)")
+      message(STATUS "Lua support: System library for lua 5.2 not found (to use darktable's version use -DDONT_USE_INTERNAL_LUA=Off)")
       set(USE_LUA OFF)
     else(DONT_USE_INTERNAL_LUA)
       message(STATUS "Lua support: System library not found (using darktable's version)")
@@ -470,18 +470,22 @@ if(USE_LUA)
   if(USE_LUA)
     add_definitions("-DUSE_LUA")
     FILE(GLOB SOURCE_FILES_LUA
+      "lua/cairo.c"
       "lua/call.c"
       "lua/configuration.c"
       "lua/database.c"
       "lua/events.c"
       "lua/film.c"
       "lua/format.c"
+      "lua/gettext.c"
       "lua/glist.c"
       "lua/gui.c"
+      "lua/guides.c"
       "lua/image.c"
       "lua/init.c"
       "lua/lib.c"
       "lua/lua.c"
+      "lua/lualib.c"
       "lua/luastorage.c"
       "lua/modules.c"
       "lua/preferences.c"
@@ -501,6 +505,7 @@ if(USE_LUA)
       "lua/widget/file_chooser.c"
       "lua/widget/label.c"
       "lua/widget/separator.c"
+      "lua/widget/slider.c"
       "lua/widget/stack.c"
       )
     set(SOURCES ${SOURCES} ${SOURCE_FILES_LUA})
@@ -508,6 +513,10 @@ if(USE_LUA)
 else(USE_LUA)
   message(STATUS "Lua support: Disabled")
 endif(USE_LUA)
+
+find_package(Pugixml 1.2 REQUIRED)
+include_directories(SYSTEM ${Pugixml_INCLUDE_DIRS})
+list(APPEND LIBS ${Pugixml_LIBRARIES})
 
 #
 # the rawspeed part is a bit of a hack:
@@ -743,6 +752,9 @@ endif(HAVE_OPENCL)
 
 # have a command line interface
 add_subdirectory(cli)
+
+# have a command line utility to generate all the thumbnails
+add_subdirectory(generate-cache)
 
 # have a small test program that verifies your color management setup
 if(BUILD_CMSTEST)

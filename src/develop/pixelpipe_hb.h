@@ -46,7 +46,14 @@ typedef struct dt_dev_pixelpipe_iop_t
   struct dt_dev_pixelpipe_t *pipe; // the pipe this piece belongs to
   void *data;                      // to be used by the module to store stuff per pipe piece
   void *blendop_data;              // to be used by the module to store blendop per pipe piece
-  int enabled;         // used to disable parts of the pipe for export, independent on module itself.
+  int enabled; // used to disable parts of the pipe for export, independent on module itself.
+
+  dt_dev_request_flags_t request_histogram;              // (bitwise) set if you want an histogram captured
+  dt_dev_histogram_collection_params_t histogram_params; // set histogram generation params
+  uint32_t *histogram; // pointer to histogram data; histogram_bins_count bins with 4 channels each
+  dt_dev_histogram_stats_t histogram_stats; // stats of captured histogram
+  uint32_t histogram_max[4];                // maximum levels in histogram, one per channel
+
   float iscale;        // input actually just downscaled buffer? iscale*iwidth = actual width
   int iwidth, iheight; // width and height of input buffer
   uint64_t hash;       // hash of params and enabled.
@@ -114,6 +121,8 @@ typedef struct dt_dev_pixelpipe_t
   int mask_display;
   // input data based on this timestamp:
   int input_timestamp;
+  // input data was pre-demosaiced and the demosaicing method is monochrome
+  int pre_monochrome_demosaiced;
   dt_dev_pixelpipe_type_t type;
   // the final output pixel format this pixelpipe will be converted to
   dt_imageio_levels_t levels;
@@ -141,7 +150,7 @@ int dt_dev_pixelpipe_init_dummy(dt_dev_pixelpipe_t *pipe, int32_t width, int32_t
 int dt_dev_pixelpipe_init_cached(dt_dev_pixelpipe_t *pipe, size_t size, int32_t entries);
 // constructs a new input gegl_buffer from given RGB float array.
 void dt_dev_pixelpipe_set_input(dt_dev_pixelpipe_t *pipe, struct dt_develop_t *dev, float *input, int width,
-                                int height, float iscale);
+                                int height, float iscale, int pre_monochrome_demosaiced);
 
 // returns the dimensions of the full image after processing.
 void dt_dev_pixelpipe_get_dimensions(dt_dev_pixelpipe_t *pipe, struct dt_develop_t *dev, int width_in,

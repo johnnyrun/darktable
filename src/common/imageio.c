@@ -21,6 +21,7 @@
 #endif
 #include "common/darktable.h"
 #include "common/colorlabels.h"
+#include "common/colorspaces.h"
 #include "common/debug.h"
 #include "common/exif.h"
 #include "common/image_cache.h"
@@ -64,7 +65,8 @@
 #include <glib/gstdio.h>
 
 // load a full-res thumbnail:
-int dt_imageio_large_thumbnail(const char *filename, uint8_t **buffer, int32_t *width, int32_t *height)
+int dt_imageio_large_thumbnail(const char *filename, uint8_t **buffer, int32_t *width, int32_t *height,
+                               dt_colorspaces_color_profile_type_t *color_space)
 {
   int res = 1;
 
@@ -80,12 +82,13 @@ int dt_imageio_large_thumbnail(const char *filename, uint8_t **buffer, int32_t *
     // Decompress the JPG into our own memory format
     dt_imageio_jpeg_t jpg;
     if(dt_imageio_jpeg_decompress_header(buf, bufsize, &jpg)) goto error;
-
     *buffer = (uint8_t *)malloc((size_t)sizeof(uint8_t) * jpg.width * jpg.height * 4);
     if(!*buffer) goto error;
 
     *width = jpg.width;
     *height = jpg.height;
+    // TODO: check if the embedded thumbs have a color space set! currently we assume that it's always sRGB
+    *color_space = DT_COLORSPACE_SRGB;
     if(dt_imageio_jpeg_decompress(&jpg, *buffer))
     {
       free(*buffer);
@@ -117,6 +120,7 @@ int dt_imageio_large_thumbnail(const char *filename, uint8_t **buffer, int32_t *
 
     *width = image->columns;
     *height = image->rows;
+    *color_space = DT_COLORSPACE_SRGB; // FIXME: this assumes that embedded thumbnails are always srgb
 
     *buffer = (uint8_t *)malloc((size_t)sizeof(uint8_t) * image->columns * image->rows * 4);
     if(!*buffer) goto error_gm;
@@ -372,11 +376,27 @@ static const uint8_t _imageio_ldr_magic[] = {
   /* png image */
   0x00, 0x01, 0x03, 0x50, 0x4E, 0x47, // ASCII 'PNG'
 
-  /* canon CR2 */
-  0x01, 0x00, 0x0a, 0x49, 0x49, 0x2a, 0x00, 0x10, 0x00, 0x00, 0x00, 0x43, 0x52, // Canon CR2 is like TIFF with
-                                                                                // additional magic number.
-                                                                                // must come before tiff as an
-                                                                                // exclusion
+
+  /* Canon CR2/CRW is like TIFF with additional magic numbers so must come
+     before tiff as an exclusion */
+
+  /* Most CR2 */
+  0x01, 0x00, 0x0a, 0x49, 0x49, 0x2a, 0x00, 0x10, 0x00, 0x00, 0x00, 0x43, 0x52,
+
+  // Older Canon RAW format with TIF Extension (i.e. 1Ds and 1D)
+  0x01, 0x00, 0x0a, 0x4d, 0x4d, 0x00, 0x2a, 0x00, 0x00, 0x00, 0x10, 0xba, 0xb0,
+
+  // Older Canon RAW format with TIF Extension (i.e. D2000)
+  0x01, 0x00, 0x0a, 0x4d, 0x4d, 0x00, 0x2a, 0x00, 0x00, 0x11, 0x34, 0x00, 0x04,
+
+  // Older Canon RAW format with TIF Extension (i.e. DCS1)
+  0x01, 0x00, 0x0a, 0x49, 0x49, 0x2a, 0x00, 0x00, 0x03, 0x00, 0x00, 0xff, 0x01,
+
+  // Older Kodak RAW format with TIF Extension (i.e. DCS560C)
+  0x01, 0x00, 0x0a, 0x4d, 0x4d, 0x00, 0x2a, 0x00, 0x00, 0x11, 0x76, 0x00, 0x04,
+
+  // Older Kodak RAW format with TIF Extension (i.e. DCS460D)
+  0x01, 0x00, 0x0a, 0x49, 0x49, 0x2a, 0x00, 0x00, 0x03, 0x00, 0x00, 0x7c, 0x01,
 
   /* tiff image, intel */
   0x00, 0x00, 0x04, 0x4d, 0x4d, 0x00, 0x2a,
@@ -519,12 +539,14 @@ int dt_imageio_export_with_flags(const uint32_t imgid, const char *filename,
 {
   dt_develop_t dev;
   dt_dev_init(&dev, 0);
+  dt_dev_load_image(&dev, imgid);
+
   dt_mipmap_buffer_t buf;
   if(thumbnail_export && dt_conf_get_bool("plugins/lighttable/low_quality_thumbnails"))
     dt_mipmap_cache_get(darktable.mipmap_cache, &buf, imgid, DT_MIPMAP_F, DT_MIPMAP_BLOCKING, 'r');
   else
     dt_mipmap_cache_get(darktable.mipmap_cache, &buf, imgid, DT_MIPMAP_FULL, DT_MIPMAP_BLOCKING, 'r');
-  dt_dev_load_image(&dev, imgid);
+
   const dt_image_t *img = &dev.image_storage;
   const int wd = img->width;
   const int ht = img->height;
@@ -542,18 +564,14 @@ int dt_imageio_export_with_flags(const uint32_t imgid, const char *filename,
     dt_control_log(
         _("failed to allocate memory for %s, please lower the threads used for export or buy more memory."),
         thumbnail_export ? C_("noun", "thumbnail export") : C_("noun", "export"));
-    dt_dev_cleanup(&dev);
-    dt_mipmap_cache_release(darktable.mipmap_cache, &buf);
-    return 1;
+    goto error;
   }
 
   if(!buf.buf)
   {
     fprintf(stderr, "allocation failed???\n");
     dt_control_log(_("image `%s' is not available!"), img->filename);
-    dt_mipmap_cache_release(darktable.mipmap_cache, &buf);
-    dt_dev_cleanup(&dev);
-    return 1;
+    goto error;
   }
 
   //  If a style is to be applied during export, add the iop params into the history
@@ -567,12 +585,23 @@ int dt_imageio_export_with_flags(const uint32_t imgid, const char *filename,
     if((stls = dt_styles_get_item_list(format_params->style, TRUE, -1)) == 0)
     {
       dt_control_log(_("cannot find the style '%s' to apply during export."), format_params->style);
-      dt_dev_cleanup(&dev);
-      dt_mipmap_cache_release(darktable.mipmap_cache, &buf);
-      return 1;
+      goto error;
     }
 
-    //  Add each params
+    // remove everything above history_end
+    GList *history = g_list_nth(dev.history, dev.history_end);
+    while(history)
+    {
+      GList *next = g_list_next(history);
+      dt_dev_history_item_t *hist = (dt_dev_history_item_t *)(history->data);
+      free(hist->params);
+      free(hist->blend_params);
+      free(history->data);
+      dev.history = g_list_delete_link(dev.history, history);
+      history = next;
+    }
+
+    // Add each params
     while(stls)
     {
       dt_style_item_t *s = (dt_style_item_t *)stls->data;
@@ -596,7 +625,7 @@ int dt_imageio_export_with_flags(const uint32_t imgid, const char *filename,
             if(!sty_module)
             {
               free(h);
-              return 1;
+              goto error;
             }
           }
 
@@ -630,7 +659,8 @@ int dt_imageio_export_with_flags(const uint32_t imgid, const char *filename,
     g_list_free(stls);
   }
 
-  dt_dev_pixelpipe_set_input(&pipe, &dev, (float *)buf.buf, buf.width, buf.height, 1.0);
+  dt_dev_pixelpipe_set_input(&pipe, &dev, (float *)buf.buf, buf.width, buf.height, 1.0,
+                             buf.pre_monochrome_demosaiced);
   dt_dev_pixelpipe_create_nodes(&pipe, &dev);
   dt_dev_pixelpipe_synch_all(&pipe, &dev);
   dt_dev_pixelpipe_get_dimensions(&pipe, &dev, pipe.iwidth, pipe.iheight, &pipe.processed_width,
@@ -644,12 +674,12 @@ int dt_imageio_export_with_flags(const uint32_t imgid, const char *filename,
 
   // find output color profile for this image:
   int sRGB = 1;
-  gchar *overprofile = dt_conf_get_string("plugins/lighttable/export/iccprofile");
-  if(overprofile && !strcmp(overprofile, "sRGB"))
+  int icctype = dt_conf_get_int("plugins/lighttable/export/icctype");
+  if(icctype == DT_COLORSPACE_SRGB)
   {
     sRGB = 1;
   }
-  else if(!overprofile || !strcmp(overprofile, "image"))
+  else if(icctype == DT_COLORSPACE_NONE)
   {
     GList *modules = dev.iop;
     dt_iop_module_t *colorout = NULL;
@@ -658,11 +688,9 @@ int dt_imageio_export_with_flags(const uint32_t imgid, const char *filename,
       colorout = (dt_iop_module_t *)modules->data;
       if(colorout->get_p && strcmp(colorout->op, "colorout") == 0)
       {
-        const char *iccprofile = colorout->get_p(colorout->params, "iccprofile");
-        if(!strcmp(iccprofile, "sRGB"))
-          sRGB = 1;
-        else
-          sRGB = 0;
+        const dt_colorspaces_color_profile_type_t *type = colorout->get_p(colorout->params, "type");
+        sRGB = (!type || *type == DT_COLORSPACE_SRGB);
+        break; // colorout can't have > 1 instance
       }
       modules = g_list_next(modules);
     }
@@ -671,7 +699,6 @@ int dt_imageio_export_with_flags(const uint32_t imgid, const char *filename,
   {
     sRGB = 0;
   }
-  g_free(overprofile);
 
   // get only once at the beginning, in case the user changes it on the way:
   const gboolean high_quality_processing
@@ -688,13 +715,13 @@ int dt_imageio_export_with_flags(const uint32_t imgid, const char *filename,
   int processed_height = scale * pipe.processed_height + .5f;
   const int bpp = format->bpp(format_params);
 
-  // downsampling done last, if high quality processing was requested:
-  uint8_t *outbuf = pipe.backbuf;
-  uint8_t *moutbuf = NULL; // keep track of alloc'ed memory
   dt_get_times(&start);
   if(high_quality_processing)
   {
-    dt_dev_pixelpipe_process_no_gamma(&pipe, &dev, 0, 0, processed_width, processed_height, scale);
+    /*
+     * if high quality processing was requested, downsampling will be done
+     * at the very end of the pipe (just before border and watermark)
+     */
     const double scalex = format_params->max_width > 0
                               ? fminf(format_params->max_width / (double)pipe.processed_width, max_scale)
                               : 1.0;
@@ -704,32 +731,38 @@ int dt_imageio_export_with_flags(const uint32_t imgid, const char *filename,
     const double scale = fminf(scalex, scaley);
     processed_width = scale * pipe.processed_width + .5f;
     processed_height = scale * pipe.processed_height + .5f;
-    moutbuf = (uint8_t *)dt_alloc_align(64, (size_t)sizeof(float) * processed_width * processed_height * 4);
-    outbuf = moutbuf;
-    // now downscale into the new buffer:
-    dt_iop_roi_t roi_in, roi_out;
-    roi_in.x = roi_in.y = roi_out.x = roi_out.y = 0;
-    roi_in.scale = 1.0;
-    roi_out.scale = scale;
-    roi_in.width = pipe.processed_width;
-    roi_in.height = pipe.processed_height;
-    roi_out.width = processed_width;
-    roi_out.height = processed_height;
-    dt_iop_clip_and_zoom((float *)outbuf, (float *)pipe.backbuf, &roi_out, &roi_in, processed_width,
-                         pipe.processed_width);
+
+    dt_dev_pixelpipe_process_no_gamma(&pipe, &dev, 0, 0, processed_width, processed_height, scale);
   }
   else
   {
+    // else, downsampling will be right after demosaic
+
+    // so we need to turn temporarily disable in-pipe late downsampling iop.
+    GList *finalscalep = g_list_last(pipe.nodes);
+    dt_dev_pixelpipe_iop_t *finalscale = (dt_dev_pixelpipe_iop_t *)finalscalep->data;
+    while(strcmp(finalscale->module->op, "finalscale"))
+    {
+      finalscale = NULL;
+      finalscalep = g_list_previous(finalscalep);
+      if(!finalscalep) break;
+      finalscale = (dt_dev_pixelpipe_iop_t *)finalscalep->data;
+    }
+    if(finalscale) finalscale->enabled = 0;
+
     // do the processing (8-bit with special treatment, to make sure we can use openmp further down):
     if(bpp == 8)
       dt_dev_pixelpipe_process(&pipe, &dev, 0, 0, processed_width, processed_height, scale);
     else
       dt_dev_pixelpipe_process_no_gamma(&pipe, &dev, 0, 0, processed_width, processed_height, scale);
-    outbuf = pipe.backbuf;
+
+    if(finalscale) finalscale->enabled = 1;
   }
   dt_show_times(&start, thumbnail_export ? "[dev_process_thumbnail] pixel pipeline processing"
                                          : "[dev_process_export] pixel pipeline processing",
                 NULL);
+
+  uint8_t *outbuf = pipe.backbuf;
 
   // downconversion to low-precision formats:
   if(bpp == 8)
@@ -823,7 +856,7 @@ int dt_imageio_export_with_flags(const uint32_t imgid, const char *filename,
   dt_dev_pixelpipe_cleanup(&pipe);
   dt_dev_cleanup(&dev);
   dt_mipmap_cache_release(darktable.mipmap_cache, &buf);
-  dt_free_align(moutbuf);
+
   /* now write xmp into that container, if possible */
   if(copy_metadata && (format->flags(format_params) & FORMAT_FLAGS_SUPPORT_XMP))
   {
@@ -837,7 +870,14 @@ int dt_imageio_export_with_flags(const uint32_t imgid, const char *filename,
     dt_control_signal_raise(darktable.signals, DT_SIGNAL_IMAGE_EXPORT_TMPFILE, imgid, filename, format,
                             format_params, storage, storage_params);
   }
+
   return res;
+
+error:
+  dt_dev_pixelpipe_cleanup(&pipe);
+  dt_dev_cleanup(&dev);
+  dt_mipmap_cache_release(darktable.mipmap_cache, &buf);
+  return 1;
 }
 
 

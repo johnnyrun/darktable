@@ -1172,18 +1172,122 @@ void dtgtk_cairo_paint_overexposed(cairo_t *cr, gint x, gint y, gint w, gint h, 
   cairo_translate(cr, x + (w / 2.0) - (s / 2.0), y + (h / 2.0) - (s / 2.0));
   cairo_scale(cr, s, s);
 
+  float line_width = 0.15;
+
   cairo_set_line_cap(cr, CAIRO_LINE_CAP_ROUND);
-  cairo_set_line_width(cr, 0.15);
+  cairo_set_line_width(cr, line_width);
 
   /* the triangle */
-  cairo_move_to(cr, 0.95, 0.05);
-  cairo_line_to(cr, 0.05, 0.95);
-  cairo_line_to(cr, 0.95, 0.95);
+  cairo_move_to(cr, 1.0 - (line_width / 2.0), (line_width / 2.0));
+  cairo_line_to(cr, (line_width / 2.0), 1.0 - (line_width / 2.0));
+  cairo_line_to(cr, 1.0 - (line_width / 2.0), 1.0 - (line_width / 2.0));
   cairo_fill(cr);
 
   /* outer rect */
-  cairo_rectangle(cr, 0.05, 0.05, 0.95, 0.95);
+  cairo_rectangle(cr, (line_width / 2.0), (line_width / 2.0), 1.0 - line_width, 1.0 - line_width);
   cairo_stroke(cr);
+}
+
+void dtgtk_cairo_paint_gamut_check(cairo_t *cr, gint x, gint y, gint w, gint h, gint flags)
+{
+  gint s = w < h ? w : h;
+  cairo_translate(cr, x + (w / 2.) - (s / 2.), y + (h / 2.) - (s / 2.));
+  cairo_scale(cr, s, s);
+
+  cairo_save(cr);
+
+  // the triangle
+  cairo_move_to(cr, 0.0, 1 - 0.067);
+  cairo_line_to(cr, 0.5, 1 - 0.933);
+  cairo_line_to(cr, 1.0, 1 - 0.067);
+  cairo_close_path(cr);
+
+  // exclamation mark
+  // the dot
+  cairo_new_sub_path(cr);
+  cairo_move_to(cr, 0.42, 1 - 0.11);
+  cairo_line_to(cr, 0.42, 1 - 0.25);
+  cairo_line_to(cr, 0.58, 1 - 0.25);
+  cairo_line_to(cr, 0.58, 1 - 0.11);
+  cairo_close_path(cr);
+
+  // the line
+  cairo_new_sub_path(cr);
+  cairo_move_to(cr, 0.447, 1 - 0.29);
+  cairo_line_to(cr, 0.415, 1 - 0.552);
+  cairo_line_to(cr, 0.415, 1 - 0.683);
+  cairo_line_to(cr, 0.585, 1 - 0.683);
+  cairo_line_to(cr, 0.585, 1 - 0.552);
+  cairo_line_to(cr, 0.552, 1 - 0.29);
+  cairo_close_path(cr);
+
+  cairo_set_fill_rule(cr, CAIRO_FILL_RULE_EVEN_ODD);
+  cairo_fill(cr);
+
+  cairo_restore(cr);
+}
+
+void dtgtk_cairo_paint_softproof(cairo_t *cr, gint x, gint y, gint w, gint h, gint flags)
+{
+  gint s = w < h ? w : h;
+  cairo_translate(cr, x + (w / 2.) - (s / 2.), y + (h / 2.) - (s / 2.));
+  cairo_scale(cr, s, s);
+
+  cairo_save(cr);
+
+  // the horse shoe
+  cairo_move_to(cr, 0.30, 1 - 0.0);
+  cairo_curve_to(cr, 0.14, 1 - 0.09, 0.03, 1 - 0.88, 0.18, 1 - 1);
+  cairo_curve_to(cr, 0.32, 1 - 1.08, 0.69, 1 - 0.63, 0.97, 1 - 0.32);
+  cairo_close_path(cr);
+
+  // triangle
+  cairo_new_sub_path(cr);
+  cairo_move_to(cr, 0.28, 1 - 0.07);
+  cairo_line_to(cr, 0.37, 1 - 0.75);
+  cairo_line_to(cr, 0.82, 1 - 0.42);
+  cairo_close_path(cr);
+
+  cairo_set_fill_rule(cr, CAIRO_FILL_RULE_EVEN_ODD);
+  cairo_fill(cr);
+
+  cairo_restore(cr);
+}
+
+void dtgtk_cairo_paint_display(cairo_t *cr, gint x, gint y, gint w, gint h, gint flags)
+{
+  gint s = w < h ? w : h;
+  cairo_save(cr);
+
+  cairo_translate(cr, x + (w / 2.) - (s / 2.), y + (h / 2.) - (s / 2.));
+  cairo_scale(cr, s, s);
+  cairo_scale(cr, 1, -1);
+  cairo_translate(cr, 0, -1);
+
+  cairo_move_to(cr, 0.0, 0.98);
+  cairo_line_to(cr, 1.0, 0.98);
+  cairo_line_to(cr, 1.0, 0.28);
+  cairo_line_to(cr, 0.58, 0.28);
+  cairo_line_to(cr, 0.58, 0.13);
+  cairo_line_to(cr, 0.85, 0.13);
+  cairo_line_to(cr, 0.85, 0.03);
+  cairo_line_to(cr, 0.15, 0.03);
+  cairo_line_to(cr, 0.15, 0.13);
+  cairo_line_to(cr, 0.42, 0.13);
+  cairo_line_to(cr, 0.42, 0.28);
+  cairo_line_to(cr, 0.0, 0.28);
+  cairo_close_path(cr);
+
+  cairo_move_to(cr, 0.1, 0.88);
+  cairo_line_to(cr, 0.9, 0.88);
+  cairo_line_to(cr, 0.9, 0.38);
+  cairo_line_to(cr, 0.1, 0.38);
+  cairo_close_path(cr);
+
+  cairo_set_fill_rule(cr, CAIRO_FILL_RULE_EVEN_ODD);
+  cairo_fill(cr);
+
+  cairo_restore(cr);
 }
 
 void dtgtk_cairo_paint_rect_landscape(cairo_t *cr, gint x, gint y, gint w, gint h, gint flags)
@@ -1333,6 +1437,7 @@ void dtgtk_cairo_paint_modulegroup_tone(cairo_t *cr, gint x, gint y, gint w, gin
   cairo_set_source(cr, pat);
   cairo_arc(cr, 0.5, 0.5, 0.40, -M_PI, M_PI);
   cairo_fill(cr);
+  cairo_pattern_destroy(pat);
 }
 
 void dtgtk_cairo_paint_modulegroup_color(cairo_t *cr, gint x, gint y, gint w, gint h, gint flags)
@@ -1359,6 +1464,7 @@ void dtgtk_cairo_paint_modulegroup_color(cairo_t *cr, gint x, gint y, gint w, gi
   cairo_set_source(cr, pat);
   cairo_arc(cr, 0.5, 0.5, 0.40, -M_PI, M_PI);
   cairo_fill(cr);
+  cairo_pattern_destroy(pat);
 }
 
 void dtgtk_cairo_paint_modulegroup_correct(cairo_t *cr, gint x, gint y, gint w, gint h, gint flags)

@@ -368,7 +368,7 @@ int write_image(dt_imageio_module_data_t *jpg_tmp, const char *filename, const v
 
   if(imgid > 0)
   {
-    cmsHPROFILE out_profile = dt_colorspaces_create_output_profile(imgid);
+    cmsHPROFILE out_profile = dt_colorspaces_get_output_profile(imgid)->profile;
     uint32_t len = 0;
     cmsSaveProfileToMem(out_profile, 0, &len);
     if(len > 0)
@@ -377,7 +377,6 @@ int write_image(dt_imageio_module_data_t *jpg_tmp, const char *filename, const v
       cmsSaveProfileToMem(out_profile, buf, &len);
       write_icc_profile(&(jpg->cinfo), buf, len);
     }
-    dt_colorspaces_cleanup_profile(out_profile);
   }
 
   if(exif && exif_len > 0 && exif_len < 65534)
@@ -428,6 +427,7 @@ int read_image(dt_imageio_module_data_t *jpg_tmp, uint8_t *out)
   dt_imageio_jpeg_t *jpg = (dt_imageio_jpeg_t *)jpg_tmp;
   struct dt_imageio_jpeg_error_mgr jerr;
   jpg->dinfo.err = jpeg_std_error(&jerr.pub);
+  jerr.pub.error_exit = dt_imageio_jpeg_error_exit;
   if(setjmp(jerr.setjmp_buffer))
   {
     jpeg_destroy_decompress(&(jpg->dinfo));
@@ -448,6 +448,13 @@ int read_image(dt_imageio_module_data_t *jpg_tmp, uint8_t *out)
       for(JDIMENSION i = 0; i < jpg->dinfo.image_width; i++)
         for(int k = 0; k < 3; k++) tmp[4 * i + k] = row_pointer[0][3 * i + k];
     tmp += 4 * jpg->width;
+  }
+  if(setjmp(jerr.setjmp_buffer))
+  {
+    jpeg_destroy_decompress(&(jpg->dinfo));
+    free(row_pointer[0]);
+    fclose(jpg->f);
+    return 1;
   }
   (void)jpeg_finish_decompress(&(jpg->dinfo));
   jpeg_destroy_decompress(&(jpg->dinfo));

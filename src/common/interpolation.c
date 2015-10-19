@@ -710,14 +710,16 @@ static inline void compute_downsampling_kernel_sse(const struct dt_interpolation
  * Sample interpolation function (see usage in iop/lens.c and iop/clipping.c)
  * ------------------------------------------------------------------------*/
 
+#define MAX_KERNEL_REQ ((2 * (MAX_HALF_FILTER_WIDTH) + 3) & (~3))
+
 float dt_interpolation_compute_sample(const struct dt_interpolation *itor, const float *in, const float x,
                                       const float y, const int width, const int height,
                                       const int samplestride, const int linestride)
 {
-  assert(itor->width < 4);
+  assert(itor->width < (MAX_HALF_FILTER_WIDTH + 1));
 
-  float kernelh[8] __attribute__((aligned(SSE_ALIGNMENT)));
-  float kernelv[8] __attribute__((aligned(SSE_ALIGNMENT)));
+  float kernelh[MAX_KERNEL_REQ] __attribute__((aligned(SSE_ALIGNMENT)));
+  float kernelv[MAX_KERNEL_REQ] __attribute__((aligned(SSE_ALIGNMENT)));
 
   // Compute both horizontal and vertical kernels
   float normh;
@@ -804,8 +806,6 @@ float dt_interpolation_compute_sample(const struct dt_interpolation *itor, const
 /* --------------------------------------------------------------------------
  * Pixel interpolation function (see usage in iop/lens.c and iop/clipping.c)
  * ------------------------------------------------------------------------*/
-
-#define MAX_KERNEL_REQ ((2 * MAX_HALF_FILTER_WIDTH + 3) & (~3))
 
 void dt_interpolation_compute_pixel4c(const struct dt_interpolation *itor, const float *in, float *out,
                                       const float x, const float y, const int width, const int height,
@@ -1178,6 +1178,9 @@ static int prepare_resampling_plan(const struct dt_interpolation *itor, int in, 
   return 0;
 }
 
+/** Applies resampling (re-scaling) on *full* input and output buffers.
+ *  roi_in and roi_out define the part of the buffers that is affected.
+ */
 void dt_interpolation_resample(const struct dt_interpolation *itor, float *out,
                                const dt_iop_roi_t *const roi_out, const int32_t out_stride,
                                const float *const in, const dt_iop_roi_t *const roi_in,
@@ -1339,6 +1342,23 @@ exit:
   dt_free_align(vlength);
 }
 
+/** Applies resampling (re-scaling) on a specific region-of-interest of an image. The input
+ *  and output buffers hold exactly those roi's. roi_in and roi_out define the relative
+ *  positions of the roi's within the full input and output image, respectively.
+ */
+void dt_interpolation_resample_roi(const struct dt_interpolation *itor, float *out,
+                                   const dt_iop_roi_t *const roi_out, const int32_t out_stride,
+                                   const float *const in, const dt_iop_roi_t *const roi_in,
+                                   const int32_t in_stride)
+{
+  dt_iop_roi_t oroi = *roi_out;
+  oroi.x = oroi.y = 0;
+
+  dt_iop_roi_t iroi = *roi_in;
+  iroi.x = iroi.y = 0;
+
+  dt_interpolation_resample(itor, out, &oroi, out_stride, in, &iroi, in_stride);
+}
 
 #ifdef HAVE_OPENCL
 dt_interpolation_cl_global_t *dt_interpolation_init_cl_global()
@@ -1371,6 +1391,9 @@ static uint32_t roundToNextPowerOfTwo(uint32_t x)
   return x;
 }
 
+/** Applies resampling (re-scaling) on *full* input and output buffers.
+ *  roi_in and roi_out define the part of the buffers that is affected.
+ */
 int dt_interpolation_resample_cl(const struct dt_interpolation *itor, int devid, cl_mem dev_out,
                                  const dt_iop_roi_t *const roi_out, cl_mem dev_in,
                                  const dt_iop_roi_t *const roi_in)
@@ -1587,6 +1610,23 @@ error:
   dt_free_align(vlength);
   dt_print(DT_DEBUG_OPENCL, "[opencl_resampling] couldn't enqueue kernel! %d\n", err);
   return err;
+}
+
+/** Applies resampling (re-scaling) on a specific region-of-interest of an image. The input
+ *  and output buffers hold exactly those roi's. roi_in and roi_out define the relative
+ *  positions of the roi's within the full input and output image, respectively.
+ */
+int dt_interpolation_resample_roi_cl(const struct dt_interpolation *itor, int devid, cl_mem dev_out,
+                                     const dt_iop_roi_t *const roi_out, cl_mem dev_in,
+                                     const dt_iop_roi_t *const roi_in)
+{
+  dt_iop_roi_t oroi = *roi_out;
+  oroi.x = oroi.y = 0;
+
+  dt_iop_roi_t iroi = *roi_in;
+  iroi.x = iroi.y = 0;
+
+  return dt_interpolation_resample_cl(itor, devid, dev_out, &oroi, dev_in, &iroi);
 }
 #endif
 

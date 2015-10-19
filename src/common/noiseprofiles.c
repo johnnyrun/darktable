@@ -66,11 +66,21 @@ int is_member(gchar** names, char* name)
   return 0;
 }
 
+static gint _sort_by_iso(gconstpointer a, gconstpointer b)
+{
+  const dt_noiseprofile_t *profile_a = (dt_noiseprofile_t *)a;
+  const dt_noiseprofile_t *profile_b = (dt_noiseprofile_t *)b;
+
+  return profile_a->iso - profile_b->iso;
+}
+
 GList *dt_noiseprofile_get_matching(const dt_image_t *cimg)
 {
   JsonParser *parser = darktable.noiseprofile_parser;
   JsonReader *reader = NULL;
   GList *result = NULL;
+
+  dt_print(DT_DEBUG_CONTROL, "[noiseprofile] looking for maker `%s', model `%s'\n", cimg->camera_maker, cimg->camera_model);
 
   JsonNode *root = json_parser_get_root(parser);
   if(!root)
@@ -126,9 +136,9 @@ GList *dt_noiseprofile_get_matching(const dt_image_t *cimg)
       goto end;
     }
 
-    if(g_strstr_len(cimg->exif_maker, -1, json_reader_get_string_value(reader)))
+    if(g_strstr_len(cimg->camera_maker, -1, json_reader_get_string_value(reader)))
     {
-      dt_print(DT_DEBUG_CONTROL, "[noiseprofile] found `%s' as `%s'\n", cimg->exif_maker, json_reader_get_string_value(reader));
+      dt_print(DT_DEBUG_CONTROL, "[noiseprofile] found `%s' as `%s'\n", cimg->camera_maker, json_reader_get_string_value(reader));
       // go through all models and check those
       json_reader_end_member(reader);
 
@@ -154,9 +164,9 @@ GList *dt_noiseprofile_get_matching(const dt_image_t *cimg)
           goto end;
         }
 
-        if(!g_strcmp0(cimg->exif_model, json_reader_get_string_value(reader)))
+        if(!g_strcmp0(cimg->camera_model, json_reader_get_string_value(reader)))
         {
-          dt_print(DT_DEBUG_CONTROL, "[noiseprofile] found %s\n", cimg->exif_model);
+          dt_print(DT_DEBUG_CONTROL, "[noiseprofile] found %s\n", cimg->camera_model);
           // we got a match, return at most bufsize elements
           json_reader_end_member(reader);
 
@@ -195,9 +205,9 @@ GList *dt_noiseprofile_get_matching(const dt_image_t *cimg)
             }
 
             // maker
-            tmp_profile.maker = g_strdup(cimg->exif_maker);
+            tmp_profile.maker = g_strdup(cimg->camera_maker);
             // model
-            tmp_profile.model = g_strdup(cimg->exif_model);
+            tmp_profile.model = g_strdup(cimg->camera_model);
 
             // name
             if(!is_member(member_names, "name"))
@@ -310,6 +320,7 @@ GList *dt_noiseprofile_get_matching(const dt_image_t *cimg)
 
 end:
   if(reader) g_object_unref(reader);
+  if(result) result = g_list_sort(result, _sort_by_iso);
   return result;
 }
 

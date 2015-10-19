@@ -1,6 +1,7 @@
+
 /*
     This file is part of darktable,
-    copyright (c) 2009--2012 johannes hanika.
+    copyright (c) 2015 Jeremy Rosen
 
     darktable is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -15,26 +16,12 @@
     You should have received a copy of the GNU General Public License
     along with darktable.  If not, see <http://www.gnu.org/licenses/>.
 */
-#ifndef DARKTABLE_IOP_COLOR_H
-#define DARKTABLE_IOP_COLOR_H
+#ifndef DT_LUA_LUALIB_H
+#define DT_LUA_LUALIB_H
+#include "lua/lua.h"
 
-#include <lcms2.h>
-
-// max iccprofile file name length
-#define DT_IOP_COLOR_ICC_LEN 100
-
-#define LUT_SAMPLES 0x10000
-
-typedef struct dt_iop_color_profile_t
-{
-  char filename[512]; // icc file name
-  char name[512];     // product name
-  int pos;            // position in combo box
-  int display_pos;    // position in display combo box
-} dt_iop_color_profile_t;
-
+int dt_lua_init_lualib(lua_State *L);
 #endif
-
 // modelines: These editor modelines have been set for all relevant files by tools/update_modelines.sh
 // vim: shiftwidth=2 expandtab tabstop=2 cindent
 // kate: tab-indents: off; indent-width 2; replace-tabs on; indent-mode cstyle; remove-trailing-space on;

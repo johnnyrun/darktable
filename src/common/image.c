@@ -27,6 +27,7 @@
 #include "common/mipmap_cache.h"
 #include "common/tags.h"
 #include "common/history.h"
+#include "common/imageio_rawspeed.h"
 #include "control/control.h"
 #include "control/conf.h"
 #include "control/jobs.h"
@@ -185,13 +186,16 @@ void dt_image_full_path(const int imgid, char *pathname, size_t pathname_len, gb
   }
   sqlite3_finalize(stmt);
 
-  if(*from_cache && !g_file_test(pathname, G_FILE_TEST_EXISTS))
+  if(*from_cache)
   {
-    _image_local_copy_full_path(imgid, pathname, pathname_len);
-    *from_cache = TRUE;
+    char lc_pathname[PATH_MAX] = { 0 };
+    _image_local_copy_full_path(imgid, lc_pathname, sizeof(lc_pathname));
+
+    if (g_file_test(lc_pathname, G_FILE_TEST_EXISTS))
+      g_strlcpy(pathname, (char *)lc_pathname, pathname_len);
+    else
+      *from_cache = FALSE;
   }
-  else
-    *from_cache = FALSE;
 }
 
 static void _image_local_copy_full_path(const int imgid, char *pathname, size_t pathname_len)
@@ -289,19 +293,31 @@ void dt_image_set_location(const int32_t imgid, double lon, double lat)
   dt_image_cache_write_release(darktable.image_cache, image, DT_IMAGE_CACHE_SAFE);
 }
 
+void dt_image_set_location_and_elevation(const int32_t imgid, double lon, double lat, double ele)
+{
+  /* fetch image from cache */
+  dt_image_t *image = dt_image_cache_get(darktable.image_cache, imgid, 'w');
+
+  /* set image location and elevation */
+  image->longitude = lon;
+  image->latitude = lat;
+  image->elevation = ele;
+
+  /* store */
+  dt_image_cache_write_release(darktable.image_cache, image, DT_IMAGE_CACHE_SAFE);
+}
+
 void dt_image_set_flip(const int32_t imgid, const dt_image_orientation_t orientation)
 {
   sqlite3_stmt *stmt;
   // push new orientation to sql via additional history entry:
-  DT_DEBUG_SQLITE3_PREPARE_V2(dt_database_get(darktable.db), "select MAX(num) from history where imgid = ?1",
+  DT_DEBUG_SQLITE3_PREPARE_V2(dt_database_get(darktable.db), "select IFNULL(MAX(num)+1, 0) from history where imgid = ?1",
                               -1, &stmt, NULL);
   DT_DEBUG_SQLITE3_BIND_INT(stmt, 1, imgid);
   const int iop_flip_MODVER = 2;
   int num = 0;
-  if(sqlite3_step(stmt) == SQLITE_ROW)
-  {
-    num = 1 + sqlite3_column_int(stmt, 0);
-  }
+  if(sqlite3_step(stmt) == SQLITE_ROW) num = sqlite3_column_int(stmt, 0);
+
   sqlite3_finalize(stmt);
   DT_DEBUG_SQLITE3_PREPARE_V2(dt_database_get(darktable.db),
                               "insert into history (imgid, num, module, operation, op_params, enabled, "
@@ -314,6 +330,14 @@ void dt_image_set_flip(const int32_t imgid, const dt_image_orientation_t orienta
   DT_DEBUG_SQLITE3_BIND_BLOB(stmt, 4, &orientation, sizeof(int32_t), SQLITE_TRANSIENT);
   sqlite3_step(stmt);
   sqlite3_finalize(stmt);
+
+  DT_DEBUG_SQLITE3_PREPARE_V2(dt_database_get(darktable.db),
+                              "UPDATE images SET history_end = (SELECT MAX(num) + 1 FROM history WHERE imgid = ?1) WHERE id = ?1",
+                              -1, &stmt, NULL);
+  DT_DEBUG_SQLITE3_BIND_INT(stmt, 1, imgid);
+  sqlite3_step(stmt);
+  sqlite3_finalize(stmt);
+
   dt_mipmap_cache_remove(darktable.mipmap_cache, imgid);
   // write that through to xmp:
   dt_image_write_sidecar_file(imgid);
@@ -430,13 +454,13 @@ int32_t dt_image_duplicate_with_version(const int32_t imgid, const int32_t newve
       "output_width, output_height, crop, raw_parameters, raw_denoise_threshold, "
       "raw_auto_bright_threshold, raw_black, raw_maximum, "
       "caption, description, license, sha1sum, orientation, histogram, lightmap, "
-      "longitude, latitude, color_matrix, colorspace, version, max_version) "
+      "longitude, latitude, altitude, color_matrix, colorspace, version, max_version, history_end) "
       "select null, group_id, film_id, width, height, filename, maker, model, lens, "
       "exposure, aperture, iso, focal_length, focus_distance, datetime_taken, "
       "flags, width, height, crop, raw_parameters, raw_denoise_threshold, "
       "raw_auto_bright_threshold, raw_black, raw_maximum, "
       "caption, description, license, sha1sum, orientation, histogram, lightmap, "
-      "longitude, latitude, color_matrix, colorspace, null, null "
+      "longitude, latitude, altitude, color_matrix, colorspace, null, null, 0 "
       "from images where id = ?1",
       -1, &stmt, NULL);
   DT_DEBUG_SQLITE3_BIND_INT(stmt, 1, imgid);
@@ -776,7 +800,7 @@ uint32_t dt_image_import(const int32_t film_id, const char *filename, gboolean o
   DT_DEBUG_SQLITE3_PREPARE_V2(
       dt_database_get(darktable.db),
       "insert into images (id, film_id, filename, caption, description, "
-      "license, sha1sum, flags, version, max_version) values (null, ?1, ?2, '', '', '', '', ?3, 0, 0)",
+      "license, sha1sum, flags, version, max_version, history_end) values (null, ?1, ?2, '', '', '', '', ?3, 0, 0, 0)",
       -1, &stmt, NULL);
   DT_DEBUG_SQLITE3_BIND_INT(stmt, 1, film_id);
   DT_DEBUG_SQLITE3_BIND_TEXT(stmt, 2, imgfname, -1, SQLITE_TRANSIENT);
@@ -909,6 +933,9 @@ uint32_t dt_image_import(const int32_t film_id, const char *filename, gboolean o
   dt_tag_new(tagname, &tagid);
   dt_tag_attach(tagid, id);
 
+  // make sure that there are no stale thumbnails left
+  dt_mipmap_cache_remove(darktable.mipmap_cache, id);
+
   // read all sidecar files
   dt_image_read_duplicates(id, filename);
   dt_image_synch_all_xmp(filename);
@@ -944,6 +971,11 @@ void dt_image_init(dt_image_t *img)
   memset(img->exif_maker, 0, sizeof(img->exif_maker));
   memset(img->exif_model, 0, sizeof(img->exif_model));
   memset(img->exif_lens, 0, sizeof(img->exif_lens));
+  memset(img->camera_maker, 0, sizeof(img->camera_maker));
+  memset(img->camera_model, 0, sizeof(img->camera_model));
+  memset(img->camera_alias, 0, sizeof(img->camera_alias));
+  memset(img->camera_makermodel, 0, sizeof(img->camera_makermodel));
+  memset(img->camera_legacy_makermodel, 0, sizeof(img->camera_legacy_makermodel));
   memset(img->filename, 0, sizeof(img->filename));
   g_strlcpy(img->filename, "(unknown)", sizeof(img->filename));
   img->exif_model[0] = img->exif_maker[0] = img->exif_lens[0] = '\0';
@@ -956,6 +988,7 @@ void dt_image_init(dt_image_t *img)
   img->exif_focus_distance = 0;
   img->latitude = NAN;
   img->longitude = NAN;
+  img->elevation = NAN;
   img->raw_black_level = 0;
   for(uint8_t i = 0; i < 4; i++) img->raw_black_level_separate[i] = 0;
   img->raw_white_point = 16384; // 2^14
@@ -969,6 +1002,24 @@ void dt_image_init(dt_image_t *img)
   img->wb_coeffs[1] = NAN;
   img->wb_coeffs[2] = NAN;
   img->cache_entry = 0;
+}
+
+void dt_image_refresh_makermodel(dt_image_t *img)
+{
+  if (!img->camera_maker[0] || !img->camera_model[0] || !img->camera_alias[0])
+  {
+    // We need to use the exif values, so let's get rawspeed to munge them
+    dt_rawspeed_lookup_makermodel(img->exif_maker, img->exif_model,
+                                  img->camera_maker, sizeof(img->camera_maker),
+                                  img->camera_model, sizeof(img->camera_model),
+                                  img->camera_alias, sizeof(img->camera_alias));
+  }
+
+  // Now we just create a makermodel by concatenation
+  g_strlcpy(img->camera_makermodel, img->camera_maker, sizeof(img->camera_makermodel));
+  int len = strlen(img->camera_maker);
+  img->camera_makermodel[len] = ' ';
+  g_strlcpy(img->camera_makermodel+len+1, img->camera_model, sizeof(img->camera_makermodel)-len-1);
 }
 
 int32_t dt_image_move(const int32_t imgid, const int32_t filmid)
@@ -1129,13 +1180,13 @@ int32_t dt_image_copy(const int32_t imgid, const int32_t filmid)
           "output_width, output_height, crop, raw_parameters, raw_denoise_threshold, "
           "raw_auto_bright_threshold, raw_black, raw_maximum, "
           "caption, description, license, sha1sum, orientation, histogram, lightmap, "
-          "longitude, latitude, color_matrix, colorspace, version, max_version) "
+          "longitude, latitude, altitude, color_matrix, colorspace, version, max_version) "
           "select null, group_id, ?1 as film_id, width, height, filename, maker, model, lens, "
           "exposure, aperture, iso, focal_length, focus_distance, datetime_taken, "
           "flags, width, height, crop, raw_parameters, raw_denoise_threshold, "
           "raw_auto_bright_threshold, raw_black, raw_maximum, "
           "caption, description, license, sha1sum, orientation, histogram, lightmap, "
-          "longitude, latitude, color_matrix, colorspace, -1, -1 "
+          "longitude, latitude, altitude, color_matrix, colorspace, -1, -1 "
           "from images where id = ?2",
           -1, &stmt, NULL);
       DT_DEBUG_SQLITE3_BIND_INT(stmt, 1, filmid);
@@ -1335,16 +1386,22 @@ static int _nb_other_local_copy_for(const int32_t imgid)
 int dt_image_local_copy_reset(const int32_t imgid)
 {
   gchar destpath[PATH_MAX] = { 0 };
+  gchar locppath[PATH_MAX] = { 0 };
   gchar cachedir[PATH_MAX] = { 0 };
 
   // check that the original file is accessible
 
-  gboolean from_cache = TRUE;
+  gboolean from_cache = FALSE;
   dt_image_full_path(imgid, destpath, sizeof(destpath), &from_cache);
-  dt_image_path_append_version(imgid, destpath, sizeof(destpath));
-  g_strlcat(destpath, ".xmp", sizeof(destpath));
 
-  if(from_cache && g_file_test(destpath, G_FILE_TEST_EXISTS))
+  from_cache = TRUE;
+  dt_image_full_path(imgid, locppath, sizeof(locppath), &from_cache);
+  dt_image_path_append_version(imgid, locppath, sizeof(locppath));
+  g_strlcat(locppath, ".xmp", sizeof(locppath));
+
+  // a local copy exists, but the original is not accessible
+
+  if(g_file_test(locppath, G_FILE_TEST_EXISTS) && !g_file_test(destpath, G_FILE_TEST_EXISTS))
   {
     dt_control_log(_("cannot remove local copy when the original file is not accessible."));
     return 1;
@@ -1352,16 +1409,16 @@ int dt_image_local_copy_reset(const int32_t imgid)
 
   // get name of local copy
 
-  _image_local_copy_full_path(imgid, destpath, sizeof(destpath));
+  _image_local_copy_full_path(imgid, locppath, sizeof(locppath));
 
   // remove cached file, but double check that this is really into the cache. We really want to avoid deleting
   // a user's original file.
 
   dt_loc_get_user_cache_dir(cachedir, sizeof(cachedir));
 
-  if(g_file_test(destpath, G_FILE_TEST_EXISTS) && strstr(destpath, cachedir))
+  if(g_file_test(locppath, G_FILE_TEST_EXISTS) && strstr(locppath, cachedir))
   {
-    GFile *dest = g_file_new_for_path(destpath);
+    GFile *dest = g_file_new_for_path(locppath);
 
     // first sync the xmp with the original picture
 
@@ -1375,11 +1432,11 @@ int dt_image_local_copy_reset(const int32_t imgid)
     g_object_unref(dest);
 
     // delete xmp if any
-    dt_image_path_append_version(imgid, destpath, sizeof(destpath));
-    g_strlcat(destpath, ".xmp", sizeof(destpath));
-    dest = g_file_new_for_path(destpath);
+    dt_image_path_append_version(imgid, locppath, sizeof(locppath));
+    g_strlcat(locppath, ".xmp", sizeof(locppath));
+    dest = g_file_new_for_path(locppath);
 
-    if(g_file_test(destpath, G_FILE_TEST_EXISTS)) g_file_delete(dest, NULL, NULL);
+    if(g_file_test(locppath, G_FILE_TEST_EXISTS)) g_file_delete(dest, NULL, NULL);
     g_object_unref(dest);
 
     // update cache, remove local copy flags
@@ -1498,11 +1555,9 @@ void dt_image_local_copy_synch(void)
 
   if(count > 0)
   {
-    char message[128];
-    g_snprintf(message, sizeof(message), ngettext("%d local copy has been synchronized",
-                                                  "%d local copies have been synchronized", count),
-               count);
-    dt_control_log(message);
+    dt_control_log(ngettext("%d local copy has been synchronized",
+                            "%d local copies have been synchronized", count),
+                   count);
   }
 }
 

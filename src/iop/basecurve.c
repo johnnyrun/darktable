@@ -88,7 +88,7 @@ int legacy_params(dt_iop_module_t *self, const void *const old_params, const int
   return 1;
 }
 
-static const char natural[] = N_("natural");
+static const char neutral[] = N_("neutral");
 static const char canon_eos[] = N_("canon eos like");
 static const char canon_eos_alt[] = N_("canon eos like alternate");
 static const char nikon[] = N_("nikon like");
@@ -124,11 +124,15 @@ static const basecurve_preset_t basecurve_presets[] = {
   // smoother cubic spline curve
   { N_("cubic spline"), "", "", 0, 51200, { { { { 0.0, 0.0}, { 1.0, 1.0 }, { 0., 0.}, { 0., 0.}, { 0., 0.}, { 0., 0.}, { 0., 0.}, { 0., 0.} } }, { 2 }, { CUBIC_SPLINE } }, 0, 0 },
   // nikon d750 by Edouard Gomez
-  {"NIKON D750", "NIKON CORPORATION", "NIKON D750", 0, 51200, {{{{0.000000, 0.000000}, {0.018124, 0.026126}, {0.143357, 0.370145}, {0.330116, 0.730507}, {0.457952, 0.853462}, {0.734950, 0.965061}, {0.904758, 0.985699}, {1.000000, 1.000000}}}, {8}, {m}}, 0, 1},
+  {"Nikon D750", "NIKON CORPORATION", "NIKON D750", 0, 51200, {{{{0.000000, 0.000000}, {0.018124, 0.026126}, {0.143357, 0.370145}, {0.330116, 0.730507}, {0.457952, 0.853462}, {0.734950, 0.965061}, {0.904758, 0.985699}, {1.000000, 1.000000}}}, {8}, {m}}, 0, 1},
+  // contributed by Stefan Kauerauf
+  {"Nikon D5100", "NIKON CORPORATION", "NIKON D5100", 0, 51200, {{{{0.000000, 0.000000}, {0.001113, 0.000506}, {0.002842, 0.001338}, {0.005461, 0.002470}, {0.011381, 0.006099}, {0.013303, 0.007758}, {0.034638, 0.041119}, {0.044441, 0.063882}, {0.070338, 0.139639}, {0.096068, 0.210915}, {0.137693, 0.310295}, {0.206041, 0.432674}, {0.255508, 0.504447}, {0.302770, 0.569576}, {0.425625, 0.726755}, {0.554526, 0.839541}, {0.621216, 0.882839}, {0.702662, 0.927072}, {0.897426, 0.990984}, {1.000000, 1.000000}}}, {20}, {m}}, 0, 1},
   // nikon d7000 by Edouard Gomez
-  {"NIKON D7000", "NIKON CORPORATION", "NIKON D7000", 0, 51200, {{{{0.000000, 0.000000}, {0.001943, 0.003040}, {0.019814, 0.028810}, {0.080784, 0.210476}, {0.145700, 0.383873}, {0.295961, 0.654041}, {0.651915, 0.952819}, {1.000000, 1.000000}}}, {8}, {m}}, 0, 1},
+  {"Nikon D7000", "NIKON CORPORATION", "NIKON D7000", 0, 51200, {{{{0.000000, 0.000000}, {0.001943, 0.003040}, {0.019814, 0.028810}, {0.080784, 0.210476}, {0.145700, 0.383873}, {0.295961, 0.654041}, {0.651915, 0.952819}, {1.000000, 1.000000}}}, {8}, {m}}, 0, 1},
+  // nikon d7200 standard by Ralf Brown (firmware 1.00)
+  {"Nikon D7200", "NIKON CORPORATION", "NIKON D7200", 0, 51200, {{{{0.000000, 0.000000}, {0.001604, 0.001334}, {0.007401, 0.005237}, {0.009474, 0.006890}, {0.017348, 0.017176}, {0.032782, 0.044336}, {0.048033, 0.086548}, {0.075803, 0.168331}, {0.109539, 0.273539}, {0.137373, 0.364645}, {0.231651, 0.597511}, {0.323797, 0.736475}, {0.383796, 0.805797}, {0.462284, 0.872247}, {0.549844, 0.918328}, {0.678855, 0.962361}, {0.817445, 0.990406}, {1.000000, 1.000000}}}, {18}, {m}}, 1, 1},
   // sony rx100m2 by Günther R.
-  { "DSC-RX100M2", "SONY", "DSC-RX100M2", 0, 51200, { { { { 0.000000, 0.000000 }, { 0.015106, 0.008116 }, { 0.070077, 0.093725 }, { 0.107484, 0.170723 }, { 0.191528, 0.341093 }, { 0.257996, 0.458453 }, { 0.305381, 0.537267 }, { 0.326367, 0.569257 }, { 0.448067, 0.723742 }, { 0.509627, 0.777966 }, { 0.676751, 0.898797 }, { 1.000000, 1.000000 } } }, { 12 }, { m } }, 0, 1 },
+  { "Sony DSC-RX100M2", "SONY", "DSC-RX100M2", 0, 51200, { { { { 0.000000, 0.000000 }, { 0.015106, 0.008116 }, { 0.070077, 0.093725 }, { 0.107484, 0.170723 }, { 0.191528, 0.341093 }, { 0.257996, 0.458453 }, { 0.305381, 0.537267 }, { 0.326367, 0.569257 }, { 0.448067, 0.723742 }, { 0.509627, 0.777966 }, { 0.676751, 0.898797 }, { 1.000000, 1.000000 } } }, { 12 }, { m } }, 0, 1 },
   // contributed by matthias bodenbinder
   { "Canon EOS 6D", "Canon", "Canon EOS 6D", 0, 51200, { { { { 0.000000, 0.002917 }, { 0.000751, 0.001716 }, { 0.006011, 0.004438 }, { 0.020286, 0.021725 }, { 0.048084, 0.085918 }, { 0.093914, 0.233804 }, { 0.162284, 0.431375 }, { 0.257701, 0.629218 }, { 0.384673, 0.800332 }, { 0.547709, 0.917761 }, { 0.751315, 0.988132 }, { 1.000000, 0.999943 } } }, { 12 }, { m } }, 0, 1 },
   // contributed by Dan Torop
@@ -137,12 +141,14 @@ static const basecurve_preset_t basecurve_presets[] = {
   { "Canon EOS 5D Mark II", "Canon", "Canon EOS 5D Mark II", 0, 51200, { { { { 0.000000, 0.000366 }, { 0.006560, 0.003504 }, { 0.027310, 0.029834 }, { 0.045915, 0.070230 }, { 0.206554, 0.539895 }, { 0.442337, 0.872409 }, { 0.673263, 0.971703 }, { 1.000000, 0.999832 } } }, { 8 }, { m } }, 0, 1 },
   // contributed by chrik5
   { "Pentax K-5", "Pentax", "Pentax K-5", 0, 51200, { { { { 0.000000, 0.000000 }, { 0.004754, 0.002208 }, { 0.009529, 0.004214 }, { 0.023713, 0.013508 }, { 0.031866, 0.020352 }, { 0.046734, 0.034063 }, { 0.059989, 0.052413 }, { 0.088415, 0.096030 }, { 0.136610, 0.190629 }, { 0.174480, 0.256484 }, { 0.205192, 0.307430 }, { 0.228896, 0.348447 }, { 0.286411, 0.428680 }, { 0.355314, 0.513527 }, { 0.440014, 0.607651 }, { 0.567096, 0.732791 }, { 0.620597, 0.775968 }, { 0.760355, 0.881828 }, { 0.875139, 0.960682 }, { 1.000000, 1.000000 } } }, { 20 }, { m } }, 0, 1 },
-  // contributed by Togan Muftuoglu
-  { "Nikon D90", "NIKON", "D90", 0, 51200, { { { { 0.000000, 0.000000 }, { 0.015520, 0.012248 }, { 0.097950, 0.251013 }, { 0.301515, 0.621951 }, { 0.415513, 0.771384 }, { 0.547326, 0.843079 }, { 0.819769, 0.956678 }, { 1.000000, 1.000000 } } }, { 8 }, { m } }, 0, 1 },
+  // contributed by Togan Muftuoglu - ed: slope is too aggressive on shadows
+  //{ "Nikon D90", "NIKON", "D90", 0, 51200, { { { { 0.000000, 0.000000 }, { 0.015520, 0.012248 }, { 0.097950, 0.251013 }, { 0.301515, 0.621951 }, { 0.415513, 0.771384 }, { 0.547326, 0.843079 }, { 0.819769, 0.956678 }, { 1.000000, 1.000000 } } }, { 8 }, { m } }, 0, 1 },
+  // contributed by Edouard Gomez
+  {"Nikon D90", "NIKON CORPORATION", "NIKON D90", 0, 51200, {{{{0.000000, 0.000000}, {0.011702, 0.012659}, {0.122918, 0.289973}, {0.153642, 0.342731}, {0.246855, 0.510114}, {0.448958, 0.733820}, {0.666759, 0.894290}, {1.000000, 1.000000}}}, {8}, {m}}, 0, 1},
   // contributed by Pascal Obry
   { "Nikon D800", "NIKON", "D800", 0, 51200, { { { { 0.000000, 0.000000 }, { 0.001773, 0.001936 }, { 0.009671, 0.009693 }, { 0.016754, 0.020617 }, { 0.024884, 0.037309 }, { 0.048174, 0.107768 }, { 0.056932, 0.139532 }, { 0.085504, 0.233303 }, { 0.130378, 0.349747 }, { 0.155476, 0.405445 }, { 0.175245, 0.445918 }, { 0.217657, 0.516873 }, { 0.308475, 0.668608 }, { 0.375381, 0.754058 }, { 0.459858, 0.839909 }, { 0.509567, 0.881543 }, { 0.654394, 0.960877 }, { 0.783380, 0.999161 }, { 0.859310, 1.000000 }, { 1.000000, 1.000000 } } }, { 20 }, { m } }, 0, 1 },
 
-  { natural,         "", "",                      0, 51200, { { { { 0.000000, 0.000000 }, { 0.040000, 0.025000 }, { 0.500000, 0.750000 }, { 1.000000, 1.000000 } } }, { 4 }, { m } }, 0, 1 },
+  { neutral,         "", "",                      0, 51200, { { { { 0.000000, 0.000000 }, { 0.005000, 0.002500 }, { 0.150000, 0.300000 }, { 0.400000, 0.700000 }, { 0.750000, 0.950000 }, { 1.000000, 1.000000 } } }, { 6 }, { m } }, 0, 1 },
   { canon_eos,       "Canon", "",                 0, 51200, { { { { 0.000000, 0.000000 }, { 0.028226, 0.029677 }, { 0.120968, 0.232258 }, { 0.459677, 0.747581 }, { 0.858871, 0.967742 }, { 1.000000, 1.000000 } } }, { 6 }, { m } }, 1, 0 },
   { canon_eos_alt,   "Canon", "EOS 5D Mark",      0, 51200, { { { { 0.000000, 0.000000 }, { 0.026210, 0.029677 }, { 0.108871, 0.232258 }, { 0.350806, 0.747581 }, { 0.669355, 0.967742 }, { 1.000000, 1.000000 } } }, { 6 }, { m } }, 1, 0 },
   { nikon,           "NIKON", "",                 0, 51200, { { { { 0.000000, 0.000000 }, { 0.036290, 0.036532 }, { 0.120968, 0.228226 }, { 0.459677, 0.759678 }, { 0.858871, 0.983468 }, { 1.000000, 1.000000 } } }, { 6 }, { m } }, 1, 0 },
@@ -582,6 +588,34 @@ static gboolean dt_iop_basecurve_draw(GtkWidget *widget, cairo_t *crf, gpointer 
   return TRUE;
 }
 
+static inline int _add_node(dt_iop_basecurve_node_t *basecurve, int *nodes, float x, float y)
+{
+  int selected = -1;
+  if(basecurve[0].x > x)
+    selected = 0;
+  else
+  {
+    for(int k = 1; k < *nodes; k++)
+    {
+      if(basecurve[k].x > x)
+      {
+        selected = k;
+        break;
+      }
+    }
+  }
+  if(selected == -1) selected = *nodes;
+  for(int i = *nodes; i > selected; i--)
+  {
+    basecurve[i].x = basecurve[i - 1].x;
+    basecurve[i].y = basecurve[i - 1].y;
+  }
+  // found a new point
+  basecurve[selected].x = x;
+  basecurve[selected].y = y;
+  (*nodes)++;
+  return selected;
+}
 static gboolean dt_iop_basecurve_motion_notify(GtkWidget *widget, GdkEventMotion *event, gpointer user_data)
 {
   dt_iop_module_t *self = (dt_iop_module_t *)user_data;
@@ -625,30 +659,10 @@ static gboolean dt_iop_basecurve_motion_notify(GtkWidget *widget, GdkEventMotion
         }
       dt_dev_add_history_item(darktable.develop, self, TRUE);
     }
-    else if(nodes < 20 && c->selected >= -1)
+    else if(nodes < MAXNODES && c->selected >= -1)
     {
       // no vertex was close, create a new one!
-      if(basecurve[0].x > linx)
-        c->selected = 0;
-      else
-        for(int k = 1; k < nodes; k++)
-        {
-          if(basecurve[k].x > linx)
-          {
-            c->selected = k;
-            break;
-          }
-        }
-      if(c->selected == -1) c->selected = nodes;
-      for(int i = nodes; i > c->selected; i--)
-      {
-        basecurve[i].x = basecurve[i - 1].x;
-        basecurve[i].y = basecurve[i - 1].y;
-      }
-      // found a new point
-      basecurve[c->selected].x = linx;
-      basecurve[c->selected].y = liny;
-      p->basecurve_nodes[ch]++;
+      c->selected = _add_node(basecurve, &p->basecurve_nodes[ch], linx, liny);
       dt_dev_add_history_item(darktable.develop, self, TRUE);
     }
   }
@@ -683,21 +697,63 @@ static gboolean dt_iop_basecurve_button_press(GtkWidget *widget, GdkEventButton 
   dt_iop_basecurve_gui_data_t *c = (dt_iop_basecurve_gui_data_t *)self->gui_data;
 
   int ch = 0;
+  int nodes = p->basecurve_nodes[ch];
+  dt_iop_basecurve_node_t *basecurve = p->basecurve[ch];
 
-  if(event->button == 1 && event->type == GDK_2BUTTON_PRESS)
+  if(event->button == 1)
   {
-    // reset current curve
-    p->basecurve_nodes[ch] = d->basecurve_nodes[ch];
-    p->basecurve_type[ch] = d->basecurve_type[ch];
-    for(int k = 0; k < d->basecurve_nodes[ch]; k++)
+    if(event->type == GDK_BUTTON_PRESS && (event->state & GDK_CONTROL_MASK) == GDK_CONTROL_MASK
+      && nodes < MAXNODES && c->selected == -1)
     {
-      p->basecurve[ch][k].x = d->basecurve[ch][k].x;
-      p->basecurve[ch][k].y = d->basecurve[ch][k].y;
+      // if we are not on a node -> add a new node at the current x of the pointer and y of the curve at that x
+      const int inset = DT_GUI_CURVE_EDITOR_INSET;
+      GtkAllocation allocation;
+      gtk_widget_get_allocation(widget, &allocation);
+      int height = allocation.height - 2 * inset, width = allocation.width - 2 * inset;
+      c->mouse_x = CLAMP(event->x - inset, 0, width);
+      c->mouse_y = CLAMP(event->y - inset, 0, height);
+
+      const float mx = c->mouse_x / (float)width;
+      const float my = 1.0f - c->mouse_y / (float)height;
+      const float linx = to_lin(mx, c->loglogscale);
+
+      // evaluate the curve at the current x position
+      const float y = dt_draw_curve_calc_value(c->minmax_curve, linx);
+
+      if(y >= 0.0 && y <= 1.0) // never add something outside the viewport, you couldn't change it afterwards
+      {
+        // create a new node
+        int selected = _add_node(basecurve, &p->basecurve_nodes[ch], linx, y);
+
+        // maybe set the new one as being selected
+        float min = .04f;
+        min *= min; // comparing against square
+        for(int k = 0; k < nodes; k++)
+        {
+          float dist = (my - to_log(y, c->loglogscale)) * (my - to_log(y, c->loglogscale));
+          if(dist < min) c->selected = selected;
+        }
+
+        dt_dev_add_history_item(darktable.develop, self, TRUE);
+        gtk_widget_queue_draw(self->widget);
+      }
+      return TRUE;
     }
-    c->selected = -2; // avoid motion notify re-inserting immediately.
-    dt_dev_add_history_item(darktable.develop, self, TRUE);
-    gtk_widget_queue_draw(self->widget);
-    return TRUE;
+    else if(event->type == GDK_2BUTTON_PRESS)
+    {
+      // reset current curve
+      p->basecurve_nodes[ch] = d->basecurve_nodes[ch];
+      p->basecurve_type[ch] = d->basecurve_type[ch];
+      for(int k = 0; k < d->basecurve_nodes[ch]; k++)
+      {
+        p->basecurve[ch][k].x = d->basecurve[ch][k].x;
+        p->basecurve[ch][k].y = d->basecurve[ch][k].y;
+      }
+      c->selected = -2; // avoid motion notify re-inserting immediately.
+      dt_dev_add_history_item(darktable.develop, self, TRUE);
+      gtk_widget_queue_draw(self->widget);
+      return TRUE;
+    }
   }
   return FALSE;
 }

@@ -170,7 +170,7 @@ int write_image(dt_imageio_module_data_t *p_tmp, const char *filename, const voi
   // embed icc profile
   if(imgid > 0)
   {
-    cmsHPROFILE out_profile = dt_colorspaces_create_output_profile(imgid);
+    cmsHPROFILE out_profile = dt_colorspaces_get_output_profile(imgid)->profile;
     uint32_t len = 0;
     cmsSaveProfileToMem(out_profile, 0, &len);
     if(len > 0)
@@ -187,7 +187,6 @@ int write_image(dt_imageio_module_data_t *p_tmp, const char *filename, const voi
 #endif
                    len);
     }
-    dt_colorspaces_cleanup_profile(out_profile);
   }
 
   // write exif data
@@ -263,7 +262,7 @@ int read_header(const char *filename, dt_imageio_module_data_t *p_tmp)
   if(setjmp(png_jmpbuf(png->png_ptr)))
   {
     fclose(png->f);
-    png_destroy_read_struct(&png->png_ptr, NULL, NULL);
+    png_destroy_read_struct(&png->png_ptr, &png->info_ptr, NULL);
     return 1;
   }
 
@@ -324,7 +323,7 @@ int read_image(dt_imageio_module_data_t *p_tmp, uint8_t *out)
   if(setjmp(png_jmpbuf(png->png_ptr)))
   {
     fclose(png->f);
-    png_destroy_read_struct(&png->png_ptr, NULL, NULL);
+    png_destroy_read_struct(&png->png_ptr, &png->info_ptr, NULL);
     return 1;
   }
   // reflect changes

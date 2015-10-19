@@ -392,6 +392,34 @@ void process(struct dt_iop_module_t *self, dt_dev_pixelpipe_iop_t *piece, void *
     }
     _mm_sfence();
   }
+#if 0
+  else if(dt_dev_pixelpipe_uses_downsampled_input(piece->pipe) && filters
+          && piece->pipe->pre_monochrome_demosaiced)
+  { // pre-demosaiced (monochrome)
+    const int ch = piece->colors;
+#ifdef _OPENMP
+#pragma omp parallel for default(none) shared(roi_out, ivoid, ovoid, d) schedule(static)
+#endif
+    for(int j = 0; j < roi_out->height; j++)
+    {
+      const float *in = ((float *)ivoid) + (size_t)ch * j * roi_out->width;
+      float *out = ((float *)ovoid) + (size_t)ch * j * roi_out->width;
+
+      const __m128 coeffs[3]
+          = { _mm_set1_ps(d->coeffs[0]), _mm_set1_ps(d->coeffs[1]), _mm_set1_ps(d->coeffs[2]) };
+
+      for(int i = 0; i < roi_out->width; i++, in += ch, out += ch)
+      {
+        const __m128 input = _mm_load_ps(in);
+        const __m128 multiplied = _mm_mul_ps(input, coeffs[FC(j + roi_out->y, roi_out->x + i, filters)]);
+        _mm_stream_ps(out, multiplied);
+      }
+    }
+    _mm_sfence();
+
+    if(piece->pipe->mask_display) dt_iop_alpha_copy(ivoid, ovoid, roi_out->width, roi_out->height);
+  }
+#endif
   else
   { // non-mosaiced
     const int ch = piece->colors;
@@ -492,6 +520,13 @@ void commit_params(struct dt_iop_module_t *self, dt_iop_params_t *p1, dt_dev_pix
   dt_iop_temperature_data_t *d = (dt_iop_temperature_data_t *)piece->data;
   for(int k = 0; k < 3; k++) d->coeffs[k] = p->coeffs[k];
 
+  if(dt_image_filter(&piece->pipe->image) && dt_dev_pixelpipe_uses_downsampled_input(piece->pipe)
+     && pipe->pre_monochrome_demosaiced)
+  {
+    // piece->process_cl_ready = 0;
+    piece->enabled = 0;
+  }
+
   // x-trans images not implemented in OpenCL yet
   if(pipe->image.filters == 9u) piece->process_cl_ready = 0;
 }
@@ -529,9 +564,9 @@ void gui_update(struct dt_iop_module_t *self)
   dt_bauhaus_slider_set(g->scale_tint, tint);
 
   dt_bauhaus_combobox_clear(g->presets);
-  dt_bauhaus_combobox_add(g->presets, _("camera white balance"));
-  dt_bauhaus_combobox_add(g->presets, _("camera neutral white balance"));
-  dt_bauhaus_combobox_add(g->presets, _("spot white balance"));
+  dt_bauhaus_combobox_add(g->presets, C_("white balance", "camera"));
+  dt_bauhaus_combobox_add(g->presets, C_("white balance", "camera neutral"));
+  dt_bauhaus_combobox_add(g->presets, C_("white balance", "spot"));
   g->preset_cnt = DT_IOP_NUM_OF_STD_TEMP_PRESETS;
   memset(g->preset_num, 0, sizeof(g->preset_num));
 
@@ -540,16 +575,12 @@ void gui_update(struct dt_iop_module_t *self)
   gtk_widget_set_sensitive(g->finetune, 0);
 
   const char *wb_name = NULL;
-  char makermodel[1024];
-  char *model = makermodel;
-  dt_colorspaces_get_makermodel_split(makermodel, sizeof(makermodel), &model,
-                                      self->dev->image_storage.exif_maker,
-                                      self->dev->image_storage.exif_model);
   if(!dt_image_is_ldr(&self->dev->image_storage))
     for(int i = 0; i < wb_preset_count; i++)
     {
       if(g->preset_cnt >= 50) break;
-      if(!strcmp(wb_preset[i].make, makermodel) && !strcmp(wb_preset[i].model, model))
+      if(!strcmp(wb_preset[i].make, self->dev->image_storage.camera_maker) 
+         && !strcmp(wb_preset[i].model, self->dev->image_storage.camera_model))
       {
         if(!wb_name || strcmp(wb_name, wb_preset[i].name))
         {
@@ -585,9 +616,10 @@ void gui_update(struct dt_iop_module_t *self)
     for(int j = DT_IOP_NUM_OF_STD_TEMP_PRESETS; !found && (j < g->preset_cnt); j++)
     {
       // look through all variants of this preset, with different tuning
-      for(int i = g->preset_num[j]; !found && (i < wb_preset_count) && !strcmp(wb_preset[i].make, makermodel)
-                                        && !strcmp(wb_preset[i].model, model)
-                                        && !strcmp(wb_preset[i].name, wb_preset[g->preset_num[j]].name);
+      for(int i = g->preset_num[j]; !found && (i < wb_preset_count) 
+                                    && !strcmp(wb_preset[i].make, self->dev->image_storage.camera_maker)
+                                    && !strcmp(wb_preset[i].model, self->dev->image_storage.camera_model)
+                                    && !strcmp(wb_preset[i].name, wb_preset[g->preset_num[j]].name);
           i++)
       {
         float coeffs[3];
@@ -614,8 +646,8 @@ void gui_update(struct dt_iop_module_t *self)
       {
         // look through all variants of this preset, with different tuning
         int i = g->preset_num[j] + 1;
-        while(!found && (i < wb_preset_count) && !strcmp(wb_preset[i].make, makermodel)
-              && !strcmp(wb_preset[i].model, model)
+        while(!found && (i < wb_preset_count) && !strcmp(wb_preset[i].make, self->dev->image_storage.camera_maker)
+              && !strcmp(wb_preset[i].model, self->dev->image_storage.camera_maker)
               && !strcmp(wb_preset[i].name, wb_preset[g->preset_num[j]].name))
         {
           // let's find gaps
@@ -666,12 +698,9 @@ static int calculate_bogus_daylight_wb(dt_iop_module_t *module, double bwb[3])
   }
 
   // color matrix
-  char makermodel[1024];
-  dt_colorspaces_get_makermodel(makermodel, sizeof(makermodel), module->dev->image_storage.exif_maker,
-                                module->dev->image_storage.exif_model);
   float XYZ_to_CAM[4][3];
   XYZ_to_CAM[0][0] = NAN;
-  dt_dcraw_adobe_coeff(makermodel, (float(*)[12])XYZ_to_CAM);
+  dt_dcraw_adobe_coeff(module->dev->image_storage.camera_makermodel, (float(*)[12])XYZ_to_CAM);
   if(!isnan(XYZ_to_CAM[0][0]))
   {
     // sRGB D65
@@ -739,13 +768,9 @@ static int prepare_wb_matrices(dt_iop_module_t *module)
   }
 
   // prepare matrices for Kelvin temperature
-  char makermodel[1024];
-  dt_colorspaces_get_makermodel(makermodel, sizeof(makermodel), module->dev->image_storage.exif_maker,
-                                module->dev->image_storage.exif_model);
-
   float XYZ_to_CAM[4][3];
   XYZ_to_CAM[0][0] = NAN;
-  dt_dcraw_adobe_coeff(makermodel, (float(*)[12])XYZ_to_CAM);
+  dt_dcraw_adobe_coeff(module->dev->image_storage.camera_makermodel, (float(*)[12])XYZ_to_CAM);
   if(!isnan(XYZ_to_CAM[0][0]))
   {
     for(int i = 0; i < 3; i++)
@@ -775,12 +800,6 @@ void reload_defaults(dt_iop_module_t *module)
 
   if(module->gui_data) prepare_wb_matrices(module);
 
-  char makermodel[1024];
-  char *model = makermodel;
-  dt_colorspaces_get_makermodel_split(makermodel, sizeof(makermodel), &model,
-                                      module->dev->image_storage.exif_maker,
-                                      module->dev->image_storage.exif_model);
-
   /* check if file is raw / hdr */
   if(dt_image_is_raw(&module->dev->image_storage))
   {
@@ -808,12 +827,14 @@ void reload_defaults(dt_iop_module_t *module)
            && !strncmp(module->dev->image_storage.exif_model, "M9 monochrom", 12)))
       {
         dt_control_log(_("failed to read camera white balance information!"));
-        fprintf(stderr, "[temperature] failed to read camera white balance information!\n");
+        fprintf(stderr, "[temperature] failed to read camera white balance information from `%s'!\n",
+                module->dev->image_storage.filename);
 
         // could not get useful info, try presets:
         for(int i = 0; i < wb_preset_count; i++)
         {
-          if(!strcmp(wb_preset[i].make, makermodel) && !strcmp(wb_preset[i].model, model))
+          if(!strcmp(wb_preset[i].make, module->dev->image_storage.camera_maker) 
+             && !strcmp(wb_preset[i].model, module->dev->image_storage.camera_model))
           {
             // just take the first preset we find for this camera
             for(int k = 0; k < 3; k++) tmp.coeffs[k] = wb_preset[i].channel[k];
@@ -877,7 +898,8 @@ void reload_defaults(dt_iop_module_t *module)
       // we're normalizing that to be D65
       for(int i = 0; i < wb_preset_count; i++)
       {
-        if(!strcmp(wb_preset[i].make, makermodel) && !strcmp(wb_preset[i].model, model)
+        if(!strcmp(wb_preset[i].make, module->dev->image_storage.camera_maker) 
+           && !strcmp(wb_preset[i].model, module->dev->image_storage.camera_model)
            && !strcmp(wb_preset[i].name, Daylight) && wb_preset[i].tuning == 0)
         {
           for(int k = 0; k < 3; k++) g->daylight_wb[k] = wb_preset[i].channel[k];
@@ -1068,17 +1090,12 @@ static void apply_preset(dt_iop_module_t *self)
       break;
     default: // camera WB presets
     {
-      char makermodel[1024];
-      char *model = makermodel;
-      dt_colorspaces_get_makermodel_split(makermodel, sizeof(makermodel), &model,
-                                          self->dev->image_storage.exif_maker,
-                                          self->dev->image_storage.exif_model);
-
       gboolean found = FALSE;
       // look through all variants of this preset, with different tuning
-      for(int i = g->preset_num[pos]; (i < wb_preset_count) && !strcmp(wb_preset[i].make, makermodel)
-                                          && !strcmp(wb_preset[i].model, model)
-                                          && !strcmp(wb_preset[i].name, wb_preset[g->preset_num[pos]].name);
+      for(int i = g->preset_num[pos]; (i < wb_preset_count) 
+                                      && !strcmp(wb_preset[i].make, self->dev->image_storage.camera_maker)
+                                      && !strcmp(wb_preset[i].model, self->dev->image_storage.camera_model)
+                                      && !strcmp(wb_preset[i].name, wb_preset[g->preset_num[pos]].name);
           i++)
       {
         if(wb_preset[i].tuning == tune)
@@ -1100,8 +1117,8 @@ static void apply_preset(dt_iop_module_t *self)
         // look through all variants of this preset, with different tuning, starting from second entry (if
         // any)
         int i = g->preset_num[pos] + 1;
-        while((i < wb_preset_count) && !strcmp(wb_preset[i].make, makermodel)
-              && !strcmp(wb_preset[i].model, model)
+        while((i < wb_preset_count) && !strcmp(wb_preset[i].make, self->dev->image_storage.camera_maker)
+              && !strcmp(wb_preset[i].model, self->dev->image_storage.camera_model)
               && !strcmp(wb_preset[i].name, wb_preset[g->preset_num[pos]].name))
         {
           if(wb_preset[i - 1].tuning < tune && wb_preset[i].tuning > tune)

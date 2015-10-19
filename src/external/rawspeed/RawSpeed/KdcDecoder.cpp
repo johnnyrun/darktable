@@ -35,6 +35,9 @@ KdcDecoder::~KdcDecoder(void) {
 }
 
 RawImage KdcDecoder::decodeRawInternal() {
+  if (!mRootIFD->hasEntryRecursive(COMPRESSION))
+    ThrowRDE("KDC Decoder: Couldn't find compression setting");
+
   int compression = mRootIFD->getEntryRecursive(COMPRESSION)->getInt();
   if (7 != compression)
     ThrowRDE("KDC Decoder: Unsupported compression %d", compression);
@@ -58,6 +61,9 @@ RawImage KdcDecoder::decodeRawInternal() {
   // Offset hardcoding gotten from dcraw
   if (hints.find("easyshare_offset_hack") != hints.end())
     off = off < 0x15000 ? 0x15000 : 0x17000;
+
+  if (off > mFile->getSize())
+    ThrowRDE("KDC Decoder: offset is out of bounds");
 
   mRaw->dim = iPoint2D(width, height);
   mRaw->createData();
@@ -103,12 +109,14 @@ void KdcDecoder::decodeMetaDataInternal(CameraMetaData *meta) {
         TiffEntry *wb = kodakifd->getEntryRecursive(KODAK_KDC_WB);
         if (wb->count == 3) {
           const uint32 *tmp = wb->getIntArray();
-          mRaw->metadata.wbCoeffs[0] = tmp[0];
-          mRaw->metadata.wbCoeffs[1] = tmp[1];
-          mRaw->metadata.wbCoeffs[2] = tmp[2];
+          mRaw->metadata.wbCoeffs[0] = (float)tmp[0];
+          mRaw->metadata.wbCoeffs[1] = (float)tmp[1];
+          mRaw->metadata.wbCoeffs[2] = (float)tmp[2];
         }
       }
-    } catch(...) {}
+    } catch(TiffParserException e) {
+      mRaw->setError(e.what());
+    }
     if (kodakifd)
       delete kodakifd;
   }

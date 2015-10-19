@@ -117,6 +117,13 @@ typedef struct dt_image_t
   char exif_model[64];
   char exif_lens[128];
   char exif_datetime_taken[20];
+
+  char camera_maker[64];
+  char camera_model[64];
+  char camera_alias[64];
+  char camera_makermodel[128];
+  char camera_legacy_makermodel[128];
+
   char filename[DT_MAX_FILENAME_LEN];
 
   // common stuff
@@ -141,6 +148,7 @@ typedef struct dt_image_t
   /* gps coords */
   double longitude;
   double latitude;
+  double elevation;
 
   /* needed in exposure iop for Deflicker */
   uint16_t raw_black_level;
@@ -164,6 +172,8 @@ typedef struct dt_image_t
 // image buffer operations:
 /** inits basic values to sensible defaults. */
 void dt_image_init(dt_image_t *img);
+/** Refresh makermodel from the raw and exif values **/
+void dt_image_refresh_makermodel(dt_image_t *img);
 /** returns non-zero if the image contains low-dynamic range data. */
 int dt_image_is_ldr(const dt_image_t *img);
 /** returns non-zero if the image contains mosaic data. */
@@ -205,6 +215,8 @@ void dt_image_set_flip(const int32_t imgid, const dt_image_orientation_t user_fl
 dt_image_orientation_t dt_image_get_orientation(const int imgid);
 /** set image location lon/lat */
 void dt_image_set_location(const int32_t imgid, double lon, double lat);
+/** set image location lon/lat/ele */
+void dt_image_set_location_and_elevation(const int32_t imgid, double lon, double lat, double ele);
 /** returns 1 if there is history data found for this image, 0 else. */
 int dt_image_altered(const uint32_t imgid);
 /** returns the orientation bits of the image from exif. */

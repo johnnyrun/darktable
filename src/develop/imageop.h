@@ -101,34 +101,6 @@ typedef void dt_iop_gui_data_t;
 typedef void dt_iop_data_t;
 typedef void dt_iop_global_data_t;
 
-// params to be used to collect histogram
-typedef struct dt_dev_histogram_collection_params_t
-{
-  /** histogram_collect: if NULL, correct is set; else should be set manually */
-  const struct dt_histogram_roi_t *roi;
-  /** count of histogram bins. */
-  uint32_t bins_count;
-} dt_dev_histogram_collection_params_t;
-
-// params used to collect histogram during last histogram capture
-typedef struct dt_dev_histogram_stats_t
-{
-  /** count of histogram bins. */
-  uint32_t bins_count;
-  /** count of pixels sampled during histogram capture. */
-  uint32_t pixels;
-  /** count of channels: 1 for RAW, 3 for rgb/Lab. */
-  uint32_t ch;
-} dt_dev_histogram_stats_t;
-
-/** when to collect histogram */
-typedef enum dt_dev_request_flags_t
-{
-  DT_REQUEST_NONE = 0,
-  DT_REQUEST_ON = 1 << 0,
-  DT_REQUEST_ONLY_IN_GUI = 1 << 1
-} dt_dev_request_flags_t;
-
 /** color picker request */
 typedef enum dt_dev_request_colorpick_flags_t
 {
@@ -153,6 +125,8 @@ typedef struct dt_iop_module_so_t
   dt_iop_gui_data_t *gui_data;
   /** which results in this widget here, too. */
   GtkWidget *widget;
+  /** button used to show/hide this module in the plugin list. */
+  dt_iop_module_state_t state;
 
   /** this initializes static, hardcoded presets for this module and is called only once per run of dt. */
   void (*init_presets)(struct dt_iop_module_so_t *self);
@@ -258,12 +232,6 @@ typedef struct dt_iop_module_t
   dt_dev_request_colorpick_flags_t request_color_pick;
   /** (bitwise) set if you want an histogram generated during next eval */
   dt_dev_request_flags_t request_histogram;
-  /** set to source for histogram */
-  dt_dev_pixelpipe_type_t request_histogram_source;
-  /** set histogram generation params */
-  dt_dev_histogram_collection_params_t histogram_params;
-  /** stats of captured histogram */
-  dt_dev_histogram_stats_t histogram_stats;
   /** set to 1 if you want the mask to be transferred into alpha channel during next eval. gui mode only. */
   int32_t request_mask_display;
   /** set to 1 if you want the blendif mask to be suppressed in the module in focus. gui mode only. */
@@ -278,6 +246,8 @@ typedef struct dt_iop_module_t
   float picked_output_color[3], picked_output_color_min[3], picked_output_color_max[3];
   /** pointer to pre-module histogram data; if available: histogram_bins_count bins with 4 channels each */
   uint32_t *histogram;
+  /** stats of captured histogram */
+  dt_dev_histogram_stats_t histogram_stats;
   /** maximum levels in histogram, one per channel */
   uint32_t histogram_max[4];
   /** reference for dlopened libs. */
@@ -305,8 +275,6 @@ typedef struct dt_iop_module_t
   /** this is the module header, contains labe and buttons */
   GtkWidget *header;
 
-  /** button used to show/hide this module in the plugin list. */
-  dt_iop_module_state_t state;
   /** expander containing the widget and flag to store expanded state */
   GtkWidget *expander;
   gboolean expanded;
@@ -456,6 +424,7 @@ void dt_iop_cleanup_module(dt_iop_module_t *module);
 void dt_iop_init_pipe(struct dt_iop_module_t *module, struct dt_dev_pixelpipe_t *pipe,
                       struct dt_dev_pixelpipe_iop_t *piece);
 /** checks if iop do have an ui */
+gboolean dt_iop_so_is_hidden(dt_iop_module_so_t *module);
 gboolean dt_iop_is_hidden(dt_iop_module_t *module);
 /** checks whether iop is shown in specified group */
 gboolean dt_iop_shown_in_group(dt_iop_module_t *module, uint32_t group);
@@ -470,6 +439,7 @@ void dt_iop_gui_set_expanded(dt_iop_module_t *module, gboolean expanded, gboolea
 /** refresh iop according to set expanded state */
 void dt_iop_gui_update_expanded(dt_iop_module_t *module);
 /** change module state */
+void dt_iop_so_gui_set_state(dt_iop_module_so_t *module, dt_iop_module_state_t state);
 void dt_iop_gui_set_state(dt_iop_module_t *module, dt_iop_module_state_t state);
 
 void dt_iop_gui_update_header(dt_iop_module_t *module);
@@ -523,10 +493,19 @@ void dt_iop_flip_and_zoom_8(const uint8_t *in, int32_t iw, int32_t ih, uint8_t *
 void dt_iop_clip_and_zoom(float *out, const float *const in, const struct dt_iop_roi_t *const roi_out,
                           const struct dt_iop_roi_t *const roi_in, const int32_t out_stride,
                           const int32_t in_stride);
+
+/** zoom pixel array for roi buffers. */
+void dt_iop_clip_and_zoom_roi(float *out, const float *const in, const struct dt_iop_roi_t *const roi_out,
+                              const struct dt_iop_roi_t *const roi_in, const int32_t out_stride,
+                              const int32_t in_stride);
 #ifdef HAVE_OPENCL
 int dt_iop_clip_and_zoom_cl(int devid, cl_mem dev_out, cl_mem dev_in,
                             const struct dt_iop_roi_t *const roi_out,
                             const struct dt_iop_roi_t *const roi_in);
+
+int dt_iop_clip_and_zoom_roi_cl(int devid, cl_mem dev_out, cl_mem dev_in,
+                                const struct dt_iop_roi_t *const roi_out,
+                                const struct dt_iop_roi_t *const roi_in);
 #endif
 
 /** clip and zoom mosaiced image without demosaicing it uint16_t -> float4 */
@@ -536,12 +515,23 @@ void dt_iop_clip_and_zoom_demosaic_half_size(float *out, const uint16_t *const i
                                              const int32_t out_stride, const int32_t in_stride,
                                              const uint32_t filters);
 
+void dt_iop_clip_and_zoom_demosaic_passthrough_monochrome(float *out, const uint16_t *const in,
+                                                          const struct dt_iop_roi_t *const roi_out,
+                                                          const struct dt_iop_roi_t *const roi_in,
+                                                          const int32_t out_stride, const int32_t in_stride);
+
 /** clip and zoom mosaiced from half size, crop away black borders. */
 void dt_iop_clip_and_zoom_demosaic_half_size_crop_blacks(float *out, const uint16_t *const in,
                                                          struct dt_iop_roi_t *const roi_out,
                                                          const struct dt_iop_roi_t *const roi_in,
                                                          const int32_t out_stride, const int32_t in_stride,
                                                          const dt_image_t *img);
+
+void dt_iop_clip_and_zoom_demosaic_passthrough_monochrome_f(float *out, const float *const in,
+                                                            const struct dt_iop_roi_t *const roi_out,
+                                                            const struct dt_iop_roi_t *const roi_in,
+                                                            const int32_t out_stride,
+                                                            const int32_t in_stride);
 
 void dt_iop_clip_and_zoom_demosaic_half_size_f(float *out, const float *const in,
                                                const struct dt_iop_roi_t *const roi_out,

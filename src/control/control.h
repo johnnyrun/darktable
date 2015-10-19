@@ -70,13 +70,12 @@ int dt_control_key_pressed(guint key, guint state);
 int dt_control_key_released(guint key, guint state);
 int dt_control_key_pressed_override(guint key, guint state);
 gboolean dt_control_configure(GtkWidget *da, GdkEventConfigure *event, gpointer user_data);
-void dt_control_log(const char *msg, ...);
+void dt_control_log(const char *msg, ...) __attribute__((format(printf, 1, 2)));
 void dt_control_log_busy_enter();
 void dt_control_log_busy_leave();
 void dt_control_change_cursor(dt_cursor_t cursor);
 void dt_control_write_sidecar_files();
 void dt_control_delete_images();
-void dt_ctl_set_display_profile();
 
 /** \brief request redraw of the workspace.
     This redraws the whole workspace within a gdk critical
@@ -175,22 +174,18 @@ typedef struct dt_control_t
   double last_expose_time;
   int key_accelerators_on;
 
-  // xatom color profile:
-  pthread_rwlock_t xprofile_lock;
-  gchar *colord_profile_file;
-  uint8_t *xprofile_data;
-  int xprofile_size;
-
   // job management
   int32_t running;
   dt_pthread_mutex_t queue_mutex, cond_mutex, run_mutex;
   pthread_cond_t cond;
   int32_t num_threads;
   pthread_t *thread, kick_on_workers_thread;
+  dt_job_t **job;
 
   GList *queues[DT_JOB_QUEUE_MAX];
   size_t queue_length[DT_JOB_QUEUE_MAX];
 
+  dt_pthread_mutex_t res_mutex;
   dt_job_t *job_res[DT_CTL_WORKER_RESERVED];
   uint8_t new_res[DT_CTL_WORKER_RESERVED];
   pthread_t thread_res[DT_CTL_WORKER_RESERVED];

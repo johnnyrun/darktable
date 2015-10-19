@@ -25,16 +25,23 @@
   <dtconfig prefs="core">
     <name>cache_memory</name>
     <type factor="(1.0 / (1024.0 * 1024.0))" min="(1024 * 1024 * 100)">int64</type>
-    <default>(1024 * 1024 * 512)</default>
-    <shortdescription>memory in megabytes to use for mipmap cache</shortdescription>
+    <default>(1024 * 1024 * 256)</default>
+    <shortdescription>memory in megabytes to use for thumbnail cache</shortdescription>
     <longdescription>this controls how much memory is going to be used for thumbnails and other buffers (needs a restart).</longdescription>
   </dtconfig>
   <dtconfig prefs="core">
     <name>cache_disk_backend</name>
     <type>bool</type>
     <default>true</default>
-    <shortdescription>enable disk backend for mipmap cache</shortdescription>
-    <longdescription>if enabled, write thumbnails to disk (.cache/darktable/) when evicted from the memory cache. note that this can take a lot of memory (several gigabytes for 20k images) and will never delete cached thumbnails again. it's safe though to delete these manually, if you want. light table performance will be increased greatly when browsing a lot. to generate all thumbnails of your entire collection offline, run 'darktable-cli --generate-cache --core --library ~/.config/darktable/library.db'.</longdescription>
+    <shortdescription>enable disk backend for thumbnail cache</shortdescription>
+    <longdescription>if enabled, write thumbnails to disk (.cache/darktable/) when evicted from the memory cache. note that this can take a lot of memory (several gigabytes for 20k images) and will never delete cached thumbnails again. it's safe though to delete these manually, if you want. light table performance will be increased greatly when browsing a lot. to generate all thumbnails of your entire collection offline, run 'darktable-generate-cache'.</longdescription>
+  </dtconfig>
+  <dtconfig prefs="core">
+    <name>cache_color_managed</name>
+    <type>bool</type>
+    <default>true</default>
+    <shortdescription>color manage cached thumbnails</shortdescription>
+    <longdescription>if enabled, cached thumbnails will be color managed so that lighttable and filmstrip can show correct colors. otherwise the results may look wrong once the display profile gets changed.</longdescription>
   </dtconfig>
   <dtconfig prefs="core">
     <name>worker_threads</name>
@@ -202,6 +209,13 @@
     <default>true</default>
     <shortdescription>ask before erasing images from disk</shortdescription>
     <longdescription>always ask the user before any image file is deleted.</longdescription>
+  </dtconfig>
+  <dtconfig prefs="gui">
+    <name>send_to_trash</name>
+    <type>bool</type>
+    <default>true</default>
+    <shortdescription>send files to trash when erasing images</shortdescription>
+    <longdescription>send files to trash instead of permanently deleting files on system that supports it</longdescription>
   </dtconfig>
   <dtconfig prefs="gui">
     <name>ask_before_move</name>
@@ -1278,11 +1292,18 @@
     <longdescription>the storage backend for password storage: auto, none, libsecret, kwallet, gnome keyring</longdescription>
   </dtconfig>
   <dtconfig>
+    <name>plugins/lighttable/export/icctype</name>
+    <type>int</type>
+    <default>-1</default>
+    <shortdescription>ICC profile type to use for export</shortdescription>
+    <longdescription>this overrides the per-image settings, if not set to -1.</longdescription>
+  </dtconfig>
+  <dtconfig>
     <name>plugins/lighttable/export/iccprofile</name>
     <type>string</type>
-    <default>image</default>
-    <shortdescription>ICC profile to use for export</shortdescription>
-    <longdescription>this overrides the per-image settings, if not set to `image'.</longdescription>
+    <default></default>
+    <shortdescription>ICC profile filename to use for export</shortdescription>
+    <longdescription>this overrides the per-image settings, if icctype not set to -1.</longdescription>
   </dtconfig>
   <dtconfig>
     <name>plugins/lighttable/export/iccintent</name>
@@ -2317,5 +2338,12 @@
     <default>-1.0</default>
     <shortdescription>overwrite the screen's ppd setting</shortdescription>
     <longdescription>if this value is > 0.0 then it is used as the screen's ppd setting which is used for HiDPI support</longdescription>
+  </dtconfig>
+  <dtconfig>
+    <name>plugins/lighttable/preview/full_size_preload_count</name>
+    <type>int</type>
+    <default>1</default>
+    <shortdescription>preload images for full-size preview</shortdescription>
+    <longdescription>number of images to load in advance in the background when showing full-size preview</longdescription>
   </dtconfig>
 </dtconfiglist>

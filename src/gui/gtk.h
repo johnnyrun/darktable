@@ -99,6 +99,12 @@ static inline cairo_surface_t *dt_cairo_image_surface_create_for_data(unsigned c
   return cst;
 }
 
+static inline cairo_surface_t *dt_cairo_image_surface_create_from_png(const char *filename) {
+  cairo_surface_t *cst = cairo_image_surface_create_from_png(filename);
+  cairo_surface_set_device_scale(cst, darktable.gui->ppd, darktable.gui->ppd);
+  return cst;
+}
+
 static inline int dt_cairo_image_surface_get_width(cairo_surface_t *surface) {
   return cairo_image_surface_get_width(surface) / darktable.gui->ppd;
 }
@@ -109,6 +115,7 @@ static inline int dt_cairo_image_surface_get_height(cairo_surface_t *surface) {
 #else
 #define dt_cairo_image_surface_create cairo_image_surface_create
 #define dt_cairo_image_surface_create_for_data cairo_image_surface_create_for_data
+#define dt_cairo_image_surface_create_from_png cairo_image_surface_create_from_png
 #define dt_cairo_image_surface_get_width cairo_image_surface_get_width
 #define dt_cairo_image_surface_get_height cairo_image_surface_get_height
 #endif
@@ -214,8 +221,10 @@ void dt_ui_destroy(struct dt_ui_t *ui);
 void dt_ui_container_add_widget(struct dt_ui_t *ui, const dt_ui_container_t c, GtkWidget *w);
 /** \brief gives a widget focus in the container */
 void dt_ui_container_focus_widget(struct dt_ui_t *ui, const dt_ui_container_t c, GtkWidget *w);
-/** \brief removes all child widgets from container */
-void dt_ui_container_clear(struct dt_ui_t *ui, const dt_ui_container_t c);
+/** \brief calls a callback on all children widgets from container */
+void dt_ui_container_foreach(struct dt_ui_t *ui, const dt_ui_container_t c, GtkCallback callback);
+/** \brief destroy all child widgets from container */
+void dt_ui_container_destroy_children(struct dt_ui_t *ui, const dt_ui_container_t c);
 /** \brief shows/hide a panel */
 void dt_ui_panel_show(struct dt_ui_t *ui, const dt_ui_panel_t, gboolean show, gboolean write);
 /** show or hide outermost borders with expand arrows */

@@ -20,6 +20,7 @@
 #define DT_EXIF_H
 
 #include "common/image.h"
+#include "common/colorspaces.h"
 
 /** wrapper around exiv2, C++ */
 #ifdef __cplusplus
@@ -39,7 +40,7 @@ int dt_exif_read_blob(uint8_t *blob, const char *path, const int imgid, const in
                       const int out_height, const int dng_mode);
 
 /** write blob to file exif. merges with existing exif information.*/
-int dt_exif_write_blob(uint8_t *blob, uint32_t size, const char *path);
+int dt_exif_write_blob(uint8_t *blob, uint32_t size, const char *path, const int compressed);
 
 /** write xmp sidecar file. */
 int dt_exif_xmp_write(const int imgid, const char *filename);
@@ -60,6 +61,9 @@ void dt_exif_cleanup();
 /** encode / decode op params */
 char *dt_exif_xmp_encode(const unsigned char *input, const int len, int *output_len);
 unsigned char *dt_exif_xmp_decode(const char *input, const int len, int *output_len);
+
+/** look for color space hints in data and tell the caller if it's sRGB, AdobeRGB or something else. used for mipmaps */
+dt_colorspaces_color_profile_type_t dt_exif_get_color_space(const uint8_t *data, size_t size);
 
 #ifdef __cplusplus
 }

@@ -22,7 +22,14 @@
 
 void dt_lua_debug_stack_internal(lua_State *L, const char *function, int line)
 {
-  printf("lua stack at %s:%d (total %d)\n", function, line,lua_gettop(L));
+  printf("lua stack at %s:%d", function, line);
+  if(!L) 
+  {
+    printf("Stack in NULL\n");
+    return;
+  } else {
+    printf("\n");
+  }
   for(int i = 1; i <= lua_gettop(L); i++)
   {
     printf("\t%d:%s %s\n", i, lua_typename(L, lua_type(L, i)), luaL_tolstring(L, i, NULL));
@@ -39,7 +46,7 @@ void dt_lua_debug_table_internal(lua_State *L, int t, const char *function, int 
     return;
   }
   lua_pushnil(L); /* first key */
-  while(lua_next(L, t - 1) != 0)
+  while(lua_next(L, t ) != 0)
   {
     /* uses 'key' (at index -2) and 'value' (at index -1) */
     printf("%s - %s\n", luaL_checkstring(L, -2), lua_typename(L, lua_type(L, -1)));
@@ -86,28 +93,35 @@ void dt_lua_init_lock()
   pthread_mutexattr_settype(&a, PTHREAD_MUTEX_RECURSIVE);
   dt_pthread_mutex_init(&darktable.lua_state.mutex, &a);
   pthread_mutexattr_destroy(&a);
+  // we want our lock initialized locked
+  dt_pthread_mutex_lock(&darktable.lua_state.mutex);
 }
 
-void dt_lua_lock()
+void dt_lua_lock_internal(const char *function, const char *file, int line, gboolean silent)
 {
-  if(!darktable.lua_state.ending && pthread_equal(darktable.control->gui_thread, pthread_self()) != 0)
+  if(!silent && !darktable.lua_state.ending && pthread_equal(darktable.control->gui_thread, pthread_self()) != 0)
   {
     dt_print(DT_DEBUG_LUA, "LUA WARNING locking from the gui thread should be avoided\n");
     //g_assert(false);
   }
 
   dt_pthread_mutex_lock(&darktable.lua_state.mutex);
+#ifdef _DEBUG
+  dt_print(DT_DEBUG_LUA,"LUA DEBUG : %s called from %s:%d (%s)\n", __FUNCTION__, file, line, function);
+#endif
 }
-void dt_lua_unlock()
+void dt_lua_unlock_internal(const char *function, int line)
 {
+#ifdef _DEBUG
+  dt_print(DT_DEBUG_LUA,"LUA DEBUG : %s called from %s %d\n",__FUNCTION__,function,line);
+#endif
   dt_pthread_mutex_unlock(&darktable.lua_state.mutex);
 }
 
 static gboolean async_redraw(gpointer data)
 {
-    dt_control_signal_raise(darktable.signals, DT_SIGNAL_FILMROLLS_CHANGED); // just for good measure
-    dt_control_queue_redraw();
-    return false;
+  dt_control_queue_redraw();
+  return false;
 }
 
 void dt_lua_redraw_screen()

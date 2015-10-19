@@ -195,6 +195,29 @@ void RawDecoder::readUncompressedRaw(ByteStream &input, iPoint2D& size, iPoint2D
   }
 }
 
+void RawDecoder::Decode8BitRaw(ByteStream &input, uint32 w, uint32 h) {
+  uchar8* data = mRaw->getData();
+  uint32 pitch = mRaw->pitch;
+  const uchar8 *in = input.getData();
+  if (input.getRemainSize() < w*h) {
+    if ((uint32)input.getRemainSize() > w) {
+      h = input.getRemainSize() / w - 1;
+      mRaw->setError("Image truncated (file is too short)");
+    } else
+      ThrowIOE("Decode8BitRaw: Not enough data to decode a single line. Image file truncated.");
+  }
+
+  uint32 random = 0;
+  for (uint32 y = 0; y < h; y++) {
+    ushort16* dest = (ushort16*) & data[y*pitch];
+    for (uint32 x = 0 ; x < w; x += 1) {
+      if (uncorrectedRawValues)
+        dest[x] = *in++;
+      else
+        mRaw->setWithLookUp(*in++, (uchar8*)&dest[x], &random);
+    }
+  }
+}
 
 void RawDecoder::Decode12BitRaw(ByteStream &input, uint32 w, uint32 h) {
   uchar8* data = mRaw->getData();
@@ -511,6 +534,14 @@ void RawDecoder::setMetaData(CameraMetaData *meta, string make, string model, st
   }
 
   mRaw->cfa = cam->cfa;
+  mRaw->metadata.canonical_make = cam->canonical_make;
+  mRaw->metadata.canonical_model = cam->canonical_model;
+  mRaw->metadata.canonical_alias = cam->canonical_alias;
+  mRaw->metadata.canonical_id = cam->canonical_id;
+  mRaw->metadata.make = make;
+  mRaw->metadata.model = model;
+  mRaw->metadata.mode = mode;
+
   if (applyCrop) {
     iPoint2D new_size = cam->cropSize;
 
@@ -582,22 +613,19 @@ void RawDecoder::setMetaData(CameraMetaData *meta, string make, string model, st
 void *RawDecoderDecodeThread(void *_this) {
   RawDecoderThread* me = (RawDecoderThread*)_this;
   try {
-    if (me->taskNo >= 0)
-      me->parent->decodeThreaded(me);
-    else
-      me->parent->decodeThreaded(me);
+     me->parent->decodeThreaded(me);
   } catch (RawDecoderException &ex) {
     me->parent->mRaw->setError(ex.what());
   } catch (IOException &ex) {
     me->parent->mRaw->setError(ex.what());
   }
-
   pthread_exit(NULL);
   return 0;
 }
 
 void RawDecoder::startThreads() {
   uint32 threads;
+  bool fail = false;
   threads = getThreadCount(); 
   int y_offset = 0;
   int y_per_thread = (mRaw->dim.y + threads - 1) / threads;
@@ -613,7 +641,9 @@ void RawDecoder::startThreads() {
     t[i].end_y = MIN(y_offset + y_per_thread, mRaw->dim.y);
     t[i].parent = this;
     if (pthread_create(&t[i].threadid, &attr, RawDecoderDecodeThread, &t[i]) != 0) {
-      ThrowRDE("RawDecoder::startThreads: Unable to start thread");
+      // If a failure occurs, we need to wait for the already created threads to finish
+      threads = i-1;
+      fail = true;
     }
     y_offset = t[i].end_y;
   }
@@ -621,10 +651,14 @@ void RawDecoder::startThreads() {
   for (uint32 i = 0; i < threads; i++) {
     pthread_join(t[i].threadid, NULL);
   }
+  pthread_attr_destroy(&attr);
+  delete[] t;
+
+  if (fail) {
+    ThrowRDE("RawDecoder::startThreads: Unable to start threads");
+  }
   if (mRaw->errors.size() >= threads)
     ThrowRDE("RawDecoder::startThreads: All threads reported errors. Cannot load image.");
-
-  delete[] t;
 }
 
 void RawDecoder::decodeThreaded(RawDecoderThread * t) {
@@ -685,11 +719,18 @@ void RawDecoder::startTasks( uint32 tasks )
   int ctask = 0;
   RawDecoderThread *t = new RawDecoderThread[threads];
 
+  // We don't need a thread
   if (threads == 1) {
     t[0].parent = this;
     while ((uint32)ctask < tasks) {
       t[0].taskNo = ctask++;
-      RawDecoderDecodeThread(t);
+      try {
+        decodeThreaded(&t[0]);
+      } catch (RawDecoderException &ex) {
+        mRaw->setError(ex.what());
+      } catch (IOException &ex) {
+        mRaw->setError(ex.what());
+      }
     }
     delete[] t;
     return;

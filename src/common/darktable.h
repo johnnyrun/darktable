@@ -81,7 +81,7 @@ typedef unsigned int u_int;
 #include "common/poison.h"
 #endif
 
-#define DT_MODULE_VERSION 9 // version of dt's module interface
+#define DT_MODULE_VERSION 10 // version of dt's module interface
 
 // every module has to define this:
 #ifdef _DEBUG
@@ -146,6 +146,7 @@ struct dt_points_t;
 struct dt_imageio_t;
 struct dt_bauhaus_t;
 struct dt_undo_t;
+struct dt_colorspaces_t;
 
 typedef enum dt_debug_thread_t
 {
@@ -165,7 +166,8 @@ typedef enum dt_debug_thread_t
   DT_DEBUG_MASKS = 1 << 12,
   DT_DEBUG_LUA = 1 << 13,
   DT_DEBUG_INPUT = 1 << 14,
-  DT_DEBUG_PRINT = 1 << 15
+  DT_DEBUG_PRINT = 1 << 15,
+  DT_DEBUG_CAMERA_SUPPORT = 1 << 16,
 } dt_debug_thread_t;
 
 typedef struct darktable_t
@@ -175,7 +177,6 @@ typedef struct darktable_t
 
   int32_t unmuted;
   GList *iop;
-  GList *collection_listeners;
   GList *capabilities;
   JsonParser *noiseprofile_parser;
   struct dt_conf_t *conf;
@@ -200,6 +201,7 @@ typedef struct darktable_t
   struct dt_blendop_t *blendop;
   struct dt_dbus_t *dbus;
   struct dt_undo_t *undo;
+  struct dt_colorspaces_t *color_profiles;
   dt_pthread_mutex_t db_insert;
   dt_pthread_mutex_t plugin_threadsafe;
   dt_pthread_mutex_t capabilities_threadsafe;
@@ -210,6 +212,7 @@ typedef struct darktable_t
   char *configdir;
   char *cachedir;
   dt_lua_state_t lua_state;
+  GList *guides;
 } darktable_t;
 
 typedef struct
@@ -223,7 +226,7 @@ extern const char dt_supported_extensions[];
 
 int dt_init(int argc, char *argv[], const int init_gui, lua_State *L);
 void dt_cleanup();
-void dt_print(dt_debug_thread_t thread, const char *msg, ...);
+void dt_print(dt_debug_thread_t thread, const char *msg, ...) __attribute__((format(printf, 2, 3)));
 void dt_gettime_t(char *datetime, size_t datetime_len, time_t t);
 void dt_gettime(char *datetime, size_t datetime_len);
 void *dt_alloc_align(size_t alignment, size_t size);
@@ -232,7 +235,12 @@ void dt_free_align(void *mem);
 #else
 #define dt_free_align(A) free(A)
 #endif
-gboolean dt_is_aligned(const void *pointer, size_t byte_count);
+
+static inline gboolean dt_is_aligned(const void *pointer, size_t byte_count)
+{
+    return (uintptr_t)pointer % byte_count == 0;
+}
+
 int dt_capabilities_check(char *capability);
 void dt_capabilities_add(char *capability);
 void dt_capabilities_remove(char *capability);
@@ -254,7 +262,7 @@ static inline void dt_get_times(dt_times_t *t)
   t->user = ru.ru_utime.tv_sec + ru.ru_utime.tv_usec * (1.0 / 1000000.0);
 }
 
-void dt_show_times(const dt_times_t *start, const char *prefix, const char *suffix, ...);
+void dt_show_times(const dt_times_t *start, const char *prefix, const char *suffix, ...) __attribute__((format(printf, 3, 4)));
 
 /** \brief check if file is a supported image */
 gboolean dt_supported_image(const gchar *filename);
@@ -470,7 +478,8 @@ static inline size_t dt_get_total_memory()
 void dt_configure_defaults();
 
 // helper function which loads whatever image_to_load points to: single image files or whole directories
-int dt_load_from_string(const gchar *image_to_load, gboolean open_image_in_dr);
+// it tells you if it was a single image or a directory in single_image (when it's not NULL)
+int dt_load_from_string(const gchar *image_to_load, gboolean open_image_in_dr, gboolean *single_image);
 
 /** define for max path/filename length */
 #define DT_MAX_FILENAME_LEN 256

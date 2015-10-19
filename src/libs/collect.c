@@ -607,8 +607,7 @@ static int _count_images(const char *path)
   gchar query[1024] = {0};
   int count = 0;
 
-  gchar *escaped_text = NULL;
-  escaped_text = dt_util_str_replace(path, "'", "''");
+  char *escaped_text = sqlite3_mprintf("%q", path);
 
   snprintf (query, sizeof(query), "select count(id) from images where film_id in (select id from film_rolls where folder like '%s%%')", escaped_text);
   DT_DEBUG_SQLITE3_PREPARE_V2(dt_database_get(darktable.db), query, -1, &stmt, NULL);
@@ -616,7 +615,7 @@ static int _count_images(const char *path)
     count = sqlite3_column_int(stmt, 0);
   sqlite3_finalize(stmt);
 
-  g_free(escaped_text);
+  sqlite3_free(escaped_text);
 
   return count;
 #endif
@@ -741,6 +740,7 @@ static GtkTreeStore *_folder_tree()
         gtk_tree_store_insert(store, &iter, level > 0 ? &current : NULL, 0);
         gtk_tree_store_set(store, &iter, DT_LIB_COLLECT_COL_TEXT, pch[level], DT_LIB_COLLECT_COL_PATH, pth2,
                            DT_LIB_COLLECT_COL_COUNT, count, DT_LIB_COLLECT_COL_VISIBLE, TRUE, -1);
+        g_free(pth2);
         current = iter;
       }
 
@@ -1049,15 +1049,14 @@ static void tags_view(dt_lib_collect_rule_t *dr)
   set_properties(dr);
 
   /* query construction */
-  char query[1024] = { 0 };
   const gchar *text = NULL;
   text = gtk_entry_get_text(GTK_ENTRY(dr->text));
-  gchar *escaped_text = NULL;
-  escaped_text = dt_util_str_replace(text, "'", "''");
-  snprintf(query, sizeof(query),
-           "SELECT distinct name, id, name LIKE '%%%s%%' FROM tags ORDER BY UPPER(name) DESC", escaped_text);
-
-  DT_DEBUG_SQLITE3_PREPARE_V2(dt_database_get(darktable.db), query, -1, &stmt, NULL);
+  char search[1024] = { 0 };
+  snprintf(search, sizeof(search), "%%%s%%", text);
+  DT_DEBUG_SQLITE3_PREPARE_V2(dt_database_get(darktable.db),
+                              "SELECT distinct name, id, name LIKE ?1 "
+                              "FROM tags ORDER BY UPPER(name) DESC", -1, &stmt, NULL);
+  DT_DEBUG_SQLITE3_BIND_TEXT(stmt, 1, search, -1, SQLITE_STATIC);
 
   while(sqlite3_step(stmt) == SQLITE_ROW)
   {
@@ -1119,8 +1118,8 @@ static void tags_view(dt_lib_collect_rule_t *dr)
           /* lets add new keyword and assign current */
           if(!found && pch[j] && *pch[j])
           {
-            gchar *pth2 = NULL;
-            pth2 = dt_util_dstrcat(pth2, "");
+            gchar *pth2 = g_malloc(1);
+            pth2[0] = '\0';
 
             for(int i = 0; i <= level; i++)
             {
@@ -1136,6 +1135,7 @@ static void tags_view(dt_lib_collect_rule_t *dr)
             gtk_tree_store_set(GTK_TREE_STORE(tagsmodel), &iter, DT_LIB_COLLECT_COL_TEXT, pch[j],
                                DT_LIB_COLLECT_COL_PATH, pth2, DT_LIB_COLLECT_COL_COUNT, count,
                                DT_LIB_COLLECT_COL_VISIBLE, sqlite3_column_int(stmt, 2), -1);
+            g_free(pth2);
             current = iter;
           }
 
@@ -1192,9 +1192,8 @@ static void list_view(dt_lib_collect_rule_t *dr)
   int property = gtk_combo_box_get_active(dr->combo);
   const gchar *text = NULL;
   text = gtk_entry_get_text(GTK_ENTRY(dr->text));
-  gchar *escaped_text = NULL;
 
-  escaped_text = dt_util_str_replace(text, "'", "''");
+  char *escaped_text = sqlite3_mprintf("%q", text);
 
   switch(property)
   {
@@ -1203,10 +1202,25 @@ static void list_view(dt_lib_collect_rule_t *dr)
                "select distinct folder, id from film_rolls where folder like '%%%s%%'  order by folder desc",
                escaped_text);
       break;
-    case DT_COLLECTION_PROP_CAMERA: // camera
-      snprintf(query, sizeof(query), "select distinct maker || ' ' || model as model, 1 from images where "
-                                     "maker || ' ' || model like '%%%s%%' order by model",
-               escaped_text);
+    case DT_COLLECTION_PROP_CAMERA: ;// camera
+      GList *makermodels = NULL;
+      dt_collection_get_makermodel(text, &makermodels, NULL);
+      GList *element = makermodels;
+      int index = 0;
+      while(element)
+      {
+        gchar *value = (gchar *) element->data;
+        gtk_list_store_append(GTK_LIST_STORE(listmodel), &iter);
+        gtk_list_store_set(GTK_LIST_STORE(listmodel), &iter,
+                           DT_LIB_COLLECT_COL_TEXT, value,
+                           DT_LIB_COLLECT_COL_ID, index,
+                           DT_LIB_COLLECT_COL_TOOLTIP, value,
+                           DT_LIB_COLLECT_COL_PATH, value, -1);
+        g_free(value);
+        index++;
+        element = element->next;
+      }
+      g_list_free(makermodels);
       break;
     case DT_COLLECTION_PROP_TAG: // tag
       snprintf(query, sizeof(query),
@@ -1288,6 +1302,30 @@ static void list_view(dt_lib_collect_rule_t *dr)
       snprintf(query, sizeof(query),
                "select distinct lens, 1 from images where lens like '%%%s%%' order by lens", escaped_text);
       break;
+
+    case DT_COLLECTION_PROP_FOCAL_LENGTH: // focal length
+    {
+      gchar *operator, *number;
+      dt_collection_split_operator_number(escaped_text, &number, &operator);
+
+      if(operator&& number)
+        snprintf(query, sizeof(query), "select distinct cast(focal_length as integer) as focal_length, 1 from images where "
+        "focal_length %s %s order by focal_length",
+        operator, number);
+      else if(number)
+        snprintf(query, sizeof(query), "select distinct cast(focal_length as integer) as focal_length, 1 from images where "
+        "focal_length = %s order by focal_length",
+        number);
+      else
+        snprintf(query, sizeof(query), "select distinct cast(focal_length as integer) as focal_length, 1 from images where "
+        "focal_length like '%%%s%%' order by focal_length",
+        escaped_text);
+
+      g_free(operator);
+      g_free(number);
+    }
+    break;
+
     case DT_COLLECTION_PROP_ISO: // iso
     {
       gchar *operator, *number;
@@ -1357,7 +1395,7 @@ static void list_view(dt_lib_collect_rule_t *dr)
                escaped_text);
       break;
   }
-  g_free(escaped_text);
+  sqlite3_free(escaped_text);
 
   DT_DEBUG_SQLITE3_PREPARE_V2(dt_database_get(darktable.db), query, -1, &stmt, NULL);
   while(sqlite3_step(stmt) == SQLITE_ROW)
@@ -2113,7 +2151,7 @@ void gui_cleanup(dt_lib_module_t *self)
   dt_control_signal_disconnect(darktable.signals, G_CALLBACK(filmrolls_imported), self);
   dt_control_signal_disconnect(darktable.signals, G_CALLBACK(filmrolls_removed), self);
   darktable.view_manager->proxy.module_collect.module = NULL;
-  g_free(((dt_lib_collect_t *)self->data)->params);
+  free(d->params);
 
   /* cleanup mem */
   // g_ptr_array_free(d->labels, TRUE);
@@ -2121,82 +2159,63 @@ void gui_cleanup(dt_lib_module_t *self)
 
   /* TODO: Make sure we are cleaning up all allocations */
 
-  g_free(self->data);
+  free(self->data);
   self->data = NULL;
 }
 
 
 #ifdef USE_LUA
-typedef dt_lib_collect_params_rule_t* dt_lua_lib_collect_params_rule_t;
+static int new_rule_cb(lua_State*L)
+{
+  dt_lib_collect_params_rule_t rule;
+  memset(&rule,0, sizeof(dt_lib_collect_params_rule_t));
+  luaA_push(L,dt_lib_collect_params_rule_t,&rule);
+  return 1;
+}
 static int filter_cb(lua_State *L)
 {
   dt_lib_module_t *self = lua_touserdata(L, lua_upvalueindex(1));
-  dt_lua_lib_check_error(L,self);
-  dt_lib_collect_params_t old_params;
-  int size;
   
-  dt_lib_collect_params_t *p = get_params(self, &size);
+  int size;
+  dt_lib_collect_params_t *p = get_params(self,&size);
   // put it in stack so memory is not lost if a lua exception is raised
-  memcpy(&old_params, p,size);
-  free(p);
+
+
+
   if(lua_gettop(L) > 0) {
-    dt_lib_collect_params_t params;
-    luaA_to(L,dt_lib_collect_params_t,&params,1);
-    set_params(self, &params,size);
-    lua_pop(L,1);
-  }
-  luaA_push(L,dt_lib_collect_params_t,&old_params);
-  return 1;
-}
-
-static int param_len(lua_State *L)
-{
-  dt_lib_collect_params_t params;
-  luaA_to(L,dt_lib_collect_params_t,&params,1);
-  lua_pushnumber(L, params.rules);
-  return 1;
-}
-
-static int param_index(lua_State *L)
-{
-  dt_lib_collect_params_t* params =  lua_touserdata(L,1);
-  int index = luaL_checkinteger(L,2);
-  if(lua_gettop(L) > 2) {
-    if(index < 1 || index > params->rules+1 || index > MAX_RULES) {
-      return luaL_error(L,"incorrect write index for object of type dt_lib_collect_params_t\n");
-    }
-    if(lua_isnil(L,3)) {
-      for(int i = index; i< params->rules -1 ;i++){
-        memcpy(&params->rule[index-1],&params->rule[index],sizeof(dt_lib_collect_params_rule_t));
+    luaL_checktype(L,1,LUA_TTABLE);
+    dt_lib_collect_params_t *new_p = get_params(self,&size);
+    new_p->rules = 0;
+    do {
+      lua_pushinteger(L,new_p->rules + 1);
+      lua_gettable(L,1);
+      if(lua_isnil(L,-1)) break;
+      luaA_to(L,dt_lib_collect_params_rule_t,&new_p->rule[new_p->rules],-1);
+      new_p->rules++;
+    }while(new_p->rules < MAX_RULES);
+    if(new_p->rules == MAX_RULES) {
+      lua_pushinteger(L,new_p->rules + 1);
+      lua_gettable(L,1);
+      if(!lua_isnil(L,-1)) {
+        luaL_error(L,"Number of rules given excedes max allowed (%d)",MAX_RULES);
       }
-      params->rules--;
-    } else if(dt_lua_isa(L,3,dt_lua_lib_collect_params_rule_t)){
-      if(index == params->rules+1) {
-        params->rules++;
-      }
-      dt_lib_collect_params_rule_t *rule;
-      luaA_to(L,dt_lua_lib_collect_params_rule_t,&rule,3);
-      memcpy(&params->rule[index-1],rule,sizeof(dt_lib_collect_params_rule_t));
-    } else {
-      return luaL_error(L,"incorrect type for field of dt_lib_collect_params_t\n");
     }
+    set_params(self,new_p,size);
+    free(new_p);
+
   }
-  if(index < 1 || index > params->rules) {
-    return luaL_error(L,"incorrect read index for object of type dt_lib_collect_params_t\n");
+  lua_newtable(L);
+  for(int i = 0; i < p->rules; i++) {
+    luaA_push(L,dt_lib_collect_params_rule_t,&p->rule[i]);
+    luaL_ref(L,-2);
   }
-  dt_lib_collect_params_rule_t* tmp = &params->rule[index-1];
-  luaA_push(L,dt_lua_lib_collect_params_rule_t,&tmp);
-  lua_getuservalue(L,-1);
-  lua_pushvalue(L,1);
-  lua_setfield(L,-2,"containing_object");//prevent GC from killing the child object
-  lua_pop(L,1);
+  free(p);
   return 1;
 }
 
 static int mode_member(lua_State *L)
 {
-  dt_lib_collect_params_rule_t *rule;
-  luaA_to(L,dt_lua_lib_collect_params_rule_t,&rule,1);
+  dt_lib_collect_params_rule_t *rule = luaL_checkudata(L,1,"dt_lib_collect_params_rule_t");
   if(lua_gettop(L) > 2) {
     dt_lib_collect_mode_t value;
     luaA_to(L,dt_lib_collect_mode_t,&value,3);
@@ -2210,8 +2229,7 @@ static int mode_member(lua_State *L)
 
 static int item_member(lua_State *L)
 {
-  dt_lib_collect_params_rule_t *rule;
-  luaA_to(L,dt_lua_lib_collect_params_rule_t,&rule,1);
+  dt_lib_collect_params_rule_t *rule = luaL_checkudata(L,1,"dt_lib_collect_params_rule_t");
 
   if(lua_gettop(L) > 2) {
     dt_collection_properties_t value;
@@ -2226,8 +2244,7 @@ static int item_member(lua_State *L)
 
 static int data_member(lua_State *L)
 {
-  dt_lib_collect_params_rule_t *rule;
-  luaA_to(L,dt_lua_lib_collect_params_rule_t,&rule,1);
+  dt_lib_collect_params_rule_t *rule = luaL_checkudata(L,1,"dt_lib_collect_params_rule_t");
 
   if(lua_gettop(L) > 2) {
     size_t tgt_size;
@@ -2255,19 +2272,17 @@ void init(struct dt_lib_module_t *self)
   lua_pushcclosure(L,dt_lua_gtk_wrap,1);
   lua_pushcclosure(L, dt_lua_type_member_common, 1);
   dt_lua_type_register_const_type(L, my_type, "filter");
+  lua_pushcfunction(L, new_rule_cb);
+  lua_pushcclosure(L, dt_lua_type_member_common, 1);
+  dt_lua_type_register_const_type(L, my_type, "new_rule");
 
-  dt_lua_init_type(L,dt_lib_collect_params_t);
-  lua_pushcfunction(L,param_len);
-  lua_pushcfunction(L,param_index);
-  dt_lua_type_register_number(L,dt_lib_collect_params_t);
-
-  dt_lua_init_type(L,dt_lua_lib_collect_params_rule_t);
+  dt_lua_init_type(L,dt_lib_collect_params_rule_t);
   lua_pushcfunction(L,mode_member);
-  dt_lua_type_register(L, dt_lua_lib_collect_params_rule_t, "mode");
+  dt_lua_type_register(L, dt_lib_collect_params_rule_t, "mode");
   lua_pushcfunction(L,item_member);
-  dt_lua_type_register(L, dt_lua_lib_collect_params_rule_t, "item");
+  dt_lua_type_register(L, dt_lib_collect_params_rule_t, "item");
   lua_pushcfunction(L,data_member);
-  dt_lua_type_register(L, dt_lua_lib_collect_params_rule_t, "data");
+  dt_lua_type_register(L, dt_lib_collect_params_rule_t, "data");
   
 
   luaA_enum(L,dt_lib_collect_mode_t);
@@ -2290,6 +2305,7 @@ void init(struct dt_lib_module_t *self)
   luaA_enum_value(L,dt_collection_properties_t,DT_COLLECTION_PROP_PUBLISHER);
   luaA_enum_value(L,dt_collection_properties_t,DT_COLLECTION_PROP_RIGHTS);
   luaA_enum_value(L,dt_collection_properties_t,DT_COLLECTION_PROP_LENS);
+  luaA_enum_value(L,dt_collection_properties_t,DT_COLLECTION_PROP_FOCAL_LENGTH);
   luaA_enum_value(L,dt_collection_properties_t,DT_COLLECTION_PROP_ISO);
   luaA_enum_value(L,dt_collection_properties_t,DT_COLLECTION_PROP_APERTURE);
   luaA_enum_value(L,dt_collection_properties_t,DT_COLLECTION_PROP_FILENAME);

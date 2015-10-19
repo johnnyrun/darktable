@@ -221,7 +221,11 @@ int store(dt_imageio_module_storage_t *self, dt_imageio_module_data_t *sdata, co
     d->vp->imgid = imgid;
     d->vp->sequence = num;
     dt_variables_expand(d->vp, d->filename, TRUE);
-    g_strlcpy(filename, dt_variables_get_result(d->vp), sizeof(filename));
+
+    gchar *result_filename = dt_variables_get_result(d->vp);
+    g_strlcpy(filename, result_filename, sizeof(filename));
+    g_free(result_filename);
+
     g_strlcpy(dirname, filename, sizeof(dirname));
 
     const char *ext = format->extension(fdata);
@@ -248,7 +252,7 @@ int store(dt_imageio_module_storage_t *self, dt_imageio_module_data_t *sdata, co
       fail = 1;
       goto failed;
     }
-    if(g_access(dirname, W_OK) != 0)
+    if(g_access(dirname, W_OK | X_OK) != 0)
     {
       fprintf(stderr, "[imageio_storage_disk] could not write to directory: `%s'!\n", dirname);
       dt_control_log(_("could not write to directory `%s'!"), dirname);
@@ -328,6 +332,7 @@ void *get_params(dt_imageio_module_storage_t *self)
 
 void free_params(dt_imageio_module_storage_t *self, dt_imageio_module_data_t *params)
 {
+  if(!params) return;
   dt_imageio_disk_t *d = (dt_imageio_disk_t *)params;
   dt_variables_params_destroy(d->vp);
   free(params);

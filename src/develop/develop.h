@@ -67,6 +67,15 @@ typedef enum dt_dev_pixelpipe_status_t
 
 extern const gchar *dt_dev_histogram_type_names[];
 
+typedef struct dt_dev_proxy_exposure_t
+{
+  struct dt_iop_module_t *module;
+  void (*set_white)(struct dt_iop_module_t *exp, const float white);
+  float (*get_white)(struct dt_iop_module_t *exp);
+  void (*set_black)(struct dt_iop_module_t *exp, const float black);
+  float (*get_black)(struct dt_iop_module_t *exp);
+} dt_dev_proxy_exposure_t;
+
 struct dt_dev_pixelpipe_t;
 typedef struct dt_develop_t
 {
@@ -133,15 +142,9 @@ typedef struct dt_develop_t
   /* proxy for communication between plugins and develop/darkroom */
   struct
   {
-    // exposure plugin hooks, used by histogram dragging functions
-    struct
-    {
-      struct dt_iop_module_t *module;
-      void (*set_white)(struct dt_iop_module_t *exp, const float white);
-      float (*get_white)(struct dt_iop_module_t *exp);
-      void (*set_black)(struct dt_iop_module_t *exp, const float black);
-      float (*get_black)(struct dt_iop_module_t *exp);
-    } exposure;
+    // list of exposure iop instances, with plugin hooks, used by histogram dragging functions
+    // each element is dt_dev_proxy_exposure_t
+    GList *exposure;
 
     // modulegroups plugin hooks
     struct
@@ -192,6 +195,15 @@ typedef struct dt_develop_t
     float lower;
     float upper;
   } overexposed;
+
+  // the display profile related things (softproof, gamut check, profiles ...)
+  struct
+  {
+    guint timeout;
+    gulong destroy_signal_handler;
+    GtkWidget *floating_window, *softproof_button, *gamut_button;
+  } profile;
+
 } dt_develop_t;
 
 void dt_dev_init(dt_develop_t *dev, int32_t gui_attached);
@@ -237,6 +249,8 @@ void dt_dev_invalidate_from_gui(dt_develop_t *dev);
  * exposure plugin hook, set the white level
  */
 
+/** a function used to sort the list */
+gint dt_dev_exposure_hooks_sort(gconstpointer a, gconstpointer b);
 /** check if exposure iop hooks are available */
 gboolean dt_dev_exposure_hooks_available(dt_develop_t *dev);
 /** reset exposure to defaults */

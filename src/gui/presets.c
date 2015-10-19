@@ -146,7 +146,7 @@ static gchar *get_active_preset_name(dt_iop_module_t *module)
   sqlite3_stmt *stmt;
   DT_DEBUG_SQLITE3_PREPARE_V2(dt_database_get(darktable.db),
                               "select name, op_params, blendop_params, enabled from presets where "
-                              "operation=?1 and op_version=?2 order by writeprotect desc, name, rowid",
+                              "operation=?1 and op_version=?2 order by writeprotect desc, lower(name), rowid",
                               -1, &stmt, NULL);
   DT_DEBUG_SQLITE3_BIND_TEXT(stmt, 1, module->op, -1, SQLITE_TRANSIENT);
   DT_DEBUG_SQLITE3_BIND_INT(stmt, 2, module->version());
@@ -734,7 +734,7 @@ void dt_gui_favorite_presets_menu_show()
       dt_iop_module_t *iop = (dt_iop_module_t *)modules->data;
 
       /* check if module is favorite */
-      if(iop->state == dt_iop_state_FAVORITE)
+      if(iop->so->state == dt_iop_state_FAVORITE)
       {
         /* create submenu for module */
         GtkMenuItem *smi = (GtkMenuItem *)gtk_menu_item_new_with_label(iop->name());
@@ -745,7 +745,7 @@ void dt_gui_favorite_presets_menu_show()
         DT_DEBUG_SQLITE3_PREPARE_V2(dt_database_get(darktable.db), "select name, op_params, writeprotect, "
                                                                    "description, blendop_params, op_version "
                                                                    "from presets where operation=?1 order by "
-                                                                   "writeprotect desc, name, rowid",
+                                                                   "writeprotect desc, lower(name), rowid",
                                     -1, &stmt, NULL);
         DT_DEBUG_SQLITE3_BIND_TEXT(stmt, 1, iop->op, -1, SQLITE_TRANSIENT);
 
@@ -800,24 +800,26 @@ static void dt_gui_presets_popup_menu_show_internal(dt_dev_operation_t op, int32
                                 "select name, op_params, writeprotect, description, blendop_params, "
                                 "op_version, enabled from presets where operation=?1 and "
                                 "(filter=0 or ( "
-                                "?2 like model and ?3 like maker and "
-                                "?4 like lens and "
-                                "?5 between iso_min and iso_max and "
-                                "?6 between exposure_min and exposure_max and "
-                                "?7 between aperture_min and aperture_max and "
-                                "?8 between focal_length_min and focal_length_max and "
+                                "((?2 like model and ?3 like maker) or (?4 like model and ?5 like maker)) and "
+                                "?6 like lens and "
+                                "?7 between iso_min and iso_max and "
+                                "?8 between exposure_min and exposure_max and "
+                                "?9 between aperture_min and aperture_max and "
+                                "?10 between focal_length_min and focal_length_max and "
                                 "(format = 0 or format&?9!=0)"
                                 " ) )"
-                                "order by writeprotect desc, name, rowid",
+                                "order by writeprotect desc, lower(name), rowid",
                                 -1, &stmt, NULL);
     DT_DEBUG_SQLITE3_BIND_TEXT(stmt, 1, op, -1, SQLITE_TRANSIENT);
     DT_DEBUG_SQLITE3_BIND_TEXT(stmt, 2, image->exif_model, -1, SQLITE_TRANSIENT);
     DT_DEBUG_SQLITE3_BIND_TEXT(stmt, 3, image->exif_maker, -1, SQLITE_TRANSIENT);
-    DT_DEBUG_SQLITE3_BIND_TEXT(stmt, 4, image->exif_lens, -1, SQLITE_TRANSIENT);
-    DT_DEBUG_SQLITE3_BIND_DOUBLE(stmt, 5, image->exif_iso);
-    DT_DEBUG_SQLITE3_BIND_DOUBLE(stmt, 6, image->exif_exposure);
-    DT_DEBUG_SQLITE3_BIND_DOUBLE(stmt, 7, image->exif_aperture);
-    DT_DEBUG_SQLITE3_BIND_DOUBLE(stmt, 8, image->exif_focal_length);
+    DT_DEBUG_SQLITE3_BIND_TEXT(stmt, 4, image->camera_alias, -1, SQLITE_TRANSIENT);
+    DT_DEBUG_SQLITE3_BIND_TEXT(stmt, 5, image->camera_maker, -1, SQLITE_TRANSIENT);
+    DT_DEBUG_SQLITE3_BIND_TEXT(stmt, 6, image->exif_lens, -1, SQLITE_TRANSIENT);
+    DT_DEBUG_SQLITE3_BIND_DOUBLE(stmt, 7, image->exif_iso);
+    DT_DEBUG_SQLITE3_BIND_DOUBLE(stmt, 8, image->exif_exposure);
+    DT_DEBUG_SQLITE3_BIND_DOUBLE(stmt, 9, image->exif_aperture);
+    DT_DEBUG_SQLITE3_BIND_DOUBLE(stmt, 10, image->exif_focal_length);
     int ldr = dt_image_is_ldr(image) ? FOR_LDR : (dt_image_is_raw(image) ? FOR_RAW : FOR_HDR);
     DT_DEBUG_SQLITE3_BIND_INT(stmt, 9, ldr);
   }
@@ -827,7 +829,7 @@ static void dt_gui_presets_popup_menu_show_internal(dt_dev_operation_t op, int32
     DT_DEBUG_SQLITE3_PREPARE_V2(dt_database_get(darktable.db), "select name, op_params, writeprotect, "
                                                                "description, blendop_params, op_version, "
                                                                "enabled from presets where operation=?1 "
-                                                               "order by writeprotect desc, name, rowid",
+                                                               "order by writeprotect desc, lower(name), rowid",
                                 -1, &stmt, NULL);
     DT_DEBUG_SQLITE3_BIND_TEXT(stmt, 1, op, -1, SQLITE_TRANSIENT);
   }

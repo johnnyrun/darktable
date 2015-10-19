@@ -1,10 +1,25 @@
 #!/bin/sh
 
+set -e
+
 H_FILE=$1
 
 VERSION_H_NEEDS_UPDATE=1
 
-NEW_VERSION=`git describe --tags HEAD | sed 's,^release-,,;s,-,+,;s,-,~,;'`
+NEW_VERSION=""
+
+if [ `which git` ]; then
+	NEW_VERSION=`git describe --tags --dirty | sed 's,^release-,,;s,-,+,;s,-,~,;'`
+fi
+
+# if we are not in a git checkout, NEW_VERSION is empty
+if [ -z "${NEW_VERSION}" ]; then
+	NEW_VERSION="archive-$Format:%H$"
+fi
+
+if [ -n  "`echo -e $NEW_VERSION | grep  H`" ]; then
+	NEW_VERSION="unknown-version"
+fi
 
 # version.h exists => check if it containts the up-to-date version
 if [ -f ${H_FILE} ]; then
