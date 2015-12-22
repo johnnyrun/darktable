@@ -132,6 +132,7 @@ int dt_view_load_module(dt_view_t *view, const char *module)
   dt_loc_get_plugindir(plugindir, sizeof(plugindir));
   g_strlcat(plugindir, "/views", sizeof(plugindir));
   gchar *libname = g_module_build_path(plugindir, (const gchar *)module);
+  dt_print(DT_DEBUG_CONTROL, "[view_load_module] loading view `%s' from %s\n", module, libname);
   view->module = g_module_open(libname, G_MODULE_BIND_LAZY | G_MODULE_BIND_LOCAL);
   if(!view->module)
   {
@@ -173,8 +174,6 @@ int dt_view_load_module(dt_view_t *view, const char *module)
     view->key_released = NULL;
   if(!g_module_symbol(view->module, "configure", (gpointer) & (view->configure))) view->configure = NULL;
   if(!g_module_symbol(view->module, "scrolled", (gpointer) & (view->scrolled))) view->scrolled = NULL;
-  if(!g_module_symbol(view->module, "border_scrolled", (gpointer) & (view->border_scrolled)))
-    view->border_scrolled = NULL;
   if(!g_module_symbol(view->module, "init_key_accels", (gpointer) & (view->init_key_accels)))
     view->init_key_accels = NULL;
   if(!g_module_symbol(view->module, "connect_key_accels", (gpointer) & (view->connect_key_accels)))
@@ -201,6 +200,9 @@ out:
 void dt_view_unload_module(dt_view_t *view)
 {
   if(view->cleanup) view->cleanup(view);
+
+  g_slist_free(view->accel_closures);
+
   if(view->module) g_module_close(view->module);
 }
 
@@ -231,6 +233,12 @@ int dt_view_manager_switch(dt_view_manager_t *vm, int k)
 {
   // Before switching views, restore accelerators if disabled
   if(!darktable.control->key_accelerators_on) dt_control_key_accelerators_on(darktable.control);
+
+  // reset the cursor to the default one
+  dt_control_change_cursor(GDK_LEFT_PTR);
+
+  // also ignore what scrolling there was previously happening
+  memset(darktable.gui->scroll_to, 0, sizeof(darktable.gui->scroll_to));
 
   // destroy old module list
   int error = 0;
@@ -291,6 +299,37 @@ int dt_view_manager_switch(dt_view_manager_t *vm, int k)
 
   if(!error)
   {
+    {
+      const int bits = (sizeof(void *) == 4) ? 32 : 64;
+      if((bits < 64) && !dt_conf_get_bool("please_let_me_suffer_by_using_32bit_darktable"))
+      {
+        fprintf(stderr, "warning: 32-bit build!\n");
+
+        GtkWidget *dialog, *content_area;
+        GtkDialogFlags flags;
+
+        // Create the widgets
+        flags = GTK_DIALOG_MODAL | GTK_DIALOG_DESTROY_WITH_PARENT;
+        dialog = gtk_dialog_new_with_buttons(
+            _("you are making a mistake!"), GTK_WINDOW(dt_ui_main_window(darktable.gui->ui)), flags,
+            _("_yes, i understood. please let me suffer by using 32-bit darktable."), GTK_RESPONSE_NONE,
+            NULL);
+        content_area = gtk_dialog_get_content_area(GTK_DIALOG(dialog));
+
+        const gchar *msg = _("warning!\nyou are using a 32-bit build of darktable.\nthe 32-bit build has "
+                             "severely limited virtual address space.\nwe have had numerous reports that "
+                             "darktable exhibits sporadic issues and crashes when using 32-bit builds.\nwe "
+                             "strongly recommend you switch to a proper 64-bit build.\notherwise, you are "
+                             "GUARANTEED to experience issues which cannot be fixed.\n");
+
+        gtk_container_add(GTK_CONTAINER(content_area), gtk_label_new(msg));
+        gtk_widget_show_all(dialog);
+
+        (void)gtk_dialog_run(GTK_DIALOG(dialog));
+        gtk_widget_destroy(dialog);
+      }
+    }
+
     GList *plugins;
     dt_view_t *v;
     if(vm->current_view >=0)
@@ -635,13 +674,6 @@ void dt_view_manager_scrolled(dt_view_manager_t *vm, double x, double y, int up,
   if(vm->current_view < 0) return;
   dt_view_t *v = vm->view + vm->current_view;
   if(v->scrolled) v->scrolled(v, x, y, up, state);
-}
-
-void dt_view_manager_border_scrolled(dt_view_manager_t *vm, double x, double y, int which, int up)
-{
-  if(vm->current_view < 0) return;
-  dt_view_t *v = vm->view + vm->current_view;
-  if(v->border_scrolled) v->border_scrolled(v, x, y, which, up);
 }
 
 void dt_view_set_scrollbar(dt_view_t *view, float hpos, float hsize, float hwinsize, float vpos, float vsize,
@@ -1338,7 +1370,7 @@ int dt_view_image_expose(dt_view_image_over_t *image_over, uint32_t imgid, cairo
 
   cairo_save(cr);
   float bgcol = 0.4, fontcol = 0.425, bordercol = 0.1, outlinecol = 0.2;
-  int selected = 0, altered = 0, is_grouped = 0;
+  int selected = 0, is_grouped = 0;
   // this is a gui thread only thing. no mutex required:
   const int imgsel = dt_control_get_mouse_over_id(); //  darktable.control->global_settings.lib_image_mouse_over_id;
 
@@ -1449,42 +1481,55 @@ int dt_view_image_expose(dt_view_image_over_t *image_over, uint32_t imgid, cairo
       rgbbuf = (uint8_t *)calloc(buf.width * buf.height * 4, sizeof(uint8_t));
       if(rgbbuf)
       {
-        gboolean do_copy = TRUE;
+        gboolean have_lock = FALSE;
+        cmsHTRANSFORM transform = NULL;
 
         if(dt_conf_get_bool("cache_color_managed"))
         {
           pthread_rwlock_rdlock(&darktable.color_profiles->xprofile_lock);
+          have_lock = TRUE;
 
           // we only color manage when a thumbnail is sRGB or AdobeRGB. everything else just gets dumped to the screen
           if(buf.color_space == DT_COLORSPACE_SRGB &&
              darktable.color_profiles->transform_srgb_to_display)
           {
-            cmsDoTransform(darktable.color_profiles->transform_srgb_to_display,
-                           buf.buf, rgbbuf, buf.width * buf.height);
-            do_copy = FALSE;
+            transform = darktable.color_profiles->transform_srgb_to_display;
           }
           else if(buf.color_space == DT_COLORSPACE_ADOBERGB &&
                   darktable.color_profiles->transform_adobe_rgb_to_display)
           {
-            cmsDoTransform(darktable.color_profiles->transform_adobe_rgb_to_display,
-                           buf.buf, rgbbuf, buf.width * buf.height);
-            do_copy = FALSE;
+            transform = darktable.color_profiles->transform_adobe_rgb_to_display;
           }
-          else if(buf.color_space == DT_COLORSPACE_NONE)
+          else
           {
-            fprintf(stderr, "oops, there seems to be a code path not setting the color space of thumbnails!\n");
+            pthread_rwlock_unlock(&darktable.color_profiles->xprofile_lock);
+            have_lock = FALSE;
+            if(buf.color_space == DT_COLORSPACE_NONE)
+            {
+              fprintf(stderr, "oops, there seems to be a code path not setting the color space of thumbnails!\n");
+            }
+            else if(buf.color_space != DT_COLORSPACE_DISPLAY)
+            {
+              fprintf(stderr, "oops, there seems to be a code path setting an unhandled color space of thumbnails (%s)!\n",
+                      dt_colorspaces_get_name(buf.color_space, "from file"));
+            }
           }
-
-          pthread_rwlock_unlock(&darktable.color_profiles->xprofile_lock);
         }
 
-        if(do_copy)
+#ifdef _OPENMP
+  #pragma omp parallel for schedule(static) default(none) shared(buf, rgbbuf, transform)
+#endif
+        for(int i = 0; i < buf.height; i++)
         {
-          for(int i = 0; i < buf.height; i++)
-          {
-            uint8_t *in = buf.buf + i * buf.width * 4;
-            uint8_t *out = rgbbuf + i * buf.width * 4;
+          const uint8_t *in = buf.buf + i * buf.width * 4;
+          uint8_t *out = rgbbuf + i * buf.width * 4;
 
+          if(transform)
+          {
+            cmsDoTransform(transform, in, out, buf.width);
+          }
+          else
+          {
             for(int j = 0; j < buf.width; j++, in += 4, out += 4)
             {
               out[0] = in[2];
@@ -1493,6 +1538,7 @@ int dt_view_image_expose(dt_view_image_over_t *image_over, uint32_t imgid, cairo
             }
           }
         }
+        if(have_lock) pthread_rwlock_unlock(&darktable.color_profiles->xprofile_lock);
 
         const int32_t stride = cairo_format_stride_for_width(CAIRO_FORMAT_RGB24, buf.width);
         surface
@@ -1654,7 +1700,7 @@ int dt_view_image_expose(dt_view_image_over_t *image_over, uint32_t imgid, cairo
       else
         x = .04 * fscale;
 
-      if(draw_metadata && image_is_rejected) cairo_set_source_rgb(cr, 1., 0., 0.);
+      if(image_is_rejected) cairo_set_source_rgb(cr, 1., 0., 0.);
 
       // Only draw hovering effects in stars for the hovered image
       if((imgsel == imgid || zoom == 1) && ((px - x) * (px - x) + (py - y) * (py - y) < r1 * r1))
@@ -1665,22 +1711,19 @@ int dt_view_image_expose(dt_view_image_over_t *image_over, uint32_t imgid, cairo
         cairo_stroke(cr);
       }
 
-      if(draw_metadata && image_is_rejected) cairo_set_line_width(cr, 2.5);
+      if(image_is_rejected) cairo_set_line_width(cr, 2.5);
 
-      if(draw_metadata)
-      {
-        // reject cross:
-        cairo_move_to(cr, x - r2, y - r2);
-        cairo_line_to(cr, x + r2, y + r2);
-        cairo_move_to(cr, x + r2, y - r2);
-        cairo_line_to(cr, x - r2, y + r2);
-        cairo_close_path(cr);
-        cairo_stroke(cr);
-        cairo_set_source_rgb(cr, outlinecol, outlinecol, outlinecol);
-        cairo_set_line_width(cr, 1.5);
-      }
+      // reject cross:
+      cairo_move_to(cr, x - r2, y - r2);
+      cairo_line_to(cr, x + r2, y + r2);
+      cairo_move_to(cr, x + r2, y - r2);
+      cairo_line_to(cr, x - r2, y + r2);
+      cairo_close_path(cr);
+      cairo_stroke(cr);
+      cairo_set_source_rgb(cr, outlinecol, outlinecol, outlinecol);
+      cairo_set_line_width(cr, 1.5);
 
-      if (draw_audio)
+      if(draw_audio)
       {
         if(img && (img->flags & DT_IMAGE_HAS_WAV))
         {
@@ -1699,7 +1742,7 @@ int dt_view_image_expose(dt_view_image_over_t *image_over, uint32_t imgid, cairo
         }
       }
 
-      if (draw_grouping)
+      if(draw_grouping)
       {
         DT_DEBUG_SQLITE3_CLEAR_BINDINGS(darktable.view_manager->statements.get_grouped);
         DT_DEBUG_SQLITE3_RESET(darktable.view_manager->statements.get_grouped);
@@ -1714,7 +1757,7 @@ int dt_view_image_expose(dt_view_image_over_t *image_over, uint32_t imgid, cairo
       }
 
       // image part of a group?
-      if(draw_metadata && is_grouped && darktable.gui && darktable.gui->grouping)
+      if(is_grouped && darktable.gui && darktable.gui->grouping)
       {
         // draw grouping icon and border if the current group is expanded
         // align to the right, left of altered
@@ -1739,18 +1782,8 @@ int dt_view_image_expose(dt_view_image_over_t *image_over, uint32_t imgid, cairo
           *image_over = DT_VIEW_GROUP;
       }
 
-      if (draw_history)
-      {
-        DT_DEBUG_SQLITE3_CLEAR_BINDINGS(darktable.view_manager->statements.have_history);
-        DT_DEBUG_SQLITE3_RESET(darktable.view_manager->statements.have_history);
-        DT_DEBUG_SQLITE3_BIND_INT(darktable.view_manager->statements.have_history, 1, imgid);
-
-        /* lets check if imgid has history */
-        if(sqlite3_step(darktable.view_manager->statements.have_history) == SQLITE_ROW) altered = 1;
-      }
-
       // image altered?
-      if(draw_metadata && altered)
+      if(draw_history && dt_image_altered(imgid))
       {
         // align to right
         const float s = (r1 + r2) * .5;

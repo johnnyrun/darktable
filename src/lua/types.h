@@ -22,6 +22,7 @@
 #include <lua.h>
 #include <lauxlib.h>
 #include <lautoc.h>
+#include <gtk/gtk.h>
 
 /**
   these defines can be used with luaA_struct_member to have checks on read added
@@ -40,6 +41,11 @@ typedef const char *const_string; // string that has no push function
 typedef double protected_double;  // like double, but NAN is mapped to nil
 typedef double progress_double; // a double in [0.0,1.0] any value out of bound will be silently converted to
                                 // the bound both at push and pull time
+
+// Types added to the lua type system and useable externally
+typedef GtkOrientation dt_lua_orientation_t;
+typedef GtkAlign dt_lua_align_t;
+typedef PangoEllipsizeMode dt_lua_ellipsize_mode_t;
 
 
 
@@ -128,10 +134,24 @@ luaA_Type dt_lua_init_int_type_type(lua_State *L, luaA_Type type_id);
 #define dt_lua_init_gpointer_type(L, type_name) dt_lua_init_gpointer_type_type(L, luaA_type(L, type_name))
 luaA_Type dt_lua_init_gpointer_type_type(lua_State *L, luaA_Type type_id);
 
-
+/**
+  * make a pointer an alias of another pointer. Both pointers will push the same lua object 
+  * when pushed on the stack. The object contains the original pointer
+  */
 #define dt_lua_type_gpointer_alias(L,type_name,pointer,alias) \
-  dt_lua_type_gpointer_alias_type(L,luaA_type(L,type_name,pointer,alias)
+  dt_lua_type_gpointer_alias_type(L,luaA_type(L,type_name),pointer,alias)
 void dt_lua_type_gpointer_alias_type(lua_State*L,luaA_Type type_id,void* pointer,void* alias);
+
+
+/**
+  * drop a gpointer. Pushing the pointer again will create a new object.
+  * We can't guarentee when the original object will be GC, but it will point to NULL
+  * instead of its normal content. accessing it from the lua side will cause an error
+  * luaA_to will also raise an error
+  * NOTE : if the object had aliases, the aliases will return NULL too.
+  */
+void dt_lua_type_gpointer_drop(lua_State*L, void* pointer);
+
 /**
  * similar to dt_lua_init_type but creates a singleton type
  * that is : a type who has only one instance (which is a void* pointer)

@@ -487,8 +487,8 @@ void reload_defaults(dt_iop_module_t *self)
 
 void init(dt_iop_module_t *self)
 {
-  self->params = malloc(sizeof(dt_iop_levels_params_t));
-  self->default_params = malloc(sizeof(dt_iop_levels_params_t));
+  self->params = calloc(1, sizeof(dt_iop_levels_params_t));
+  self->default_params = calloc(1, sizeof(dt_iop_levels_params_t));
   self->default_enabled = 0;
   self->request_histogram |= (DT_REQUEST_ON);
   self->priority = 649; // module order created by iop_dependencies.py, do not edit!
@@ -515,8 +515,6 @@ void cleanup_global(dt_iop_module_so_t *self)
 
 void cleanup(dt_iop_module_t *self)
 {
-  free(self->gui_data);
-  self->gui_data = NULL;
   free(self->params);
   self->params = NULL;
 }

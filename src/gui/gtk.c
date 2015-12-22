@@ -49,9 +49,6 @@
 #include <gtkosxapplication.h>
 #endif
 #ifdef GDK_WINDOWING_QUARTZ
-#include <Carbon/Carbon.h>
-#include <ApplicationServices/ApplicationServices.h>
-#include <CoreServices/CoreServices.h>
 #include "osx/osx.h"
 #endif
 #include <pthread.h>
@@ -103,6 +100,9 @@ static void _ui_init_panel_center_bottom(dt_ui_t *ui, GtkWidget *container);
 static void _ui_init_panel_bottom(dt_ui_t *ui, GtkWidget *container);
 /* generic callback for redraw widget signals */
 static void _ui_widget_redraw_callback(gpointer instance, GtkWidget *widget);
+
+/* Set the HiDPI stuff */
+static void configure_ppd_dpi(dt_gui_gtk_t *gui);
 
 /*
  * OLD UI API
@@ -169,21 +169,17 @@ static gboolean fullscreen_key_accel_callback(GtkAccelGroup *accel_group, GObjec
   if(data)
   {
     widget = dt_ui_main_window(darktable.gui->ui);
-    fullscreen = dt_conf_get_bool("ui_last/fullscreen");
+    fullscreen = gdk_window_get_state(gtk_widget_get_window(widget)) & GDK_WINDOW_STATE_FULLSCREEN;
     if(fullscreen)
       gtk_window_unfullscreen(GTK_WINDOW(widget));
     else
       gtk_window_fullscreen(GTK_WINDOW(widget));
-    fullscreen ^= 1;
-    dt_conf_set_bool("ui_last/fullscreen", fullscreen);
     dt_dev_invalidate(darktable.develop);
   }
   else
   {
     widget = dt_ui_main_window(darktable.gui->ui);
     gtk_window_unfullscreen(GTK_WINDOW(widget));
-    fullscreen = 0;
-    dt_conf_set_bool("ui_last/fullscreen", fullscreen);
     dt_dev_invalidate(darktable.develop);
   }
 
@@ -461,12 +457,6 @@ static gboolean draw(GtkWidget *da, cairo_t *cr, gpointer user_data)
     darktable.lib->proxy.colorpicker.update_samples(darktable.lib->proxy.colorpicker.module);
   }
 
-  // test quit cond (thread safe, 2nd pass)
-  if(!dt_control_running())
-  {
-    dt_cleanup();
-    gtk_main_quit();
-  }
   return TRUE;
 }
 
@@ -480,9 +470,10 @@ static gboolean scrolled(GtkWidget *widget, GdkEventScroll *event, gpointer user
 
 static gboolean borders_scrolled(GtkWidget *widget, GdkEventScroll *event, gpointer user_data)
 {
-  dt_view_manager_border_scrolled(darktable.view_manager, event->x, event->y, GPOINTER_TO_INT(user_data),
-                                  event->direction == GDK_SCROLL_UP);
-  gtk_widget_queue_draw(widget);
+  // pass the scroll event to the matching side panel
+  gboolean res;
+  g_signal_emit_by_name(G_OBJECT(user_data), "scroll-event", event, &res);
+
   return TRUE;
 }
 
@@ -544,6 +535,11 @@ static gboolean _gui_switch_view_key_accel_callback(GtkAccelGroup *accel_group, 
     case DT_GUI_VIEW_SWITCH_TO_SLIDESHOW:
       mode = DT_SLIDESHOW;
       break;
+#ifdef HAVE_PRINT
+    case DT_GUI_VIEW_SWITCH_TO_PRINT:
+      mode = DT_PRINT;
+      break;
+#endif
   }
 
   /* try switch to mode */
@@ -613,6 +609,10 @@ static gboolean configure(GtkWidget *da, GdkEventConfigure *event, gpointer user
   }
   oldw = event->width;
   oldh = event->height;
+
+#ifndef GDK_WINDOWING_QUARTZ
+  configure_ppd_dpi((dt_gui_gtk_t *) user_data);
+#endif
 
   return dt_control_configure(da, event, user_data);
 }
@@ -702,6 +702,11 @@ int dt_gui_gtk_init(dt_gui_gtk_t *gui, int argc, char *argv[])
   /* lets zero mem */
   memset(gui, 0, sizeof(dt_gui_gtk_t));
 
+  // force gtk3 to use normal scroll bars instead of the popup thing. they get in the way of controls
+  // the alternative would be to gtk_scrolled_window_set_overlay_scrolling(..., FALSE); every single widget
+  // that might have scroll bars
+  g_setenv("GTK_OVERLAY_SCROLLING", "0", 0);
+
   // unset gtk rc from kde:
   char path[PATH_MAX] = { 0 }, datadir[PATH_MAX] = { 0 }, configdir[PATH_MAX] = { 0 };
   dt_loc_get_datadir(datadir, sizeof(datadir));
@@ -788,14 +793,15 @@ int dt_gui_gtk_init(dt_gui_gtk_t *gui, int argc, char *argv[])
   //  dt_gui_background_jobs_init();
 
   /* Have the delete event (window close) end the program */
-  dt_loc_get_datadir(datadir, sizeof(datadir));
   snprintf(path, sizeof(path), "%s/icons", datadir);
+  gtk_icon_theme_append_search_path(gtk_icon_theme_get_default(), path);
+  snprintf(path, sizeof(path), "%s/icons", DARKTABLE_SHAREDIR);
   gtk_icon_theme_append_search_path(gtk_icon_theme_get_default(), path);
 
   widget = dt_ui_center(darktable.gui->ui);
 
   g_signal_connect(G_OBJECT(widget), "key-press-event", G_CALLBACK(key_pressed), NULL);
-  g_signal_connect(G_OBJECT(widget), "configure-event", G_CALLBACK(configure), NULL);
+  g_signal_connect(G_OBJECT(widget), "configure-event", G_CALLBACK(configure), gui);
   g_signal_connect(G_OBJECT(widget), "draw", G_CALLBACK(draw), NULL);
   g_signal_connect(G_OBJECT(widget), "motion-notify-event", G_CALLBACK(mouse_moved), NULL);
   g_signal_connect(G_OBJECT(widget), "leave-notify-event", G_CALLBACK(center_leave), NULL);
@@ -810,25 +816,21 @@ int dt_gui_gtk_init(dt_gui_gtk_t *gui, int argc, char *argv[])
   g_signal_connect(G_OBJECT(widget), "draw", G_CALLBACK(draw_borders), GINT_TO_POINTER(0));
   g_signal_connect(G_OBJECT(widget), "button-press-event", G_CALLBACK(borders_button_pressed),
                    darktable.gui->ui);
-  g_signal_connect(G_OBJECT(widget), "scroll-event", G_CALLBACK(borders_scrolled), GINT_TO_POINTER(0));
   g_object_set_data(G_OBJECT(widget), "border", GINT_TO_POINTER(0));
   widget = darktable.gui->widgets.right_border;
   g_signal_connect(G_OBJECT(widget), "draw", G_CALLBACK(draw_borders), GINT_TO_POINTER(1));
   g_signal_connect(G_OBJECT(widget), "button-press-event", G_CALLBACK(borders_button_pressed),
                    darktable.gui->ui);
-  g_signal_connect(G_OBJECT(widget), "scroll-event", G_CALLBACK(borders_scrolled), GINT_TO_POINTER(1));
   g_object_set_data(G_OBJECT(widget), "border", GINT_TO_POINTER(1));
   widget = darktable.gui->widgets.top_border;
   g_signal_connect(G_OBJECT(widget), "draw", G_CALLBACK(draw_borders), GINT_TO_POINTER(2));
   g_signal_connect(G_OBJECT(widget), "button-press-event", G_CALLBACK(borders_button_pressed),
                    darktable.gui->ui);
-  g_signal_connect(G_OBJECT(widget), "scroll-event", G_CALLBACK(borders_scrolled), GINT_TO_POINTER(2));
   g_object_set_data(G_OBJECT(widget), "border", GINT_TO_POINTER(2));
   widget = darktable.gui->widgets.bottom_border;
   g_signal_connect(G_OBJECT(widget), "draw", G_CALLBACK(draw_borders), GINT_TO_POINTER(3));
   g_signal_connect(G_OBJECT(widget), "button-press-event", G_CALLBACK(borders_button_pressed),
                    darktable.gui->ui);
-  g_signal_connect(G_OBJECT(widget), "scroll-event", G_CALLBACK(borders_scrolled), GINT_TO_POINTER(3));
   g_object_set_data(G_OBJECT(widget), "border", GINT_TO_POINTER(3));
   dt_gui_presets_init();
 
@@ -852,6 +854,7 @@ int dt_gui_gtk_init(dt_gui_gtk_t *gui, int argc, char *argv[])
   dt_accel_register_global(NC_("accel", "darkroom view"), GDK_KEY_d, 0);
   dt_accel_register_global(NC_("accel", "map view"), GDK_KEY_m, 0);
   dt_accel_register_global(NC_("accel", "slideshow view"), GDK_KEY_s, 0);
+  dt_accel_register_global(NC_("accel", "print view"), GDK_KEY_p, 0);
 
   dt_accel_connect_global("tethering view",
                           g_cclosure_new(G_CALLBACK(_gui_switch_view_key_accel_callback),
@@ -867,6 +870,8 @@ int dt_gui_gtk_init(dt_gui_gtk_t *gui, int argc, char *argv[])
   dt_accel_connect_global("slideshow view",
                           g_cclosure_new(G_CALLBACK(_gui_switch_view_key_accel_callback),
                                          GINT_TO_POINTER(DT_GUI_VIEW_SWITCH_TO_SLIDESHOW), NULL));
+  dt_accel_connect_global("print view", g_cclosure_new(G_CALLBACK(_gui_switch_view_key_accel_callback),
+                                                     GINT_TO_POINTER(DT_GUI_VIEW_SWITCH_TO_PRINT), NULL));
 
   // register_keys for applying styles
   init_styles_key_accels();
@@ -909,11 +914,12 @@ int dt_gui_gtk_init(dt_gui_gtk_t *gui, int argc, char *argv[])
       = { "GDK_AXIS_IGNORE", "GDK_AXIS_X",     "GDK_AXIS_Y",     "GDK_AXIS_PRESSURE",
           "GDK_AXIS_XTILT",  "GDK_AXIS_YTILT", "GDK_AXIS_WHEEL", "GDK_AXIS_LAST" };
   dt_print(DT_DEBUG_INPUT, "[input device] Input devices found:\n\n");
+
   GList *input_devices = gdk_device_manager_list_devices(
       gdk_display_get_device_manager(gdk_display_get_default()), GDK_DEVICE_TYPE_MASTER);
-  while(input_devices)
+  for(GList *l = input_devices; l != NULL; l = g_list_next(l))
   {
-    GdkDevice *device = (GdkDevice *)input_devices->data;
+    GdkDevice *device = (GdkDevice *)l->data;
     GdkInputSource source = gdk_device_get_source(device);
     gint n_axes = (source == GDK_SOURCE_KEYBOARD ? 0 : gdk_device_get_n_axes(device));
 
@@ -927,8 +933,12 @@ int dt_gui_gtk_init(dt_gui_gtk_t *gui, int argc, char *argv[])
       dt_print(DT_DEBUG_INPUT, "  %s\n", AXIS_NAMES[gdk_device_get_axis_use(device, i)]);
     }
     dt_print(DT_DEBUG_INPUT, "\n");
-    input_devices = g_list_next(input_devices);
   }
+  g_list_free(input_devices);
+
+  // finally set the cursor to be the default.
+  // for some reason this is needed on some systems to pick up the correctly themed cursor
+  dt_control_change_cursor(GDK_LEFT_PTR);
 
   return 0;
 }
@@ -953,20 +963,16 @@ void dt_gui_gtk_run(dt_gui_gtk_t *gui)
 #endif
   /* start the event loop */
   gtk_main();
+
+  dt_cleanup();
 }
 
-static void init_widgets(dt_gui_gtk_t *gui)
+static void configure_ppd_dpi(dt_gui_gtk_t *gui)
 {
-
-  GtkWidget *container;
-  GtkWidget *widget;
-
-  // Creating the main window
-  widget = gtk_window_new(GTK_WINDOW_TOPLEVEL);
-  gui->ui->main_window = widget;
+  GtkWidget *widget = gui->ui->main_window;
 
   // check if in HiDPI mode
-#if (CAIRO_VERSION >= CAIRO_VERSION_ENCODE(1, 14, 0))
+#if (CAIRO_VERSION >= CAIRO_VERSION_ENCODE(1, 13, 1))
   float screen_ppd_overwrite = dt_conf_get_float("screen_ppd_overwrite");
   if(screen_ppd_overwrite > 0.0)
   {
@@ -975,18 +981,14 @@ static void init_widgets(dt_gui_gtk_t *gui)
   }
   else
   {
-#ifdef GDK_WINDOWING_QUARTZ
-    gui->ppd = dt_osx_get_ppd();
+    gui->ppd = gtk_widget_get_scale_factor(widget);
     if(gui->ppd < 0.0)
     {
       gui->ppd = 1.0;
-      dt_print(DT_DEBUG_CONTROL, "[HiDPI] can't detect screen settings, switching off\n", gui->ppd);
+      dt_print(DT_DEBUG_CONTROL, "[HiDPI] can't detect screen settings, switching off\n");
     }
     else
       dt_print(DT_DEBUG_CONTROL, "[HiDPI] setting ppd to %f\n", gui->ppd);
-#else
-    gui->ppd = 1.0;
-#endif
   }
 #else
   gui->ppd = 1.0;
@@ -1004,21 +1006,7 @@ static void init_widgets(dt_gui_gtk_t *gui)
   else
   {
 #ifdef GDK_WINDOWING_QUARTZ
-    GdkScreen *screen = gtk_widget_get_screen(widget);
-    if(screen == NULL) screen = gdk_screen_get_default();
-    int monitor = gdk_screen_get_primary_monitor(screen);
-    CGDirectDisplayID ids[monitor + 1];
-    uint32_t total_ids;
-    CGSize size_in_mm;
-    GdkRectangle size_in_px;
-    if(CGGetOnlineDisplayList(monitor + 1, &ids[0], &total_ids) == kCGErrorSuccess && total_ids == monitor + 1)
-    {
-      size_in_mm = CGDisplayScreenSize(ids[monitor]);
-      gdk_screen_get_monitor_geometry(screen, monitor, &size_in_px);
-      gdk_screen_set_resolution(
-          screen, 25.4 * sqrt(size_in_px.width * size_in_px.width + size_in_px.height * size_in_px.height)
-                  / sqrt(size_in_mm.width * size_in_mm.width + size_in_mm.height * size_in_mm.height));
-    }
+    dt_osx_autoset_dpi(widget);
 #endif
     gui->dpi = gdk_screen_get_resolution(gtk_widget_get_screen(widget));
     if(gui->dpi < 0.0)
@@ -1032,6 +1020,20 @@ static void init_widgets(dt_gui_gtk_t *gui)
   }
   gui->dpi_factor
       = gui->dpi / 96; // according to man xrandr and the docs of gdk_screen_set_resolution 96 is the default
+}
+
+static void init_widgets(dt_gui_gtk_t *gui)
+{
+
+  GtkWidget *container;
+  GtkWidget *widget;
+
+  // Creating the main window
+  widget = gtk_window_new(GTK_WINDOW_TOPLEVEL);
+  gtk_widget_set_name(widget, "main_window");
+  gui->ui->main_window = widget;
+
+  configure_ppd_dpi(gui);
 
   gtk_window_set_default_size(GTK_WINDOW(widget), DT_PIXEL_APPLY_DPI(900), DT_PIXEL_APPLY_DPI(500));
 
@@ -1041,6 +1043,12 @@ static void init_widgets(dt_gui_gtk_t *gui)
   g_signal_connect(G_OBJECT(widget), "delete_event", G_CALLBACK(dt_gui_quit_callback), NULL);
   g_signal_connect(G_OBJECT(widget), "key-press-event", G_CALLBACK(key_pressed_override), NULL);
   g_signal_connect(G_OBJECT(widget), "key-release-event", G_CALLBACK(key_released), NULL);
+#ifdef GDK_WINDOWING_QUARTZ
+  if(gtk_widget_get_realized(widget))
+    dt_osx_allow_fullscreen(widget);
+  else
+    g_signal_connect(G_OBJECT(widget), "realize", G_CALLBACK(dt_osx_allow_fullscreen), NULL);
+#endif
 
   container = widget;
 
@@ -1231,7 +1239,7 @@ void dt_ui_container_focus_widget(dt_ui_t *ui, const dt_ui_container_t c, GtkWid
 {
   g_return_if_fail(GTK_IS_CONTAINER(ui->containers[c]));
 
-  if(GTK_WIDGET(ui->containers[c]) != gtk_widget_get_parent(gtk_widget_get_parent(w))) return;
+  if(GTK_WIDGET(ui->containers[c]) != gtk_widget_get_parent(w)) return;
 
   gtk_container_set_focus_child(GTK_CONTAINER(ui->containers[c]), w);
   gtk_widget_queue_draw(ui->containers[c]);
@@ -1371,6 +1379,27 @@ static gboolean _ui_init_panel_container_center_scroll_event(GtkWidget *widget, 
   return TRUE;
 }
 
+// this should work as long as everything happens in the gui thread
+static void _ui_panel_size_changed(GtkAdjustment *adjustment, GParamSpec *pspec, gpointer user_data)
+{
+  GtkAllocation allocation;
+  static float last_height[2] = { 0 };
+
+  int side = GPOINTER_TO_INT(user_data);
+
+  // don't do anything when the size didn't actually change.
+  float height = gtk_adjustment_get_upper(adjustment) - gtk_adjustment_get_lower(adjustment);
+  if(height == last_height[side]) return;
+  last_height[side] = height;
+
+  if(!darktable.gui->scroll_to[side]) return;
+
+  gtk_widget_get_allocation(darktable.gui->scroll_to[side], &allocation);
+  gtk_adjustment_set_value(adjustment, allocation.y);
+
+  darktable.gui->scroll_to[side] = NULL;
+}
+
 static GtkWidget *_ui_init_panel_container_center(GtkWidget *container, gboolean left)
 {
   GtkWidget *widget;
@@ -1388,6 +1417,12 @@ static GtkWidget *_ui_init_panel_container_center(GtkWidget *container, gboolean
                                     left ? GTK_CORNER_TOP_LEFT : GTK_CORNER_TOP_RIGHT);
   gtk_box_pack_start(GTK_BOX(container), widget, TRUE, TRUE, 0);
   gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(widget), GTK_POLICY_AUTOMATIC, GTK_POLICY_ALWAYS);
+
+  g_signal_connect(G_OBJECT(gtk_scrolled_window_get_vadjustment(GTK_SCROLLED_WINDOW(widget))), "notify::lower",
+                   G_CALLBACK(_ui_panel_size_changed), GINT_TO_POINTER(left ? 1 : 0));
+  // we want the left/right window border to scroll the module lists
+  g_signal_connect(G_OBJECT(left ? darktable.gui->widgets.right_border : darktable.gui->widgets.left_border),
+                   "scroll-event", G_CALLBACK(borders_scrolled), widget);
 
   /* create the scrolled viewport */
   container = widget;

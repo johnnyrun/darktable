@@ -186,13 +186,16 @@ void dt_image_full_path(const int imgid, char *pathname, size_t pathname_len, gb
   }
   sqlite3_finalize(stmt);
 
-  if(*from_cache && !g_file_test(pathname, G_FILE_TEST_EXISTS))
+  if(*from_cache)
   {
-    _image_local_copy_full_path(imgid, pathname, pathname_len);
-    *from_cache = TRUE;
+    char lc_pathname[PATH_MAX] = { 0 };
+    _image_local_copy_full_path(imgid, lc_pathname, sizeof(lc_pathname));
+
+    if (g_file_test(lc_pathname, G_FILE_TEST_EXISTS))
+      g_strlcpy(pathname, (char *)lc_pathname, pathname_len);
+    else
+      *from_cache = FALSE;
   }
-  else
-    *from_cache = FALSE;
 }
 
 static void _image_local_copy_full_path(const int imgid, char *pathname, size_t pathname_len)
@@ -269,12 +272,21 @@ void dt_image_path_append_version(int imgid, char *pathname, size_t pathname_len
 
 void dt_image_print_exif(const dt_image_t *img, char *line, size_t line_len)
 {
-  if(img->exif_exposure >= 0.1f)
-    snprintf(line, line_len, "%.1f'' f/%.1f %dmm iso %d", img->exif_exposure, img->exif_aperture,
+  if(img->exif_exposure >= 4.0f) // Use whole seconds (e.g., 5" for exposures >= 4s)
+    snprintf(line, line_len, "%.0f″ f/%.0f %dmm iso %d", img->exif_exposure, img->exif_aperture,
              (int)img->exif_focal_length, (int)img->exif_iso);
-  else
+  else if(img->exif_exposure < 0.35f) // Use fractions (e.g., 1/200 all the way up to 1/3)
     snprintf(line, line_len, "1/%.0f f/%.1f %dmm iso %d", 1.0 / img->exif_exposure, img->exif_aperture,
              (int)img->exif_focal_length, (int)img->exif_iso);
+  else // Use seconds and tenths (e.g., 1"2 for 1.2s exposure)
+  {
+    // Round first so we don't end up showing 0"10 instead of 1"0
+    float exposure = roundf(img->exif_exposure*10.0f)/10.0f;
+    float integral = 0.0f;
+    float fractional = modff(exposure, &integral) * 10.0f;
+    snprintf(line, line_len, "%.0f″%.0f f/%.1f %dmm iso %d", integral, fractional, img->exif_aperture,
+             (int)img->exif_focal_length, (int)img->exif_iso);
+  }
 }
 
 void dt_image_set_location(const int32_t imgid, double lon, double lat)
@@ -537,8 +549,8 @@ int32_t dt_image_duplicate_with_version(const int32_t imgid, const int32_t newve
       const dt_image_t *img = dt_image_cache_get(darktable.image_cache, newid, 'r');
       darktable.gui->expanded_group_id = img->group_id;
       dt_image_cache_read_release(darktable.image_cache, img);
-      dt_collection_update_query(darktable.collection);
     }
+    dt_collection_update_query(darktable.collection);
   }
   return newid;
 }
@@ -619,7 +631,6 @@ int dt_image_altered(const uint32_t imgid)
     break;
   }
   sqlite3_finalize(stmt);
-  if(altered) return 1;
 
   return altered;
 }
@@ -1048,19 +1059,19 @@ int32_t dt_image_move(const int32_t imgid, const int32_t filmid)
     // get current local copy if any
     _image_local_copy_full_path(imgid, copysrcpath, sizeof(copysrcpath));
 
-    // statement for getting ids of the image to be moved and it's duplicates
-    sqlite3_stmt *duplicates_stmt;
-    DT_DEBUG_SQLITE3_PREPARE_V2(dt_database_get(darktable.db),
-                                "select id from images where filename in (select filename from images "
-                                "where id = ?1) and film_id in (select film_id from images where id = ?1)",
-                                -1, &duplicates_stmt, NULL);
-
     // move image
     GFile *old, *new;
     old = g_file_new_for_path(oldimg);
     new = g_file_new_for_path(newimg);
     if(!g_file_test(newimg, G_FILE_TEST_EXISTS) && (g_file_move(old, new, 0, NULL, NULL, NULL, NULL) == TRUE))
     {
+      // statement for getting ids of the image to be moved and it's duplicates
+      sqlite3_stmt *duplicates_stmt;
+      DT_DEBUG_SQLITE3_PREPARE_V2(dt_database_get(darktable.db),
+                                  "select id from images where filename in (select filename from images "
+                                  "where id = ?1) and film_id in (select film_id from images where id = ?1)",
+                                  -1, &duplicates_stmt, NULL);
+
       // first move xmp files of image and duplicates
       GList *dup_list = NULL;
       DT_DEBUG_SQLITE3_BIND_INT(duplicates_stmt, 1, imgid);
@@ -1085,8 +1096,7 @@ int32_t dt_image_move(const int32_t imgid, const int32_t filmid)
         g_object_unref(goldxmp);
         g_object_unref(gnewxmp);
       }
-      sqlite3_reset(duplicates_stmt);
-      sqlite3_clear_bindings(duplicates_stmt);
+      sqlite3_finalize(duplicates_stmt);
 
       // then update database and cache
       // if update was performed in above loop, dt_image_path_append_version()
@@ -1383,16 +1393,22 @@ static int _nb_other_local_copy_for(const int32_t imgid)
 int dt_image_local_copy_reset(const int32_t imgid)
 {
   gchar destpath[PATH_MAX] = { 0 };
+  gchar locppath[PATH_MAX] = { 0 };
   gchar cachedir[PATH_MAX] = { 0 };
 
   // check that the original file is accessible
 
-  gboolean from_cache = TRUE;
+  gboolean from_cache = FALSE;
   dt_image_full_path(imgid, destpath, sizeof(destpath), &from_cache);
-  dt_image_path_append_version(imgid, destpath, sizeof(destpath));
-  g_strlcat(destpath, ".xmp", sizeof(destpath));
 
-  if(from_cache && g_file_test(destpath, G_FILE_TEST_EXISTS))
+  from_cache = TRUE;
+  dt_image_full_path(imgid, locppath, sizeof(locppath), &from_cache);
+  dt_image_path_append_version(imgid, locppath, sizeof(locppath));
+  g_strlcat(locppath, ".xmp", sizeof(locppath));
+
+  // a local copy exists, but the original is not accessible
+
+  if(g_file_test(locppath, G_FILE_TEST_EXISTS) && !g_file_test(destpath, G_FILE_TEST_EXISTS))
   {
     dt_control_log(_("cannot remove local copy when the original file is not accessible."));
     return 1;
@@ -1400,16 +1416,16 @@ int dt_image_local_copy_reset(const int32_t imgid)
 
   // get name of local copy
 
-  _image_local_copy_full_path(imgid, destpath, sizeof(destpath));
+  _image_local_copy_full_path(imgid, locppath, sizeof(locppath));
 
   // remove cached file, but double check that this is really into the cache. We really want to avoid deleting
   // a user's original file.
 
   dt_loc_get_user_cache_dir(cachedir, sizeof(cachedir));
 
-  if(g_file_test(destpath, G_FILE_TEST_EXISTS) && strstr(destpath, cachedir))
+  if(g_file_test(locppath, G_FILE_TEST_EXISTS) && strstr(locppath, cachedir))
   {
-    GFile *dest = g_file_new_for_path(destpath);
+    GFile *dest = g_file_new_for_path(locppath);
 
     // first sync the xmp with the original picture
 
@@ -1423,11 +1439,11 @@ int dt_image_local_copy_reset(const int32_t imgid)
     g_object_unref(dest);
 
     // delete xmp if any
-    dt_image_path_append_version(imgid, destpath, sizeof(destpath));
-    g_strlcat(destpath, ".xmp", sizeof(destpath));
-    dest = g_file_new_for_path(destpath);
+    dt_image_path_append_version(imgid, locppath, sizeof(locppath));
+    g_strlcat(locppath, ".xmp", sizeof(locppath));
+    dest = g_file_new_for_path(locppath);
 
-    if(g_file_test(destpath, G_FILE_TEST_EXISTS)) g_file_delete(dest, NULL, NULL);
+    if(g_file_test(locppath, G_FILE_TEST_EXISTS)) g_file_delete(dest, NULL, NULL);
     g_object_unref(dest);
 
     // update cache, remove local copy flags

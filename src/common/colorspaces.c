@@ -29,7 +29,7 @@
 #include "colord-gtk.h"
 #endif
 
-#ifdef GDK_WINDOWING_QUARTZ
+#if 0
 #include <Carbon/Carbon.h>
 #include <ApplicationServices/ApplicationServices.h>
 #include <CoreServices/CoreServices.h>
@@ -925,6 +925,7 @@ const dt_colorspaces_color_profile_t *dt_colorspaces_get_output_profile(const in
       if(type && filename) p = dt_colorspaces_get_profile(*type, filename,
                                                           DT_PROFILE_DIRECTION_OUT | DT_PROFILE_DIRECTION_DISPLAY);
     }
+    sqlite3_finalize(stmt);
 
     // couldn't get it from colorout -> fall back to sRGB
     if(!p) p = dt_colorspaces_get_profile(DT_COLORSPACE_SRGB, "", DT_PROFILE_DIRECTION_OUT);
@@ -1146,43 +1147,41 @@ static dt_colorspaces_color_profile_t *_create_profile(dt_colorspaces_color_prof
   return prof;
 }
 
+// this function is basically thread safe, at least when not called on the global darktable.color_profiles
+static void _update_display_transforms(dt_colorspaces_t *self)
+{
+  if(self->transform_srgb_to_display) cmsDeleteTransform(self->transform_srgb_to_display);
+  self->transform_srgb_to_display = NULL;
+
+  if(self->transform_adobe_rgb_to_display) cmsDeleteTransform(self->transform_adobe_rgb_to_display);
+  self->transform_adobe_rgb_to_display = NULL;
+
+  cmsHPROFILE display_profile = _get_profile(self, self->display_type, self->display_filename,
+                                             DT_PROFILE_DIRECTION_DISPLAY)->profile;
+  if(!display_profile) return;
+
+  self->transform_srgb_to_display = cmsCreateTransform(_get_profile(self, DT_COLORSPACE_SRGB, "",
+                                                                    DT_PROFILE_DIRECTION_DISPLAY)->profile,
+                                                       TYPE_RGBA_8,
+                                                       display_profile,
+                                                       TYPE_BGRA_8,
+                                                       self->display_intent,
+                                                       0);
+
+  self->transform_adobe_rgb_to_display = cmsCreateTransform(_get_profile(self, DT_COLORSPACE_ADOBERGB, "",
+                                                                         DT_PROFILE_DIRECTION_DISPLAY)->profile,
+                                                            TYPE_RGBA_8,
+                                                            display_profile,
+                                                            TYPE_BGRA_8,
+                                                            self->display_intent,
+                                                            0);
+}
 
 // update cached transforms for color management of thumbnails
 // make sure that darktable.color_profiles->xprofile_lock is held when calling this!
 void dt_colorspaces_update_display_transforms()
 {
-  if(darktable.color_profiles->transform_srgb_to_display)
-    cmsDeleteTransform(darktable.color_profiles->transform_srgb_to_display);
-  darktable.color_profiles->transform_srgb_to_display = NULL;
-
-  if(darktable.color_profiles->transform_adobe_rgb_to_display)
-    cmsDeleteTransform(darktable.color_profiles->transform_adobe_rgb_to_display);
-  darktable.color_profiles->transform_adobe_rgb_to_display = NULL;
-
-  cmsHPROFILE display_profile = dt_colorspaces_get_profile(darktable.color_profiles->display_type,
-                                                           darktable.color_profiles->display_filename,
-                                                           DT_PROFILE_DIRECTION_DISPLAY)->profile;
-  if(!display_profile) return;
-
-  darktable.color_profiles->transform_srgb_to_display
-      = cmsCreateTransform(dt_colorspaces_get_profile(DT_COLORSPACE_SRGB,
-                                                      "",
-                                                      DT_PROFILE_DIRECTION_DISPLAY)->profile,
-                           TYPE_RGBA_8,
-                           display_profile,
-                           TYPE_BGRA_8,
-                           darktable.color_profiles->display_intent,
-                           0);
-
-  darktable.color_profiles->transform_adobe_rgb_to_display
-      = cmsCreateTransform(dt_colorspaces_get_profile(DT_COLORSPACE_ADOBERGB,
-                                                      "",
-                                                      DT_PROFILE_DIRECTION_DISPLAY)->profile,
-                           TYPE_RGBA_8,
-                           display_profile,
-                           TYPE_BGRA_8,
-                           darktable.color_profiles->display_intent,
-                           0);
+  _update_display_transforms(darktable.color_profiles);
 }
 
 // make sure that darktable.color_profiles->xprofile_lock is held when calling this!
@@ -1221,6 +1220,8 @@ static void cms_error_handler(cmsContext ContextID, cmsUInt32Number ErrorCode, c
 
 dt_colorspaces_t *dt_colorspaces_init()
 {
+  cmsSetLogErrorHandler(cms_error_handler);
+
   dt_colorspaces_t *res = (dt_colorspaces_t *)calloc(1, sizeof(dt_colorspaces_t));
 
   pthread_rwlock_init(&res->xprofile_lock, NULL);
@@ -1295,6 +1296,10 @@ dt_colorspaces_t *dt_colorspaces_init()
     while((d_name = g_dir_read_name(dir)))
     {
       snprintf(filename, sizeof(filename), "%s/%s", dirname, d_name);
+      const char *cc = filename + strlen(filename);
+      for(; *cc != '.' && cc > filename; cc--)
+        ;
+      if(g_ascii_strcasecmp(cc, ".icc") && g_ascii_strcasecmp(cc, ".icm")) continue;
       tmpprof = cmsOpenProfileFromFile(filename, "r");
       if(tmpprof)
       {
@@ -1322,6 +1327,10 @@ dt_colorspaces_t *dt_colorspaces_init()
     while((d_name = g_dir_read_name(dir)))
     {
       snprintf(filename, sizeof(filename), "%s/%s", dirname, d_name);
+      const char *cc = filename + strlen(filename);
+      for(; *cc != '.' && cc > filename; cc--)
+        ;
+      if(g_ascii_strcasecmp(cc, ".icc") && g_ascii_strcasecmp(cc, ".icm")) continue;
       tmpprof = cmsOpenProfileFromFile(filename, "r");
       if(tmpprof)
       {
@@ -1364,25 +1373,7 @@ dt_colorspaces_t *dt_colorspaces_init()
     res->softproof_type = DT_COLORSPACE_SRGB;
   if((unsigned int)res->mode > DT_PROFILE_GAMUTCHECK) res->mode = DT_PROFILE_NORMAL;
 
-  cmsSetLogErrorHandler(cms_error_handler);
-
-  cmsHPROFILE display_profile = _get_profile(res, res->display_type, res->display_filename,
-                                             DT_PROFILE_DIRECTION_DISPLAY)->profile;
-
-  res->transform_srgb_to_display = cmsCreateTransform(_get_profile(res, DT_COLORSPACE_SRGB, "",
-                                                                   DT_PROFILE_DIRECTION_DISPLAY)->profile,
-                                                      TYPE_RGB_8,
-                                                      display_profile,
-                                                      TYPE_BGR_8,
-                                                      res->display_intent,
-                                                      0);
-  res->transform_adobe_rgb_to_display = cmsCreateTransform(_get_profile(res, DT_COLORSPACE_ADOBERGB, "",
-                                                                        DT_PROFILE_DIRECTION_DISPLAY)->profile,
-                                                           TYPE_RGB_8,
-                                                           display_profile,
-                                                           TYPE_BGR_8,
-                                                           res->display_intent,
-                                                           0);
+  _update_display_transforms(res);
 
   return res;
 }
@@ -1397,6 +1388,12 @@ void dt_colorspaces_cleanup(dt_colorspaces_t *self)
   dt_conf_set_int("ui_last/color/display_intent", self->display_intent);
   dt_conf_set_int("ui_last/color/softproof_intent", self->softproof_intent);
   dt_conf_set_int("ui_last/color/mode", self->mode);
+
+  if(self->transform_srgb_to_display) cmsDeleteTransform(self->transform_srgb_to_display);
+  self->transform_srgb_to_display = NULL;
+
+  if(self->transform_adobe_rgb_to_display) cmsDeleteTransform(self->transform_adobe_rgb_to_display);
+  self->transform_adobe_rgb_to_display = NULL;
 
   for(GList *iter = self->profiles; iter; iter = g_list_next(iter))
   {
@@ -1452,7 +1449,7 @@ static void dt_colorspaces_get_display_profile_colord_callback(GObject *source, 
         {
           _update_display_profile(tmp_data, size, NULL, 0);
           dt_print(DT_DEBUG_CONTROL,
-                   "[color profile] colord gave us a new screen profile: '%s' (size: %ld)\n", filename, size);
+                   "[color profile] colord gave us a new screen profile: '%s' (size: %zu)\n", filename, size);
         }
         else
         {
@@ -1537,38 +1534,33 @@ void dt_colorspaces_set_display_profile()
 #endif
 
 #elif defined GDK_WINDOWING_QUARTZ
-  // disable automatic color management on OS X 10.10 since we end up applying a profile twice
-  // TODO: check if this issue applies to OS X 10.9, also re-check 10.8 and earlier versions
-#ifndef kCFCoreFoundationVersionNumber10_10
-#define kCFCoreFoundationVersionNumber10_10 1151.16
-#endif
-  if(kCFCoreFoundationVersionNumber < kCFCoreFoundationVersionNumber10_10)
+  (void)widget;
+#if 0
+  GdkScreen *screen = gtk_widget_get_screen(widget);
+  if(screen == NULL) screen = gdk_screen_get_default();
+  int monitor = gdk_screen_get_monitor_at_window(screen, gtk_widget_get_window(widget));
+
+  CGDirectDisplayID ids[monitor + 1];
+  uint32_t total_ids;
+  CMProfileRef prof = NULL;
+  if(CGGetOnlineDisplayList(monitor + 1, &ids[0], &total_ids) == kCGErrorSuccess && total_ids == monitor + 1)
+    CMGetProfileByAVID(ids[monitor], &prof);
+  if(prof != NULL)
   {
-    GdkScreen *screen = gtk_widget_get_screen(widget);
-    if(screen == NULL) screen = gdk_screen_get_default();
-    int monitor = gdk_screen_get_monitor_at_window(screen, gtk_widget_get_window(widget));
+    CFDataRef data;
+    data = CMProfileCopyICCData(NULL, prof);
+    CMCloseProfile(prof);
 
-    CGDirectDisplayID ids[monitor + 1];
-    uint32_t total_ids;
-    CMProfileRef prof = NULL;
-    if(CGGetOnlineDisplayList(monitor + 1, &ids[0], &total_ids) == kCGErrorSuccess && total_ids == monitor + 1)
-      CMGetProfileByAVID(ids[monitor], &prof);
-    if(prof != NULL)
-    {
-      CFDataRef data;
-      data = CMProfileCopyICCData(NULL, prof);
-      CMCloseProfile(prof);
+    UInt8 *tmp_buffer = (UInt8 *)g_malloc(CFDataGetLength(data));
+    CFDataGetBytes(data, CFRangeMake(0, CFDataGetLength(data)), tmp_buffer);
 
-      UInt8 *tmp_buffer = (UInt8 *)g_malloc(CFDataGetLength(data));
-      CFDataGetBytes(data, CFRangeMake(0, CFDataGetLength(data)), tmp_buffer);
+    buffer = (guint8 *)tmp_buffer;
+    buffer_size = CFDataGetLength(data);
 
-      buffer = (guint8 *)tmp_buffer;
-      buffer_size = CFDataGetLength(data);
-
-      CFRelease(data);
-    }
-    profile_source = g_strdup("osx color profile api");
+    CFRelease(data);
   }
+  profile_source = g_strdup("osx color profile api");
+#endif
 #elif defined G_OS_WIN32
   (void)widget;
   HDC hdc = GetDC(NULL);

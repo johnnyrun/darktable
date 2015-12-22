@@ -126,18 +126,17 @@ static void update(dt_lib_module_t *self, int which)
 
   if(count > 0 && tags)
   {
+    GList *tag = tags;
     do
     {
       gtk_list_store_append(GTK_LIST_STORE(model), &iter);
-      gtk_list_store_set(GTK_LIST_STORE(model), &iter, DT_LIB_TAGGING_COL_TAG, ((dt_tag_t *)tags->data)->tag,
-                         DT_LIB_TAGGING_COL_ID, ((dt_tag_t *)tags->data)->id, -1);
-    } while((tags = g_list_next(tags)) != NULL);
-
-    // Free result...
-    dt_tag_free_result(&tags);
+      gtk_list_store_set(GTK_LIST_STORE(model), &iter, DT_LIB_TAGGING_COL_TAG, ((dt_tag_t *)tag->data)->tag,
+                         DT_LIB_TAGGING_COL_ID, ((dt_tag_t *)tag->data)->id, -1);
+    } while((tag = g_list_next(tag)) != NULL);
   }
 
-
+  // Free result...
+  dt_tag_free_result(&tags);
 
   gtk_tree_view_set_model(GTK_TREE_VIEW(view), model);
   g_object_unref(model);
@@ -547,6 +546,12 @@ static gboolean _lib_tagging_tag_key_press(GtkWidget *entry, GdkEventKey *event,
   return FALSE; /* event not handled */
 }
 
+static gboolean _lib_tagging_tag_destroy(GtkWidget *widget, GdkEvent *event, gpointer user_data)
+{
+  gtk_widget_destroy(GTK_WIDGET(user_data));
+  return FALSE;
+}
+
 static gboolean _lib_tagging_tag_show(GtkAccelGroup *accel_group, GObject *acceleratable, guint keyval,
                                       GdkModifierType modifier, dt_lib_module_t *self)
 {
@@ -610,7 +615,7 @@ static gboolean _lib_tagging_tag_show(GtkAccelGroup *accel_group, GObject *accel
 
   gtk_editable_select_region(GTK_EDITABLE(entry), 0, -1);
   gtk_container_add(GTK_CONTAINER(d->floating_tag_window), entry);
-  g_signal_connect_swapped(entry, "focus-out-event", G_CALLBACK(gtk_widget_destroy), d->floating_tag_window);
+  g_signal_connect(entry, "focus-out-event", G_CALLBACK(_lib_tagging_tag_destroy), d->floating_tag_window);
   g_signal_connect(entry, "key-press-event", G_CALLBACK(_lib_tagging_tag_key_press), self);
 
   gtk_widget_show_all(d->floating_tag_window);

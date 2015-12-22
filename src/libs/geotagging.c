@@ -129,7 +129,7 @@ static gboolean _lib_geotagging_parse_offset(const char *str, long int *seconds)
   {
     numbers[fields++] = 10 * (str[0] - '0') + (str[1] - '0');
     str += 2;
-    len -= 2;
+//     len -= 2;
   }
 
   // end
@@ -430,14 +430,28 @@ static void _lib_geotagging_apply_offset_callback(GtkWidget *widget, gpointer us
   dt_control_time_offset(offset, -1);
 }
 
+static gboolean _lib_geotagging_filter_gpx(const GtkFileFilterInfo *filter_info, gpointer data)
+{
+  if(!g_ascii_strcasecmp(filter_info->mime_type, "application/gpx+xml")) return TRUE;
+
+  const gchar *filename = filter_info->filename;
+  const char *cc = filename + strlen(filename);
+  for(; *cc != '.' && cc > filename; cc--)
+    ;
+
+  if(!g_ascii_strcasecmp(cc, ".gpx")) return TRUE;
+
+  return FALSE;
+}
+
 static void _lib_geotagging_gpx_callback(GtkWidget *widget, dt_lib_module_t *self)
 {
   dt_lib_geotagging_t *d = (dt_lib_geotagging_t *)self->data;
   /* bring a filechooser to select the gpx file to apply to selection */
   GtkWidget *win = dt_ui_main_window(darktable.gui->ui);
   GtkWidget *filechooser = gtk_file_chooser_dialog_new(
-      _("open GPX file"), GTK_WINDOW(win), GTK_FILE_CHOOSER_ACTION_OPEN, _("_Cancel"), GTK_RESPONSE_CANCEL,
-      _("_Open"), GTK_RESPONSE_ACCEPT, (char *)NULL);
+      _("open GPX file"), GTK_WINDOW(win), GTK_FILE_CHOOSER_ACTION_OPEN, _("_cancel"), GTK_RESPONSE_CANCEL,
+      _("_open"), GTK_RESPONSE_ACCEPT, (char *)NULL);
 
   char *last_directory = dt_conf_get_string("ui_last/gpx_last_directory");
   if(last_directory != NULL)
@@ -448,7 +462,8 @@ static void _lib_geotagging_gpx_callback(GtkWidget *widget, dt_lib_module_t *sel
 
   GtkFileFilter *filter;
   filter = GTK_FILE_FILTER(gtk_file_filter_new());
-  gtk_file_filter_add_pattern(filter, "*.gpx");
+  gtk_file_filter_add_custom(filter, GTK_FILE_FILTER_FILENAME | GTK_FILE_FILTER_MIME_TYPE,
+                             _lib_geotagging_filter_gpx, NULL, NULL);
   gtk_file_filter_set_name(filter, _("GPS data exchange format"));
   gtk_file_chooser_add_filter(GTK_FILE_CHOOSER(filechooser), filter);
 
@@ -489,8 +504,10 @@ static void _lib_geotagging_gpx_callback(GtkWidget *widget, dt_lib_module_t *sel
 
   if(gtk_dialog_run(GTK_DIALOG(filechooser)) == GTK_RESPONSE_ACCEPT)
   {
-    dt_conf_set_string("ui_last/gpx_last_directory",
-                       gtk_file_chooser_get_current_folder(GTK_FILE_CHOOSER(filechooser)));
+    gchar *folder = gtk_file_chooser_get_current_folder(GTK_FILE_CHOOSER(filechooser));
+    dt_conf_set_string("ui_last/gpx_last_directory", folder);
+    g_free(folder);
+
     gchar *tz = gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(tz_selection));
     dt_conf_set_string("plugins/lighttable/geotagging/tz", tz);
     gchar *filename = gtk_file_chooser_get_filename(GTK_FILE_CHOOSER(filechooser));
@@ -546,8 +563,17 @@ static GList *_lib_geotagging_get_timezones(void)
   while(fgets(line, MAX_LINE_LENGTH, fp))
   {
     if(line[0] == '#' || line[0] == '\0') continue;
-    gchar **tokens = g_strsplit(line, "\t", 0);
-    gchar *name = g_strdup(tokens[2]);
+    gchar **tokens = g_strsplit_set(line, " \t\n", 0);
+    // sometimes files are not separated by single tabs but multiple spaces, resulting in empty strings in tokens
+    // so we have to look for the 3rd non-empty entry
+    int n_found = -1, i;
+    for(i = 0; tokens[i] && n_found < 2; i++) if(*tokens[i]) n_found++;
+    if(n_found != 2)
+    {
+      g_strfreev(tokens);
+      continue;
+    }
+    gchar *name = g_strdup(tokens[i - 1]);
     g_strfreev(tokens);
     if(name[0] == '\0')
     {

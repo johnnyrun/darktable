@@ -334,11 +334,13 @@ typedef struct gtk_wrap_communication {
 
 gboolean dt_lua_gtk_wrap_callback(gpointer data)
 {
+  dt_lua_lock_silent();
   gtk_wrap_communication *communication = (gtk_wrap_communication*)data;
   g_mutex_lock(&communication->end_mutex);
   communication->retval = dt_lua_do_chunk(communication->L,lua_gettop(communication->L)-1,LUA_MULTRET);
   g_cond_signal(&communication->end_cond);
   g_mutex_unlock(&communication->end_mutex);
+  dt_lua_unlock();
   return false;
 } 
 
@@ -349,6 +351,7 @@ int dt_lua_gtk_wrap(lua_State*L)
   if(pthread_equal(darktable.control->gui_thread, pthread_self())) {
     return dt_lua_do_chunk_raise(L,lua_gettop(L)-1,LUA_MULTRET);
   } else {
+    dt_lua_unlock();
     gtk_wrap_communication communication;
     g_mutex_init(&communication.end_mutex);
     g_cond_init(&communication.end_cond);
@@ -358,6 +361,7 @@ int dt_lua_gtk_wrap(lua_State*L)
     g_cond_wait(&communication.end_cond,&communication.end_mutex);
     g_mutex_unlock(&communication.end_mutex);
     g_mutex_clear(&communication.end_mutex);
+    dt_lua_lock();
     if(communication.retval == LUA_OK) {
       return lua_gettop(L);
     } else {
@@ -453,7 +457,8 @@ static int32_t async_callback_job(dt_job_t *job)
     nargs++;
   }
   dt_lua_do_chunk_silent(L,nargs,0);
-  dt_lua_redraw_screen();
+  // the following redraw triggers a loop with filmroll, see bug #10765.
+  // dt_lua_redraw_screen();
   dt_lua_unlock();
   return 0;
 }

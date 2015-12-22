@@ -677,8 +677,8 @@ void tiling_callback(struct dt_iop_module_t *self, struct dt_dev_pixelpipe_iop_t
 
 void init(dt_iop_module_t *module)
 {
-  module->params = malloc(sizeof(dt_iop_atrous_params_t));
-  module->default_params = malloc(sizeof(dt_iop_atrous_params_t));
+  module->params = calloc(1, sizeof(dt_iop_atrous_params_t));
+  module->default_params = calloc(1, sizeof(dt_iop_atrous_params_t));
   module->default_enabled = 0;
   module->priority = 550; // module order created by iop_dependencies.py, do not edit!
   module->params_size = sizeof(dt_iop_atrous_params_t);
@@ -708,8 +708,6 @@ void init_global(dt_iop_module_so_t *module)
 
 void cleanup(dt_iop_module_t *module)
 {
-  free(module->gui_data);
-  module->gui_data = NULL;
   free(module->params);
   module->params = NULL;
 }

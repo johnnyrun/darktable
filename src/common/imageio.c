@@ -539,13 +539,26 @@ int dt_imageio_export_with_flags(const uint32_t imgid, const char *filename,
 {
   dt_develop_t dev;
   dt_dev_init(&dev, 0);
+  dt_dev_load_image(&dev, imgid);
+
+  const int buf_is_downscaled
+      = (thumbnail_export && dt_conf_get_bool("plugins/lighttable/low_quality_thumbnails"));
+
   dt_mipmap_buffer_t buf;
-  if(thumbnail_export && dt_conf_get_bool("plugins/lighttable/low_quality_thumbnails"))
+  if(buf_is_downscaled)
     dt_mipmap_cache_get(darktable.mipmap_cache, &buf, imgid, DT_MIPMAP_F, DT_MIPMAP_BLOCKING, 'r');
   else
     dt_mipmap_cache_get(darktable.mipmap_cache, &buf, imgid, DT_MIPMAP_FULL, DT_MIPMAP_BLOCKING, 'r');
-  dt_dev_load_image(&dev, imgid);
+
   const dt_image_t *img = &dev.image_storage;
+
+  if(!buf.buf || !buf.width || !buf.height)
+  {
+    fprintf(stderr, "allocation failed???\n");
+    dt_control_log(_("image `%s' is not available!"), img->filename);
+    goto error_early;
+  }
+
   const int wd = img->width;
   const int ht = img->height;
   const float max_scale = upscale ? 100.0 : 1.0;
@@ -565,19 +578,11 @@ int dt_imageio_export_with_flags(const uint32_t imgid, const char *filename,
     goto error;
   }
 
-  if(!buf.buf)
-  {
-    fprintf(stderr, "allocation failed???\n");
-    dt_control_log(_("image `%s' is not available!"), img->filename);
-    goto error;
-  }
-
   //  If a style is to be applied during export, add the iop params into the history
   if(!thumbnail_export && format_params->style[0] != '\0')
   {
     GList *stls;
 
-    GList *modules = dev.iop;
     dt_iop_module_t *m = NULL;
 
     if((stls = dt_styles_get_item_list(format_params->style, TRUE, -1)) == 0)
@@ -605,7 +610,7 @@ int dt_imageio_export_with_flags(const uint32_t imgid, const char *filename,
       dt_style_item_t *s = (dt_style_item_t *)stls->data;
       gboolean module_found = FALSE;
 
-      modules = dev.iop;
+      GList *modules = dev.iop;
       while(modules)
       {
         m = (dt_iop_module_t *)modules->data;
@@ -657,17 +662,21 @@ int dt_imageio_export_with_flags(const uint32_t imgid, const char *filename,
     g_list_free(stls);
   }
 
-  dt_dev_pixelpipe_set_input(&pipe, &dev, (float *)buf.buf, buf.width, buf.height, 1.0,
+  dt_dev_pixelpipe_set_input(&pipe, &dev, (float *)buf.buf, buf.width, buf.height,
+                             buf_is_downscaled ? dev.image_storage.width / (float)buf.width : 1.0f,
                              buf.pre_monochrome_demosaiced);
   dt_dev_pixelpipe_create_nodes(&pipe, &dev);
   dt_dev_pixelpipe_synch_all(&pipe, &dev);
-  dt_dev_pixelpipe_get_dimensions(&pipe, &dev, pipe.iwidth, pipe.iheight, &pipe.processed_width,
-                                  &pipe.processed_height);
+
   if(filter)
   {
     if(!strncmp(filter, "pre:", 4)) dt_dev_pixelpipe_disable_after(&pipe, filter + 4);
     if(!strncmp(filter, "post:", 5)) dt_dev_pixelpipe_disable_before(&pipe, filter + 5);
   }
+
+  dt_dev_pixelpipe_get_dimensions(&pipe, &dev, pipe.iwidth, pipe.iheight, &pipe.processed_width,
+                                  &pipe.processed_height);
+
   dt_show_times(&start, "[export] creating pixelpipe", NULL);
 
   // find output color profile for this image:
@@ -862,8 +871,8 @@ int dt_imageio_export_with_flags(const uint32_t imgid, const char *filename,
     // no need to cancel the export if this fail
   }
 
-
-  if(!thumbnail_export && strcmp(format->mime(format_params), "memory"))
+  if(!thumbnail_export && strcmp(format->mime(format_params), "memory")
+    && !(format->flags(format_params) & FORMAT_FLAGS_NO_TMPFILE))
   {
     dt_control_signal_raise(darktable.signals, DT_SIGNAL_IMAGE_EXPORT_TMPFILE, imgid, filename, format,
                             format_params, storage, storage_params);
@@ -873,6 +882,7 @@ int dt_imageio_export_with_flags(const uint32_t imgid, const char *filename,
 
 error:
   dt_dev_pixelpipe_cleanup(&pipe);
+error_early:
   dt_dev_cleanup(&dev);
   dt_mipmap_cache_release(darktable.mipmap_cache, &buf);
   return 1;

@@ -101,11 +101,10 @@ static gboolean on_match_func(GtkEntryCompletion *completion, const gchar *key, 
 
   GtkEditable *e = (GtkEditable *)gtk_entry_completion_get_entry(completion);
   gint cur_pos = gtk_editable_get_position(e); /* returns 1..* */
-  gint p = cur_pos;
   gint var_start;
   gboolean var_present = FALSE;
 
-  for(p = cur_pos; p >= 0; p--)
+  for(gint p = cur_pos; p >= 0; p--)
   {
     gchar *ss = gtk_editable_get_chars(e, p, cur_pos);
     if(strncmp(ss, "$(", 2) == 0)
@@ -203,6 +202,8 @@ const dt_gtkentry_completion_spec *dt_gtkentry_get_default_path_compl_list()
           { "EXIF_MINUTE", N_("$(EXIF_MINUTE) - EXIF minute") },
           { "EXIF_SECOND", N_("$(EXIF_SECOND) - EXIF second") },
           { "EXIF_ISO", N_("$(EXIF_ISO) - ISO value") },
+          { "MAKER", N_("$(MAKER) - camera maker") },
+          { "MODEL", N_("$(MODEL) - camera model") },
           { "STARS", N_("$(STARS) - star rating") },
           { "LABELS", N_("$(LABELS) - colorlabels") },
           { "PICTURES_FOLDER", N_("$(PICTURES_FOLDER) - pictures folder") },

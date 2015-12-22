@@ -20,7 +20,8 @@
 extern "C" {
 #endif
 
-float dt_osx_get_ppd();
+void dt_osx_autoset_dpi(GtkWidget *widget);
+void dt_osx_allow_fullscreen(GtkWidget *widget);
 
 #ifdef __cplusplus
 }

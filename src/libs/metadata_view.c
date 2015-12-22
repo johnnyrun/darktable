@@ -35,6 +35,8 @@
 #include "lua/call.h"
 #endif
 
+#define SHOW_FLAGS 0
+
 DT_MODULE(1)
 
 enum
@@ -47,7 +49,9 @@ enum
   md_internal_version,
   md_internal_fullpath,
   md_internal_local_copy,
+#if SHOW_FLAGS
   md_internal_flags,
+#endif
 
   /* exif */
   md_exif_model,
@@ -89,8 +93,9 @@ static void _lib_metatdata_view_init_labels()
   _md_labels[md_internal_version] = _("version");
   _md_labels[md_internal_fullpath] = _("full path");
   _md_labels[md_internal_local_copy] = _("local copy");
+#if SHOW_FLAGS
   _md_labels[md_internal_flags] = _("flags");
-
+#endif
 
   /* exif */
   _md_labels[md_exif_model] = _("model");
@@ -187,7 +192,7 @@ static void _metadata_update_value_end(GtkLabel *label, const char *value)
 
 
 #ifdef USE_LUA
-static int lua_update_metadata(lua_State*L);
+//static int lua_update_metadata(lua_State*L);
 #endif
 /* update all values to reflect mouse over image id or no data at all */
 static void _metadata_view_update_values(dt_lib_module_t *self)
@@ -254,6 +259,7 @@ static void _metadata_view_update_values(dt_lib_module_t *self)
     // TODO: decide if this should be removed for a release. maybe #ifdef'ing to only add it to git compiles?
 
     // the bits of the flags
+#if SHOW_FLAGS
     {
       #define EMPTY_FIELD '.'
       #define FALSE_FIELD '.'
@@ -375,6 +381,7 @@ static void _metadata_view_update_values(dt_lib_module_t *self)
       #undef FALSE_FIELD
       #undef TRUE_FIELD
     }
+#endif // SHOW_FLAGS
 
     /* EXIF */
     _metadata_update_value_end(d->metadata[md_exif_model], img->camera_alias);
@@ -413,6 +420,7 @@ static void _metadata_view_update_values(dt_lib_module_t *self)
       char datetime[200];
       tt_exif.tm_year -= 1900;
       tt_exif.tm_mon--;
+      tt_exif.tm_isdst = -1;
       mktime(&tt_exif);
       // just %c is too long and includes a time zone that we don't know from exif
       strftime(datetime, sizeof(datetime), "%a %x %X", &tt_exif);
@@ -499,7 +507,7 @@ static void _metadata_view_update_values(dt_lib_module_t *self)
         _metadata_update_value(d->metadata[md_geotagging_lon], value);
       }
     }
-    /* longitude */
+    /* elevation */
     if(isnan(img->elevation))
     {
       _metadata_update_value(d->metadata[md_geotagging_ele], NODATA_STRING);
@@ -523,9 +531,9 @@ static void _metadata_view_update_values(dt_lib_module_t *self)
     dt_image_cache_read_release(darktable.image_cache, img);
 
 #ifdef USE_LUA
-    dt_lua_do_chunk_async(lua_update_metadata,
-        LUA_ASYNC_TYPENAME,"void*",self,
-        LUA_ASYNC_TYPENAME,"int32_t",mouse_over_id,LUA_ASYNC_DONE);
+    //dt_lua_do_chunk_async(lua_update_metadata,
+    //    LUA_ASYNC_TYPENAME,"void*",self,
+    //    LUA_ASYNC_TYPENAME,"int32_t",mouse_over_id,LUA_ASYNC_DONE);
 #endif
   }
 
@@ -535,9 +543,9 @@ static void _metadata_view_update_values(dt_lib_module_t *self)
 fill_minuses:
   for(int k = 0; k < md_size; k++) _metadata_update_value(d->metadata[k], NODATA_STRING);
 #ifdef USE_LUA
-    dt_lua_do_chunk_async(lua_update_metadata,
-        LUA_ASYNC_TYPENAME,"void*",self,
-        LUA_ASYNC_TYPENAME,"int32_t",-1,LUA_ASYNC_DONE);
+    //dt_lua_do_chunk_async(lua_update_metadata,
+    //    LUA_ASYNC_TYPENAME,"void*",self,
+    //    LUA_ASYNC_TYPENAME,"int32_t",-1,LUA_ASYNC_DONE);
 #endif
 }
 
@@ -650,6 +658,7 @@ void gui_cleanup(dt_lib_module_t *self)
   self->data = NULL;
 }
 #ifdef USE_LUA
+/*
 static int lua_update_widgets(lua_State*L)
 {
   dt_lib_module_t *self = lua_touserdata(L, 1);
@@ -686,7 +695,7 @@ static int lua_update_metadata(lua_State*L)
     lua_settable(L,6);
     lua_pop(L, 2);
   }
-  lua_pushcfunction(L,lua_update_widgets),
+  lua_pushcfunction(L,lua_update_widgets);
   lua_pushcclosure(L,dt_lua_gtk_wrap,1);
   lua_pushlightuserdata(L,self);
   dt_lua_do_chunk_raise(L,1,0);
@@ -739,7 +748,6 @@ static int lua_register_info(lua_State *L)
 
 void init(struct dt_lib_module_t *self)
 {
-
   lua_State *L = darktable.lua_state.state;
   int my_type = dt_lua_module_entry_get_type(L, "lib", self->plugin_name);
   lua_pushlightuserdata(L, self);
@@ -758,6 +766,7 @@ void init(struct dt_lib_module_t *self)
   lua_setfield(L,-2,"widgets");
   lua_pop(L,2);
 }
+*/
 #endif
 // modelines: These editor modelines have been set for all relevant files by tools/update_modelines.sh
 // vim: shiftwidth=2 expandtab tabstop=2 cindent

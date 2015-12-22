@@ -37,6 +37,8 @@
 #include "gui/accelerators.h"
 #include "gui/gtk.h"
 #include "gui/draw.h"
+#include "dtgtk/button.h"
+#include "bauhaus/bauhaus.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -123,6 +125,11 @@ typedef struct dt_library_t
     /* check if the group of the image under the mouse has others, too, ?1: group_id, ?2: imgid */
     sqlite3_stmt *is_grouped;
   } statements;
+
+  struct
+  {
+    GtkWidget *button, *floating_window;
+  } profile;
 
 } dt_library_t;
 
@@ -291,6 +298,7 @@ static void _update_collected_images(dt_view_t *self)
     {
       min_before = sqlite3_column_int(stmt, 0);
     }
+    sqlite3_finalize(stmt);
   }
 
   // 1. drop previous data
@@ -323,6 +331,7 @@ static void _update_collected_images(dt_view_t *self)
     {
       min_after = sqlite3_column_int(stmt, 0);
     }
+    sqlite3_finalize(stmt);
 
     // note that this adjustement is needed as for a memory table the rowid doesn't start to 1 after the DELETE
     // above,
@@ -341,6 +350,7 @@ static void _update_collected_images(dt_view_t *self)
         dt_control_set_mouse_over_id(lib->full_preview_id);
       }
     }
+    sqlite3_finalize(stmt);
   }
 
   /* if we have a statment lets clean it */
@@ -495,7 +505,6 @@ static int expose_filemanager(dt_view_t *self, cairo_t *cr, int32_t width, int32
                                int32_t pointery)
 {
   dt_library_t *lib = (dt_library_t *)self->data;
-
   gboolean offset_changed = FALSE;
   int missing = 0;
 
@@ -619,7 +628,9 @@ static int expose_filemanager(dt_view_t *self, cairo_t *cr, int32_t width, int32
   }
 
   /* update scroll borders */
-  dt_view_set_scrollbar(self, 0, 1, 1, offset, lib->collection_count, max_rows * iir);
+  int shown_rows = ceilf((float)lib->collection_count / iir);
+  if(iir > 1) shown_rows += max_rows - 2;
+  dt_view_set_scrollbar(self, 0, 1, 1, offset, shown_rows * iir, (max_rows - 1) * iir);
 
   /* let's reset and reuse the main_query statement */
   DT_DEBUG_SQLITE3_CLEAR_BINDINGS(lib->statements.main_query);
@@ -1246,76 +1257,80 @@ int expose_full_preview(dt_view_t *self, cairo_t *cr, int32_t width, int32_t hei
 {
   dt_library_t *lib = (dt_library_t *)self->data;
   int offset = 0;
-  if(lib->track > 2) offset++;
-  if(lib->track < -2) offset--;
+  if(lib->track > 2) offset = 1;
+  if(lib->track < -2) offset = -1;
   lib->track = 0;
 
-  /* If more than one image is selected, iterate over these. */
-  /* If only one image is selected, scroll through all known images. */
-
-  int sel_img_count = 0;
+  // only look for images to preload or update the one shown when we moved to another image
+  if(offset != 0)
   {
+    /* If more than one image is selected, iterate over these. */
+    /* If only one image is selected, scroll through all known images. */
     sqlite3_stmt *stmt;
+    int sel_img_count = 0;
     DT_DEBUG_SQLITE3_PREPARE_V2(dt_database_get(darktable.db), "select COUNT(*) from selected_images", -1,
                                 &stmt, NULL);
-    if(sqlite3_step(stmt) == SQLITE_ROW)
-    {
-      sel_img_count = sqlite3_column_int(stmt, 0);
-    }
+    if(sqlite3_step(stmt) == SQLITE_ROW) sel_img_count = sqlite3_column_int(stmt, 0);
     sqlite3_finalize(stmt);
-  }
 
-  sqlite3_stmt *stmt;
-  gchar *stmt_string = NULL;
-  /* How many images to preload in advance. */
-  int preload_num = dt_conf_get_int("plugins/lighttable/preview/full_size_preload_count");
-  preload_num = CLAMPS(preload_num, 0, 99999);
-  stmt_string = g_strdup_printf("SELECT col.imgid AS id, col.rowid FROM memory.collected_images AS col %s WHERE col.rowid %s %d ORDER BY col.rowid %s LIMIT %d",
-                                (sel_img_count <= 1) ?
-                                  /* We want to operate on the currently collected images, so there's no need to match against the selection */
-                                  "" :
-                                  /* Limit the matches to the current selection */
-                                  "INNER JOIN selected_images AS sel ON col.imgid = sel.imgid",
-                                (offset >= 0) ? ">" : "<",
-                                lib->full_preview_rowid,
-                                /* Direction of our navigation -- when showing for the first time, i.e. when offset == 0, assume forward navigation */
-                                (offset >= 0) ? "ASC" : "DESC",
-                                preload_num);
-  DT_DEBUG_SQLITE3_PREPARE_V2(dt_database_get(darktable.db), stmt_string, -1, &stmt, NULL);
+    /* How many images to preload in advance. */
+    int preload_num = dt_conf_get_int("plugins/lighttable/preview/full_size_preload_count");
+    gboolean preload = preload_num > 0;
+    preload_num = CLAMPS(preload_num, 1, 99999);
 
-  /* Walk through the "next" images, activate preload and find out where to go if moving */
-  int preload_stack[preload_num];
-  for(int i = 0; i < preload_num; ++i)
-  {
-    preload_stack[i] = -1;
-  }
-  int count = 0;
+    gchar *stmt_string = g_strdup_printf("SELECT col.imgid AS id, col.rowid FROM memory.collected_images AS col %s "
+                                         "WHERE col.rowid %s %d ORDER BY col.rowid %s LIMIT %d",
+                                         (sel_img_count <= 1) ?
+                                           /* We want to operate on the currently collected images,
+                                            * so there's no need to match against the selection */
+                                           "" :
+                                           /* Limit the matches to the current selection */
+                                           "INNER JOIN selected_images AS sel ON col.imgid = sel.imgid",
+                                         (offset >= 0) ? ">" : "<",
+                                         lib->full_preview_rowid,
+                                         /* Direction of our navigation -- when showing for the first time,
+                                          * i.e. when offset == 0, assume forward navigation */
+                                         (offset >= 0) ? "ASC" : "DESC",
+                                         preload_num);
+    DT_DEBUG_SQLITE3_PREPARE_V2(dt_database_get(darktable.db), stmt_string, -1, &stmt, NULL);
 
-  while (sqlite3_step(stmt) == SQLITE_ROW)
-  {
-    /* Check if we're about to move */
-    if(count == 0 && offset != 0)
+    /* Walk through the "next" images, activate preload and find out where to go if moving */
+    int preload_stack[preload_num];
+    for(int i = 0; i < preload_num; ++i)
     {
-      /* We're moving, so let's update the "next image" bits */
-      lib->full_preview_id = sqlite3_column_int(stmt, 0);
-      lib->full_preview_rowid = sqlite3_column_int(stmt, 1);
-      dt_control_set_mouse_over_id(lib->full_preview_id);
+      preload_stack[i] = -1;
     }
-    /* Store the image details for preloading, see below. */
-    preload_stack[count] = sqlite3_column_int(stmt, 0);
-    ++count;
-  }
-  g_free(stmt_string);
-  sqlite3_finalize(stmt);
+    int count = 0;
 
-  dt_mipmap_size_t mip = dt_mipmap_cache_get_matching_size(darktable.mipmap_cache, width, height);
-  /* Preload these images.
-   * The job queue is not a queue, but a stack, so we have to do it backwards.
-   * Simply swapping DESC and ASC in the SQL won't help because we rely on the LIMIT clause, and
-   * that LIMIT has to work with the "correct" sort order. One could use a subquery, but I don't
-   * think that would be terribly elegant, either. */
-  while(--count >= 0 && preload_stack[count] != -1)
-    dt_mipmap_cache_get(darktable.mipmap_cache, NULL, preload_stack[count], mip, DT_MIPMAP_PREFETCH, 'r');
+    while (sqlite3_step(stmt) == SQLITE_ROW)
+    {
+      /* Check if we're about to move */
+      if(count == 0 && offset != 0)
+      {
+        /* We're moving, so let's update the "next image" bits */
+        lib->full_preview_id = sqlite3_column_int(stmt, 0);
+        lib->full_preview_rowid = sqlite3_column_int(stmt, 1);
+        dt_control_set_mouse_over_id(lib->full_preview_id);
+      }
+      /* Store the image details for preloading, see below. */
+      preload_stack[count] = sqlite3_column_int(stmt, 0);
+      ++count;
+    }
+    g_free(stmt_string);
+    sqlite3_finalize(stmt);
+
+    if(preload)
+    {
+      dt_mipmap_size_t mip = dt_mipmap_cache_get_matching_size(darktable.mipmap_cache, width, height);
+      /* Preload these images.
+      * The job queue is not a queue, but a stack, so we have to do it backwards.
+      * Simply swapping DESC and ASC in the SQL won't help because we rely on the LIMIT clause, and
+      * that LIMIT has to work with the "correct" sort order. One could use a subquery, but I don't
+      * think that would be terribly elegant, either. */
+      while(--count >= 0 && preload_stack[count] != -1)
+        dt_mipmap_cache_get(darktable.mipmap_cache, NULL, preload_stack[count], mip, DT_MIPMAP_PREFETCH, 'r');
+    }
+  }
 
   lib->image_over = DT_VIEW_DESERT;
   cairo_set_source_rgb(cr, .1, .1, .1);
@@ -1609,31 +1624,36 @@ static gboolean star_key_accel_callback(GtkAccelGroup *accel_group, GObject *acc
   int32_t mouse_over_id;
   int next_image_rowid = -1;
 
-  if (lib->using_arrows)
+  dt_library_t *lib = (dt_library_t *)self->data;
+  if(lib->using_arrows)
   {
-    // if using arrows may be the image I'm rating is going to disappear from the collection. So, store where may be we need to jump
+    // if using arrows may be the image I'm rating is going to disappear from the collection.
+    // So, store where may be we need to jump
     int imgid_for_offset;
     sqlite3_stmt *stmt;
 
     DT_DEBUG_SQLITE3_PREPARE_V2(dt_database_get(darktable.db),
-        "SELECT MIN(imgid) FROM selected_images", -1, &stmt,
-        NULL);
+                                "SELECT MIN(imgid) FROM selected_images", -1, &stmt, NULL);
     if(sqlite3_step(stmt) == SQLITE_ROW)
     {
+      sqlite3_stmt *inner_stmt;
       imgid_for_offset = sqlite3_column_int(stmt, 0);
-      if (!imgid_for_offset)
+      if(!imgid_for_offset)
+      {
         // empty selection
         imgid_for_offset = dt_control_get_mouse_over_id();
+      }
 
       DT_DEBUG_SQLITE3_PREPARE_V2(dt_database_get(darktable.db),
-          //"SELECT imgid FROM memory.collected_images", -1, &stmt,
-          "SELECT rowid FROM memory.collected_images where imgid=?1", -1, &stmt,
+          //"SELECT imgid FROM memory.collected_images", -1, &inner_stmt,
+          "SELECT rowid FROM memory.collected_images WHERE imgid=?1", -1, &inner_stmt,
           NULL);
-      DT_DEBUG_SQLITE3_BIND_INT(stmt, 1, imgid_for_offset);
-      if(sqlite3_step(stmt) == SQLITE_ROW)
-        next_image_rowid = sqlite3_column_int(stmt, 0);
-      sqlite3_finalize(stmt);
+      DT_DEBUG_SQLITE3_BIND_INT(inner_stmt, 1, imgid_for_offset);
+      if(sqlite3_step(inner_stmt) == SQLITE_ROW)
+        next_image_rowid = sqlite3_column_int(inner_stmt, 0);
+      sqlite3_finalize(inner_stmt);
     }
+    sqlite3_finalize(stmt);
   }
 
   mouse_over_id = dt_view_get_image_to_act_on();
@@ -1647,28 +1667,26 @@ static gboolean star_key_accel_callback(GtkAccelGroup *accel_group, GObject *acc
   _update_collected_images(self);
 
   dt_collection_update_query(darktable.collection); // update the counter
-  if (lib->collection_count != dt_collection_get_count(darktable.collection))
-     // some images disappeared from collection. Selection is now invisible.
+  if(lib->collection_count != dt_collection_get_count(darktable.collection))
+  {
+    // some images disappeared from collection. Selection is now invisible.
     // lib->collection_count  --> before the rating
     // dt_collection_get_count(darktable.collection)  --> after the rating
-     dt_selection_clear(darktable.selection);
-
-  if (lib->using_arrows)
-  {
-    // Maybe some images vanished from collection. Jump where stored before
-    dt_collection_update_query(darktable.collection); // update the counter
-   if (lib->collection_count != dt_collection_get_count(darktable.collection))
-   {
-     sqlite3_stmt *stmt;
-     DT_DEBUG_SQLITE3_PREPARE_V2(dt_database_get(darktable.db),
-         "SELECT imgid FROM memory.collected_images where rowid=?1 or rowid=?1 - 1 order by rowid desc limit 1", -1, &stmt,
-         NULL);
-     DT_DEBUG_SQLITE3_BIND_INT(stmt, 1, next_image_rowid );
-     if(sqlite3_step(stmt) == SQLITE_ROW)
-       mouse_over_id = sqlite3_column_int(stmt, 0);
-     sqlite3_finalize(stmt);
-     dt_control_set_mouse_over_id(mouse_over_id);
-   }
+    dt_selection_clear(darktable.selection);
+    if(lib->using_arrows)
+    {
+      // Jump where stored before
+      sqlite3_stmt *stmt;
+      DT_DEBUG_SQLITE3_PREPARE_V2(dt_database_get(darktable.db),
+                                  "SELECT imgid FROM memory.collected_images WHERE rowid=?1 OR rowid=?1 - 1 "
+                                  "ORDER BY rowid DESC LIMIT 1", -1, &stmt,
+                                  NULL);
+      DT_DEBUG_SQLITE3_BIND_INT(stmt, 1, next_image_rowid);
+      if(sqlite3_step(stmt) == SQLITE_ROW)
+        mouse_over_id = sqlite3_column_int(stmt, 0);
+      sqlite3_finalize(stmt);
+      dt_control_set_mouse_over_id(mouse_over_id);
+    }
   }
   return TRUE;
 }
@@ -2275,41 +2293,6 @@ int key_pressed(dt_view_t *self, guint key, guint state)
   return 0;
 }
 
-void border_scrolled(dt_view_t *view, double x, double y, int which, int up)
-{
-  dt_library_t *lib = (dt_library_t *)view->data;
-  int layout = lib->layout;
-  if(layout == 1)
-  {
-    if(which == 0 || which == 1)
-    {
-      if(up)
-        move_view(lib, UP);
-      else
-        move_view(lib, DOWN);
-    }
-  }
-  else
-  {
-    if(which == 0 || which == 1)
-    {
-      if(up)
-        lib->track = -DT_LIBRARY_MAX_ZOOM;
-      else
-        lib->track = DT_LIBRARY_MAX_ZOOM;
-    }
-    else if(which == 2 || which == 3)
-    {
-      if(up)
-        lib->track = -1;
-      else
-        lib->track = 1;
-    }
-  }
-
-  dt_control_queue_redraw();
-}
-
 void init_key_accels(dt_view_t *self)
 {
   // Initializing accelerators
@@ -2406,6 +2389,219 @@ void connect_key_accels(dt_view_t *self)
   // compare
   closure = g_cclosure_new(G_CALLBACK(compare_key_accel_callback), (gpointer)self, NULL);
   dt_accel_connect_view(self, "compare images", closure);
+}
+
+
+
+// ugly hack. we lose focus when moving the mouse over the main window, but also when opening the bauhaus popup
+static gboolean _profile_close_popup(GtkWidget *widget, GdkEvent *event, gpointer user_data)
+{
+  dt_library_t *lib = (dt_library_t *)user_data;
+  if(!gtk_widget_is_visible(darktable.bauhaus->popup_window))
+    gtk_widget_hide(lib->profile.floating_window);
+  return FALSE;
+}
+
+static gboolean _profile_quickbutton_pressed(GtkWidget *widget, GdkEvent *event, gpointer user_data)
+{
+  dt_library_t *lib = (dt_library_t *)user_data;
+  /** finally move the window next to the button */
+  gint x, y, wx, wy;
+  gint px, py, window_w, window_h;
+  GtkWidget *window = dt_ui_main_window(darktable.gui->ui);
+  gtk_widget_show_all(lib->profile.floating_window);
+  gdk_window_get_origin(gtk_widget_get_window(lib->profile.button), &px, &py);
+
+  window_w = gdk_window_get_width(gtk_widget_get_window(lib->profile.floating_window));
+  window_h = gdk_window_get_height(gtk_widget_get_window(lib->profile.floating_window));
+
+  gtk_widget_translate_coordinates(lib->profile.button, window, 0, 0, &wx, &wy);
+  x = px + wx - window_w + DT_PIXEL_APPLY_DPI(5);
+  y = py + wy - window_h - DT_PIXEL_APPLY_DPI(5);
+  gtk_window_move(GTK_WINDOW(lib->profile.floating_window), x, y);
+
+  gtk_window_present(GTK_WINDOW(lib->profile.floating_window));
+
+  // when the mouse moves back over the main window we close the popup.
+  g_signal_connect(lib->profile.floating_window, "focus-out-event", G_CALLBACK(_profile_close_popup), user_data);
+  return TRUE;
+}
+
+static void display_intent_callback(GtkWidget *combo, gpointer user_data)
+{
+  const int pos = dt_bauhaus_combobox_get(combo);
+
+  dt_iop_color_intent_t new_intent = darktable.color_profiles->display_intent;
+
+  // we are not using the int value directly so it's robust against changes on lcms' side
+  switch(pos)
+  {
+    case 0:
+      new_intent = DT_INTENT_PERCEPTUAL;
+      break;
+    case 1:
+      new_intent = DT_INTENT_RELATIVE_COLORIMETRIC;
+      break;
+    case 2:
+      new_intent = DT_INTENT_SATURATION;
+      break;
+    case 3:
+      new_intent = DT_INTENT_ABSOLUTE_COLORIMETRIC;
+      break;
+  }
+
+  if(new_intent != darktable.color_profiles->display_intent)
+  {
+    darktable.color_profiles->display_intent = new_intent;
+    dt_control_queue_redraw_center();
+  }
+}
+
+static void display_profile_callback(GtkWidget *combo, gpointer user_data)
+{
+  gboolean profile_changed = FALSE;
+  const int pos = dt_bauhaus_combobox_get(combo);
+  for(GList *profiles = darktable.color_profiles->profiles; profiles; profiles = g_list_next(profiles))
+  {
+    dt_colorspaces_color_profile_t *pp = (dt_colorspaces_color_profile_t *)profiles->data;
+    if(pp->display_pos == pos)
+    {
+      if(darktable.color_profiles->display_type != pp->type
+        || (darktable.color_profiles->display_type == DT_COLORSPACE_FILE
+        && strcmp(darktable.color_profiles->display_filename, pp->filename)))
+      {
+        darktable.color_profiles->display_type = pp->type;
+        g_strlcpy(darktable.color_profiles->display_filename, pp->filename,
+                  sizeof(darktable.color_profiles->display_filename));
+        profile_changed = TRUE;
+      }
+      goto end;
+    }
+  }
+
+  // profile not found, fall back to system display profile. shouldn't happen
+  fprintf(stderr, "can't find display profile `%s', using system display profile instead\n", dt_bauhaus_combobox_get_text(combo));
+  profile_changed = darktable.color_profiles->display_type != DT_COLORSPACE_DISPLAY;
+  darktable.color_profiles->display_type = DT_COLORSPACE_DISPLAY;
+  darktable.color_profiles->display_filename[0] = '\0';
+
+end:
+  if(profile_changed)
+  {
+    pthread_rwlock_rdlock(&darktable.color_profiles->xprofile_lock);
+    dt_colorspaces_update_display_transforms();
+    pthread_rwlock_unlock(&darktable.color_profiles->xprofile_lock);
+    dt_control_queue_redraw_center();
+  }
+}
+
+// FIXME: turning off lcms2 in prefs hides the widget but leaves the window sized like before -> ugly-ish
+static void _preference_changed(gpointer instance, gpointer user_data)
+{
+  GtkWidget *display_intent = GTK_WIDGET(user_data);
+
+  const int force_lcms2 = dt_conf_get_bool("plugins/lighttable/export/force_lcms2");
+  if(force_lcms2)
+  {
+    gtk_widget_set_no_show_all(display_intent, FALSE);
+    gtk_widget_set_visible(display_intent, TRUE);
+  }
+  else
+  {
+    gtk_widget_set_no_show_all(display_intent, TRUE);
+    gtk_widget_set_visible(display_intent, FALSE);
+  }
+}
+
+void gui_init(dt_view_t *self)
+{
+  dt_library_t *lib = (dt_library_t *)self->data;
+
+  // create display profile button
+  lib->profile.button = dtgtk_button_new(dtgtk_cairo_paint_display, CPF_STYLE_FLAT | CPF_DO_NOT_USE_BORDER);
+  g_object_set(G_OBJECT(lib->profile.button), "tooltip-text", _("set display profile"), (char *)NULL);
+  g_signal_connect(G_OBJECT(lib->profile.button), "button-press-event", G_CALLBACK(_profile_quickbutton_pressed), lib);
+  dt_view_manager_module_toolbox_add(darktable.view_manager, lib->profile.button, DT_VIEW_LIGHTTABLE);
+
+  // and the popup window
+  const int panel_width = dt_conf_get_int("panel_width");
+
+  GtkWidget *window = dt_ui_main_window(darktable.gui->ui);
+
+  lib->profile.floating_window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
+  gtk_window_set_default_size(GTK_WINDOW(lib->profile.floating_window), panel_width, -1);
+  GtkWidget *frame = gtk_frame_new(NULL);
+  GtkWidget *event_box = gtk_event_box_new();
+  GtkWidget *vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 5);
+  gtk_widget_set_margin_start(vbox, DT_PIXEL_APPLY_DPI(8));
+  gtk_widget_set_margin_end(vbox, DT_PIXEL_APPLY_DPI(8));
+  gtk_widget_set_margin_top(vbox, DT_PIXEL_APPLY_DPI(8));
+  gtk_widget_set_margin_bottom(vbox, DT_PIXEL_APPLY_DPI(8));
+
+  gtk_widget_set_can_focus(lib->profile.floating_window, TRUE);
+  gtk_window_set_decorated(GTK_WINDOW(lib->profile.floating_window), FALSE);
+  gtk_window_set_type_hint(GTK_WINDOW(lib->profile.floating_window), GDK_WINDOW_TYPE_HINT_POPUP_MENU);
+  gtk_window_set_transient_for(GTK_WINDOW(lib->profile.floating_window), GTK_WINDOW(window));
+  gtk_widget_set_opacity(lib->profile.floating_window, 0.9);
+
+  gtk_widget_set_state_flags(frame, GTK_STATE_FLAG_SELECTED, TRUE);
+  gtk_frame_set_shadow_type(GTK_FRAME(frame), GTK_SHADOW_OUT);
+
+  gtk_container_add(GTK_CONTAINER(lib->profile.floating_window), frame);
+  gtk_container_add(GTK_CONTAINER(frame), event_box);
+  gtk_container_add(GTK_CONTAINER(event_box), vbox);
+
+  /** let's fill the encapsulating widgets */
+  char datadir[PATH_MAX] = { 0 };
+  char confdir[PATH_MAX] = { 0 };
+  dt_loc_get_user_config_dir(confdir, sizeof(confdir));
+  dt_loc_get_datadir(datadir, sizeof(datadir));
+  const int force_lcms2 = dt_conf_get_bool("plugins/lighttable/export/force_lcms2");
+
+  GtkWidget *display_intent = dt_bauhaus_combobox_new(NULL);
+  dt_bauhaus_widget_set_label(display_intent, NULL, _("display intent"));
+  gtk_box_pack_start(GTK_BOX(vbox), display_intent, TRUE, TRUE, 0);
+  dt_bauhaus_combobox_add(display_intent, _("perceptual"));
+  dt_bauhaus_combobox_add(display_intent, _("relative colorimetric"));
+  dt_bauhaus_combobox_add(display_intent, C_("rendering intent", "saturation"));
+  dt_bauhaus_combobox_add(display_intent, _("absolute colorimetric"));
+
+  if(!force_lcms2)
+  {
+    gtk_widget_set_no_show_all(display_intent, TRUE);
+    gtk_widget_set_visible(display_intent, FALSE);
+  }
+
+  GtkWidget *display_profile = dt_bauhaus_combobox_new(NULL);
+  dt_bauhaus_widget_set_label(display_profile, NULL, _("display profile"));
+  gtk_box_pack_start(GTK_BOX(vbox), display_profile, TRUE, TRUE, 0);
+
+  for(GList *profiles = darktable.color_profiles->profiles; profiles; profiles = g_list_next(profiles))
+  {
+    dt_colorspaces_color_profile_t *prof = (dt_colorspaces_color_profile_t *)profiles->data;
+    if(prof->display_pos > -1)
+    {
+      dt_bauhaus_combobox_add(display_profile, prof->name);
+      if(prof->type == darktable.color_profiles->display_type
+        && (prof->type != DT_COLORSPACE_FILE
+        || !strcmp(prof->filename, darktable.color_profiles->display_filename)))
+      {
+        dt_bauhaus_combobox_set(display_profile, prof->display_pos);
+      }
+    }
+  }
+
+  char tooltip[1024];
+  snprintf(tooltip, sizeof(tooltip), _("display ICC profiles in %s/color/out or %s/color/out"), confdir,
+           datadir);
+  g_object_set(G_OBJECT(display_profile), "tooltip-text", tooltip, (char *)NULL);
+
+  g_signal_connect(G_OBJECT(display_intent), "value-changed", G_CALLBACK(display_intent_callback), NULL);
+  g_signal_connect(G_OBJECT(display_profile), "value-changed", G_CALLBACK(display_profile_callback), NULL);
+
+  // update the gui when the preferences changed (i.e. show intent when using lcms2)
+  dt_control_signal_connect(darktable.signals, DT_SIGNAL_PREFERENCES_CHANGE,
+                            G_CALLBACK(_preference_changed), (gpointer)display_intent);
 }
 
 // modelines: These editor modelines have been set for all relevant files by tools/update_modelines.sh

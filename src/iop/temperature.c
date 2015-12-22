@@ -83,6 +83,36 @@ typedef struct dt_iop_temperature_global_data_t
   int kernel_whitebalance_1f;
 } dt_iop_temperature_global_data_t;
 
+static int ignore_missing_wb(dt_image_t *img)
+{
+  // Ignore files that end with "-hdr.dng" since these are broken files we
+  // generated without any proper WB tagged
+  if(g_str_has_suffix(img->filename,"-hdr.dng"))
+    return TRUE;
+
+  static const char * const ignored_cameras[] = {
+    "Canon PowerShot A610",
+    "Canon PowerShot S3 IS",
+    "Canon PowerShot A620",
+    "Canon PowerShot A720 IS",
+    "Canon PowerShot A630",
+    "Canon PowerShot A640",
+    "Canon PowerShot A650",
+    "Canon PowerShot SX110 IS",
+    "Mamiya ZD",
+    "Canon EOS D2000C",
+    "Kodak EOS DCS 1",
+    "Kodak DCS560C",
+    "Kodak DCS460D",
+  };
+
+  for(int i=0; i < sizeof(ignored_cameras)/sizeof(ignored_cameras[1]); i++)
+    if(!strcmp(img->camera_makermodel, ignored_cameras[i]))
+      return TRUE;
+
+  return FALSE;
+}
+
 const char *name()
 {
   return C_("modulename", "white balance");
@@ -564,9 +594,9 @@ void gui_update(struct dt_iop_module_t *self)
   dt_bauhaus_slider_set(g->scale_tint, tint);
 
   dt_bauhaus_combobox_clear(g->presets);
-  dt_bauhaus_combobox_add(g->presets, _("camera white balance"));
-  dt_bauhaus_combobox_add(g->presets, _("camera neutral white balance"));
-  dt_bauhaus_combobox_add(g->presets, _("spot white balance"));
+  dt_bauhaus_combobox_add(g->presets, C_("white balance", "camera"));
+  dt_bauhaus_combobox_add(g->presets, C_("white balance", "camera neutral"));
+  dt_bauhaus_combobox_add(g->presets, C_("white balance", "spot"));
   g->preset_cnt = DT_IOP_NUM_OF_STD_TEMP_PRESETS;
   memset(g->preset_num, 0, sizeof(g->preset_num));
 
@@ -806,7 +836,7 @@ void reload_defaults(dt_iop_module_t *module)
     // raw images need wb:
     module->default_enabled = 1;
 
-    int found = 1, is_monochrom = 0;
+    int found = 1;
 
     for(int k = 0; k < 3; k++)
     {
@@ -826,34 +856,24 @@ void reload_defaults(dt_iop_module_t *module)
       if(!(!strncmp(module->dev->image_storage.exif_maker, "Leica Camera AG", 15)
            && !strncmp(module->dev->image_storage.exif_model, "M9 monochrom", 12)))
       {
-        dt_control_log(_("failed to read camera white balance information!"));
-        fprintf(stderr, "[temperature] failed to read camera white balance information from `%s'!\n",
-                module->dev->image_storage.filename);
-
-        // could not get useful info, try presets:
-        for(int i = 0; i < wb_preset_count; i++)
+        if(!ignore_missing_wb(&(module->dev->image_storage)))
         {
-          if(!strcmp(wb_preset[i].make, module->dev->image_storage.camera_maker) 
-             && !strcmp(wb_preset[i].model, module->dev->image_storage.camera_model))
-          {
-            // just take the first preset we find for this camera
-            for(int k = 0; k < 3; k++) tmp.coeffs[k] = wb_preset[i].channel[k];
-            found = 1;
-            break;
-          }
+          dt_control_log(_("failed to read camera white balance information!"));
+          fprintf(stderr, "[temperature] failed to read camera white balance information from `%s'!\n",
+                  module->dev->image_storage.filename);
         }
       }
       else
       {
         // nop white balance is valid for monochrome sraws (like the leica monochrom produces)
-        is_monochrom = 1;
+        goto gui;
       }
     }
 
-    // did not find preset either?
+    if(!found)
     {
       double bwb[3];
-      if(!is_monochrom && !found && !calculate_bogus_daylight_wb(module, bwb))
+      if(!calculate_bogus_daylight_wb(module, bwb))
       {
         // found camera matrix and used it to calculate bogus daylight wb
         for(int c = 0; c < 3; c++) tmp.coeffs[c] = bwb[c];
@@ -861,8 +881,24 @@ void reload_defaults(dt_iop_module_t *module)
       }
     }
 
-    // and no cam matrix too???
-    if(!found && !is_monochrom)
+    // no cam matrix??? try presets:
+    if(!found)
+    {
+      for(int i = 0; i < wb_preset_count; i++)
+      {
+        if(!strcmp(wb_preset[i].make, module->dev->image_storage.camera_maker)
+           && !strcmp(wb_preset[i].model, module->dev->image_storage.camera_model))
+        {
+          // just take the first preset we find for this camera
+          for(int k = 0; k < 3; k++) tmp.coeffs[k] = wb_preset[i].channel[k];
+          found = 1;
+          break;
+        }
+      }
+    }
+
+    // did not find preset either?
+    if(!found)
     {
       // final security net: hardcoded default that fits most cams.
       tmp.coeffs[0] = 2.0f;
@@ -875,6 +911,7 @@ void reload_defaults(dt_iop_module_t *module)
     tmp.coeffs[1] = 1.0f;
   }
 
+gui:
   // remember daylight wb used for temperature/tint conversion,
   // assuming it corresponds to CIE daylight (D65)
   if(module->gui_data)
@@ -932,8 +969,8 @@ void init_global(dt_iop_module_so_t *module)
 
 void init(dt_iop_module_t *module)
 {
-  module->params = malloc(sizeof(dt_iop_temperature_params_t));
-  module->default_params = malloc(sizeof(dt_iop_temperature_params_t));
+  module->params = calloc(1, sizeof(dt_iop_temperature_params_t));
+  module->default_params = calloc(1, sizeof(dt_iop_temperature_params_t));
   module->priority = 50; // module order created by iop_dependencies.py, do not edit!
   module->params_size = sizeof(dt_iop_temperature_params_t);
   module->gui_data = NULL;
@@ -941,8 +978,6 @@ void init(dt_iop_module_t *module)
 
 void cleanup(dt_iop_module_t *module)
 {
-  free(module->gui_data);
-  module->gui_data = NULL;
   free(module->params);
   module->params = NULL;
 }

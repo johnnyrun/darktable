@@ -578,6 +578,7 @@ static gboolean combobox_separator(GtkTreeModel *model, GtkTreeIter *iter, gpoin
   {
     if((v = (gchar *)g_value_get_string(&value)) != NULL && *v == '\0') return TRUE;
   }
+  g_value_unset(&value);
   return FALSE;
 }
 
@@ -1330,7 +1331,8 @@ cleanup:
   if(result)
   {
     // this makes sense only if the export was successful
-    dt_control_log(_("%d/%d exported to facebook webalbum"), num, total);
+    dt_control_log(ngettext("%d/%d exported to facebook webalbum", "%d/%d exported to facebook webalbum", num),
+                   num, total);
   }
   return 0;
 }

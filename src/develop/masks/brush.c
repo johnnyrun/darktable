@@ -854,7 +854,7 @@ static int _brush_get_points_border(dt_develop_t *dev, dt_masks_form_t *form, in
       if(darktable.unmuted & DT_DEBUG_PERF)
         dt_print(DT_DEBUG_MASKS, "[masks %s] brush_points transform took %0.04f sec\n", form->name,
                  dt_get_wtime() - start2);
-      start2 = dt_get_wtime();
+//       start2 = dt_get_wtime();
       return 1;
     }
   }
@@ -1448,8 +1448,8 @@ static int dt_brush_events_button_pressed(struct dt_iop_module_t *module, float 
     }
 
     // we remove the shape
-    dt_masks_form_remove(module, dt_masks_get_from_id(darktable.develop, parentid), form);
     dt_dev_masks_list_remove(darktable.develop, form->formid, parentid);
+    dt_masks_form_remove(module, dt_masks_get_from_id(darktable.develop, parentid), form);
     return 1;
   }
 
@@ -2585,7 +2585,7 @@ static int dt_brush_get_mask(dt_iop_module_t *module, dt_dev_pixelpipe_iop_t *pi
   if(darktable.unmuted & DT_DEBUG_PERF)
     dt_print(DT_DEBUG_MASKS, "[masks %s] brush_fill min max took %0.04f sec\n", form->name,
              dt_get_wtime() - start2);
-  start2 = dt_get_wtime();
+//   start2 = dt_get_wtime();
 
   // we allocate the buffer
   *buffer = calloc((*width) * (*height), sizeof(float));
@@ -2738,7 +2738,7 @@ static int dt_brush_get_mask_roi(dt_iop_module_t *module, dt_dev_pixelpipe_iop_t
   if(darktable.unmuted & DT_DEBUG_PERF)
     dt_print(DT_DEBUG_MASKS, "[masks %s] brush_fill min max took %0.04f sec\n", form->name,
              dt_get_wtime() - start2);
-  start2 = dt_get_wtime();
+//   start2 = dt_get_wtime();
 
   // check if the path completely lies outside of roi -> we're done/mask remains empty
   if(xmax < 0 || ymax < 0 || xmin >= width || ymin >= height)

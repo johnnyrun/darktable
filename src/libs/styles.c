@@ -205,8 +205,8 @@ static void export_clicked(GtkWidget *w, gpointer user_data)
   {
     GtkWidget *win = dt_ui_main_window(darktable.gui->ui);
     GtkWidget *filechooser = gtk_file_chooser_dialog_new(
-        _("select directory"), GTK_WINDOW(win), GTK_FILE_CHOOSER_ACTION_SELECT_FOLDER, _("_Cancel"),
-        GTK_RESPONSE_CANCEL, _("_Save"), GTK_RESPONSE_ACCEPT, (char *)NULL);
+        _("select directory"), GTK_WINDOW(win), GTK_FILE_CHOOSER_ACTION_SELECT_FOLDER, _("_cancel"),
+        GTK_RESPONSE_CANCEL, _("_save"), GTK_RESPONSE_ACCEPT, (char *)NULL);
     gtk_file_chooser_set_current_folder(GTK_FILE_CHOOSER(filechooser), g_get_home_dir());
     gtk_file_chooser_set_select_multiple(GTK_FILE_CHOOSER(filechooser), FALSE);
     if(gtk_dialog_run(GTK_DIALOG(filechooser)) == GTK_RESPONSE_ACCEPT)
@@ -225,8 +225,8 @@ static void import_clicked(GtkWidget *w, gpointer user_data)
 {
   GtkWidget *win = dt_ui_main_window(darktable.gui->ui);
   GtkWidget *filechooser = gtk_file_chooser_dialog_new(
-      _("select style"), GTK_WINDOW(win), GTK_FILE_CHOOSER_ACTION_OPEN, _("_Cancel"), GTK_RESPONSE_CANCEL,
-      _("_Open"), GTK_RESPONSE_ACCEPT, (char *)NULL);
+      _("select style"), GTK_WINDOW(win), GTK_FILE_CHOOSER_ACTION_OPEN, _("_cancel"), GTK_RESPONSE_CANCEL,
+      _("_open"), GTK_RESPONSE_ACCEPT, (char *)NULL);
 
   gtk_file_chooser_set_select_multiple(GTK_FILE_CHOOSER(filechooser), TRUE);
   gtk_file_chooser_set_current_folder(GTK_FILE_CHOOSER(filechooser), g_get_home_dir());
@@ -234,6 +234,7 @@ static void import_clicked(GtkWidget *w, gpointer user_data)
   GtkFileFilter *filter;
   filter = GTK_FILE_FILTER(gtk_file_filter_new());
   gtk_file_filter_add_pattern(filter, "*.dtstyle");
+  gtk_file_filter_add_pattern(filter, "*.DTSTYLE");
   gtk_file_filter_set_name(filter, _("darktable style files"));
   gtk_file_chooser_add_filter(GTK_FILE_CHOOSER(filechooser), filter);
 
@@ -276,6 +277,13 @@ static gboolean duplicate_callback(GtkEntry *entry, gpointer user_data)
   dt_conf_set_bool("ui_last/styles_create_duplicate",
                    gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(d->duplicate)));
   return FALSE;
+}
+
+
+static void _styles_changed_callback(gpointer instance, gpointer user_data)
+{
+  dt_lib_styles_t *d = (dt_lib_styles_t *)user_data;
+  _gui_styles_update_view(d);
 }
 
 void gui_init(dt_lib_module_t *self)
@@ -379,11 +387,14 @@ void gui_init(dt_lib_module_t *self)
 
   /* update filtered list */
   _gui_styles_update_view(d);
+
+  dt_control_signal_connect(darktable.signals, DT_SIGNAL_STYLE_CHANGED, G_CALLBACK(_styles_changed_callback), d);
 }
 
 void gui_cleanup(dt_lib_module_t *self)
 {
   dt_lib_styles_t *d = (dt_lib_styles_t *)self->data;
+  dt_control_signal_disconnect(darktable.signals, G_CALLBACK(_styles_changed_callback), self);
   dt_gui_key_accel_block_on_focus_disconnect(GTK_WIDGET(d->entry));
   free(self->data);
   self->data = NULL;

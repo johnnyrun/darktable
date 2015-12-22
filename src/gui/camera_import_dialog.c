@@ -518,6 +518,7 @@ static void _camera_import_dialog_run(_camera_import_dialog_t *data)
           gtk_tree_model_get_value(GTK_TREE_MODEL(data->store), &iter, 1, &value);
           if(G_VALUE_HOLDS_STRING(&value))
             data->params->result = g_list_append(data->params->result, g_strdup(g_value_get_string(&value)));
+          g_value_unset(&value);
         } while((sp = g_list_next(sp)));
       }
 
@@ -560,6 +561,7 @@ static void _camera_import_dialog_run(_camera_import_dialog_t *data)
 void dt_camera_import_dialog_new(dt_camera_import_dialog_param_t *params)
 {
   _camera_import_dialog_t data;
+  memset(&data, 0, sizeof(_camera_import_dialog_t)); // needed to initialize pointers to null
   data.params = params;
   _camera_import_dialog_new(&data);
   _camera_import_dialog_run(&data);

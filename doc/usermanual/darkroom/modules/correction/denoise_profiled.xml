@@ -55,8 +55,19 @@
     <para>
       The darktable team, with the help of many users, has measured noise profiles for various
       cameras. Differentiated by ISO settings we evaluated how the noise statistics develop with
-      brightness for the three color channels. Our set of profiles already covers about 100
-      popular camera models from all major manufacturers.
+      brightness for the three color channels. Our set of profiles covers well above 100 popular
+      camera models from all major manufacturers.
+    </para>
+
+    <para>
+      darktable stores noise profiles in an external json file. This file can be found in
+      <filename>$DARKTABLE/share/darktable/noiseprofile.json</filename> where
+      <filename>$DARKTABLE</filename> represents the darktable installation directory. The json
+      format is quite straightforward and explained in depth in
+      <ulink url="http://json.org/">json.org</ulink>. You can replace the default noise profiles
+      by your own ones and specify that file on the command line when starting darktable. For
+      more details see <xref linkend="darktable_commandline_parameters"/>. If you generate your
+      own noise profiles don't forget to share your results with the darktable team!
     </para>
 
     <sect5>

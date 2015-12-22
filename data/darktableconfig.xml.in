@@ -26,15 +26,15 @@
     <name>cache_memory</name>
     <type factor="(1.0 / (1024.0 * 1024.0))" min="(1024 * 1024 * 100)">int64</type>
     <default>(1024 * 1024 * 256)</default>
-    <shortdescription>memory in megabytes to use for mipmap cache</shortdescription>
+    <shortdescription>memory in megabytes to use for thumbnail cache</shortdescription>
     <longdescription>this controls how much memory is going to be used for thumbnails and other buffers (needs a restart).</longdescription>
   </dtconfig>
   <dtconfig prefs="core">
     <name>cache_disk_backend</name>
     <type>bool</type>
     <default>true</default>
-    <shortdescription>enable disk backend for mipmap cache</shortdescription>
-    <longdescription>if enabled, write thumbnails to disk (.cache/darktable/) when evicted from the memory cache. note that this can take a lot of memory (several gigabytes for 20k images) and will never delete cached thumbnails again. it's safe though to delete these manually, if you want. light table performance will be increased greatly when browsing a lot. to generate all thumbnails of your entire collection offline, run 'darktable-cli --generate-cache --core --library ~/.config/darktable/library.db'.</longdescription>
+    <shortdescription>enable disk backend for thumbnail cache</shortdescription>
+    <longdescription>if enabled, write thumbnails to disk (.cache/darktable/) when evicted from the memory cache. note that this can take a lot of memory (several gigabytes for 20k images) and will never delete cached thumbnails again. it's safe though to delete these manually, if you want. light table performance will be increased greatly when browsing a lot. to generate all thumbnails of your entire collection offline, run 'darktable-generate-cache'.</longdescription>
   </dtconfig>
   <dtconfig prefs="core">
     <name>cache_color_managed</name>
@@ -1047,6 +1047,20 @@
     <longdescription>this option toggles the behavior of shift clicking in darkroom mode</longdescription>
   </dtconfig>
   <dtconfig prefs="gui">
+    <name>lighttable/ui/scroll_to_module</name>
+    <type>bool</type>
+    <default>false</default>
+    <shortdescription>scroll to lighttable modules when expanded/collapsed</shortdescription>
+    <longdescription>when this option is enabled then darktable will try to scroll the module to the top of the visible list</longdescription>
+  </dtconfig>
+  <dtconfig prefs="gui">
+    <name>darkroom/ui/scroll_to_module</name>
+    <type>bool</type>
+    <default>true</default>
+    <shortdescription>scroll to darkroom modules when expanded/collapsed</shortdescription>
+    <longdescription>when this option is enabled then darktable will try to scroll the module to the top of the visible list</longdescription>
+  </dtconfig>
+  <dtconfig prefs="gui">
     <name>plugins/darkroom/ui/border_size</name>
     <type>int</type>
     <default>20</default>
@@ -1092,8 +1106,8 @@
     <name>plugins/lighttable/export/force_lcms2</name>
     <type>bool</type>
     <default>false</default>
-    <shortdescription>always try to use LittleCMS 2</shortdescription>
-    <longdescription>this is significantly slower than the default.</longdescription>
+    <shortdescription>always use LittleCMS 2 to apply output color profile</shortdescription>
+    <longdescription>this is slower than the default.</longdescription>
   </dtconfig>
   <dtconfig prefs="gui">
     <name>plugins/slideshow/high_quality</name>
@@ -2325,6 +2339,13 @@
     <shortdescription>executable for playing audio files</shortdescription>
     <longdescription>this external program is used to play audio files some cameras record to keep notes for images</longdescription>
   </dtconfig>
+  <dtconfig prefs="core">
+    <name>plugins/darkroom/basecurve/auto_apply_percamera_presets</name>
+    <type>bool</type>
+    <default>false</default>
+    <shortdescription>auto-apply per camera basecurve presets</shortdescription>
+    <longdescription>use the per-camera basecurve by default instead of the generic manufacturer one if there is one available (needs a restart)</longdescription>
+  </dtconfig>
   <dtconfig>
     <name>screen_dpi_overwrite</name>
     <type>float</type>
@@ -2345,5 +2366,12 @@
     <default>1</default>
     <shortdescription>preload images for full-size preview</shortdescription>
     <longdescription>number of images to load in advance in the background when showing full-size preview</longdescription>
+  </dtconfig>
+  <dtconfig>
+    <name>please_let_me_suffer_by_using_32bit_darktable</name>
+    <type>bool</type>
+    <default>false</default>
+    <shortdescription>if using a 32-bit build, hide the message recommending a 64-bit build</shortdescription>
+    <longdescription>the 32-bit build of darktable is known to exhibit sporadic issues and crashes. we show a warning message hinting at this issue. with this option, you can suppress the warning.</longdescription>
   </dtconfig>
 </dtconfiglist>

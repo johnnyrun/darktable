@@ -3,6 +3,7 @@ cmake_minimum_required(VERSION 2.6)
 cmake_policy(SET CMP0011 NEW)
 
 include(CheckCCompilerFlag)
+include(CheckCSourceCompiles)
 
 #
 # Add files for libdarktable
@@ -306,15 +307,6 @@ if(USE_GRAPHICSMAGICK)
   endif(GraphicsMagick_FOUND)
 endif(USE_GRAPHICSMAGICK)
 
-# needed for the file manager
-if(APRIL_FOOLS)
-  find_package(VTE)
-  if(VTE_FOUND)
-    include_directories(SYSTEM ${VTE_INCLUDE_DIRS})
-    list(APPEND LIBS ${VTE_LIBRARIES})
-  endif(VTE_FOUND)
-endif(APRIL_FOOLS)
-
 #
 # Add HAVE_xxx defines used by darktable
 #
@@ -353,6 +345,18 @@ if(GPHOTO2_FOUND)
   endif()
 endif(GPHOTO2_FOUND)
 
+# Check for __builtin_cpu_supports here due to a bug in clang/llvm. LLVM uses
+# libgcc to provide the symbols, so if clang wasn't compiled with libgcc, the
+# compiler will say it's available; however the linker cannot find the symbols.
+# So do a quick test compile to see if it's actually available.
+# See https://llvm.org/bugs/show_bug.cgi?id=25510
+check_c_source_compiles("#include <stdio.h>
+int main() {
+  printf(\"%d\", __builtin_cpu_supports(\"sse3\"));
+}" HAVE_BUILTIN_CPU_SUPPORTS)
+if(HAVE_BUILTIN_CPU_SUPPORTS)
+  add_definitions("-DHAVE_BUILTIN_CPU_SUPPORTS")
+endif(HAVE_BUILTIN_CPU_SUPPORTS)
 
 #
 # Set default compile flags for GCC
@@ -450,7 +454,7 @@ include_directories("${CMAKE_CURRENT_BINARY_DIR}" "${CMAKE_CURRENT_SOURCE_DIR}")
 # Build external deps
 #
 if(USE_LUA)
-  find_package(Lua52 5.2 EXACT)
+  find_package(Lua52 5.2)
   if(LUA52_FOUND)
     message(STATUS "Lua support: Enabled")
     include_directories(SYSTEM ${LUA52_INCLUDE_DIRS})
@@ -470,6 +474,7 @@ if(USE_LUA)
   if(USE_LUA)
     add_definitions("-DUSE_LUA")
     FILE(GLOB SOURCE_FILES_LUA
+      "lua/cairo.c"
       "lua/call.c"
       "lua/configuration.c"
       "lua/database.c"
@@ -479,6 +484,7 @@ if(USE_LUA)
       "lua/gettext.c"
       "lua/glist.c"
       "lua/gui.c"
+      "lua/guides.c"
       "lua/image.c"
       "lua/init.c"
       "lua/lib.c"
@@ -703,9 +709,9 @@ add_library(metadata_dummy ${CMAKE_CURRENT_BINARY_DIR}/metadata_gen.c ${CMAKE_CU
 #
 # build libdarktable
 #
-add_library(lib_darktable STATIC SHARED ${CMAKE_CURRENT_BINARY_DIR}/preferences_gen.h ${CMAKE_CURRENT_BINARY_DIR}/metadata_gen.h ${CMAKE_CURRENT_BINARY_DIR}/metadata_gen.c ${SOURCES})
+add_library(lib_darktable SHARED ${CMAKE_CURRENT_BINARY_DIR}/preferences_gen.h ${CMAKE_CURRENT_BINARY_DIR}/metadata_gen.h ${CMAKE_CURRENT_BINARY_DIR}/metadata_gen.c ${SOURCES})
 if(APPLE)
-  set_target_properties(lib_darktable PROPERTIES INSTALL_NAME_DIR "@executable_path/../lib/darktable")
+  set_target_properties(lib_darktable PROPERTIES MACOSX_RPATH TRUE)
 endif(APPLE)
 set_target_properties(lib_darktable PROPERTIES OUTPUT_NAME darktable)
 set_target_properties(lib_darktable PROPERTIES LINKER_LANGUAGE C)
@@ -776,7 +782,11 @@ if(NOT WIN32)
   # Windows doesn't know the concept of RPATHs :(
   set_target_properties(darktable PROPERTIES CMAKE_BUILD_WITH_INSTALL_RPATH TRUE)
   set_target_properties(darktable PROPERTIES CMAKE_INSTALL_RPATH_USE_LINK_PATH FALSE)
-  set_target_properties(darktable PROPERTIES INSTALL_RPATH $ORIGIN/../${LIB_INSTALL}/darktable)
+  if(APPLE)
+    set_target_properties(darktable PROPERTIES INSTALL_RPATH @loader_path/../${LIB_INSTALL}/darktable)
+  else(APPLE)
+    set_target_properties(darktable PROPERTIES INSTALL_RPATH $ORIGIN/../${LIB_INSTALL}/darktable)
+  endif(APPLE)
 endif(NOT WIN32)
 set_target_properties(darktable PROPERTIES LINKER_LANGUAGE C)
 if(APPLE)

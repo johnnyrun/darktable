@@ -297,8 +297,8 @@ end:
 void init(dt_iop_module_t *module)
 {
   module->data = NULL;
-  module->params = malloc(sizeof(dt_iop_hotpixels_params_t));
-  module->default_params = malloc(sizeof(dt_iop_hotpixels_params_t));
+  module->params = calloc(1, sizeof(dt_iop_hotpixels_params_t));
+  module->default_params = calloc(1, sizeof(dt_iop_hotpixels_params_t));
   module->default_enabled = 0;
   module->priority = 100; // module order created by iop_dependencies.py, do not edit!
   module->params_size = sizeof(dt_iop_hotpixels_params_t);
@@ -307,8 +307,6 @@ void init(dt_iop_module_t *module)
 
 void cleanup(dt_iop_module_t *module)
 {
-  free(module->gui_data);
-  module->gui_data = NULL;
   free(module->params);
   module->params = NULL;
   free(module->data);
@@ -409,13 +407,14 @@ static gboolean draw(GtkWidget *widget, cairo_t *cr, dt_iop_module_t *self)
 
   if(g->pixels_fixed < 0) return FALSE;
 
-  char buf[256];
-  snprintf(buf, sizeof buf, _("fixed %d pixels"), g->pixels_fixed);
+  char *str = g_strdup_printf(ngettext("fixed %d pixel", "fixed %d pixels", g->pixels_fixed), g->pixels_fixed);
   g->pixels_fixed = -1;
 
   darktable.gui->reset = 1;
-  gtk_label_set_text(g->message, buf);
+  gtk_label_set_text(g->message, str);
   darktable.gui->reset = 0;
+
+  g_free(str);
 
   return FALSE;
 }

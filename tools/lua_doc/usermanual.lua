@@ -21,6 +21,14 @@ endlist = function() return "</itemizedlist>\n" end
 listel = function(text) return "<listitem><para>"..text.."</para></listitem>\n" end
 emphasis = function(text) return "<emphasis>"..text.."</emphasis>" end
 
+url = function(text,content) 
+  if content then
+    return "<ulink url=\""..text.."\">"..content.."</ulink>"
+  else
+    return "<ulink url=\""..text.."\">"..text.."</ulink>"
+  end
+end
+
 
 require "content"
 doc = require "core"
@@ -237,16 +245,16 @@ M = {}
 M.page_name = page_name
 
 function M.get_doc()
-  return [[<!DOCTYPE section PUBLIC "-//OASIS//DTD DocBook XML V4.5//EN"
+  return [[<!DOCTYPE article PUBLIC "-//OASIS//DTD DocBook XML V4.5//EN"
   "http://www.oasis-open.org/docbook/xml/4.5/docbookx.dtd" [
   <!ENTITY % darktable_dtd SYSTEM "../dtd/darktable.dtd">
   %darktable_dtd;
   ]>
-  <section status="draft" id="lua_api"><title>Lua API</title>
+  <article status="draft" id="lua_api"><title>Lua API</title>
   <indexterm>
   <primary>Lua API</primary>
   </indexterm>
-  ]]..parse_doc_node(doc.toplevel,nil,"").."</section>"
+  ]]..parse_doc_node(doc.toplevel,nil,"").."</article>"
 
 
 end

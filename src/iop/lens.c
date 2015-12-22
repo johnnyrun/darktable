@@ -1075,10 +1075,22 @@ void init_global(dt_iop_module_so_t *module)
     char *c = path + strlen(path);
     for(; c > path && *c != '/'; c--)
       ;
-    sprintf(c, "/lensfun");
+#ifdef LF_MAX_DATABASE_VERSION
+    snprintf(c, PATH_MAX - (c - path), "/lensfun/version_%d", LF_MAX_DATABASE_VERSION);
+    g_free(dt_iop_lensfun_db->HomeDataDir);
     dt_iop_lensfun_db->HomeDataDir = g_strdup(path);
     if(lf_db_load(dt_iop_lensfun_db) != LF_NO_ERROR)
+    {
       fprintf(stderr, "[iop_lens]: could not load lensfun database in `%s'!\n", path);
+#endif
+      snprintf(c, PATH_MAX - (c - path), "/lensfun");
+      g_free(dt_iop_lensfun_db->HomeDataDir);
+      dt_iop_lensfun_db->HomeDataDir = g_strdup(path);
+      if(lf_db_load(dt_iop_lensfun_db) != LF_NO_ERROR)
+        fprintf(stderr, "[iop_lens]: could not load lensfun database in `%s'!\n", path);
+#ifdef LF_MAX_DATABASE_VERSION
+    }
+#endif
   }
 }
 
@@ -1200,8 +1212,8 @@ end:
 
 void init(dt_iop_module_t *module)
 {
-  module->params = malloc(sizeof(dt_iop_lensfun_params_t));
-  module->default_params = malloc(sizeof(dt_iop_lensfun_params_t));
+  module->params = calloc(1, sizeof(dt_iop_lensfun_params_t));
+  module->default_params = calloc(1, sizeof(dt_iop_lensfun_params_t));
   module->default_enabled = 0;
   module->params_size = sizeof(dt_iop_lensfun_params_t);
   module->gui_data = NULL;
@@ -1210,8 +1222,6 @@ void init(dt_iop_module_t *module)
 
 void cleanup(dt_iop_module_t *module)
 {
-  free(module->gui_data);
-  module->gui_data = NULL;
   free(module->params);
   module->params = NULL;
 }

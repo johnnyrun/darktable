@@ -1,18 +1,19 @@
-<!DOCTYPE section PUBLIC "-//OASIS//DTD DocBook XML V4.5//EN"
+<!DOCTYPE article PUBLIC "-//OASIS//DTD DocBook XML V4.5//EN"
   "http://www.oasis-open.org/docbook/xml/4.5/docbookx.dtd" [
   <!ENTITY % darktable_dtd SYSTEM "../dtd/darktable.dtd">
   %darktable_dtd;
   ]>
-  <section status="draft" id="lua_api"><title>Lua API</title>
+  <article status="draft" id="lua_api"><title>Lua API</title>
   <indexterm>
   <primary>Lua API</primary>
   </indexterm>
-  <para>To access the darktable specific functions you must load the darktable environment:</para>
+  <para>This documentation is for the *developement* version of darktable. for the stable version, please visit the user manual</para>
+<para>To access the darktable specific functions you must load the darktable environment:</para>
 
 <para><programlisting language="lua">darktable = require "darktable"</programlisting></para>
 
 <para>All functions and data are accessed through the darktable module.</para>
-<para>This documentation for API version 2.1.0-dev.</para>
+<para>This documentation for API version 3.0.0.</para>
 
 <section status="final" id="darktable">
 <title>darktable</title>
@@ -740,8 +741,9 @@
 
 <varlistentry id="darktable_gui_create_job_cancel_callback"><term>[cancel_callback]</term><listitem>
 <synopsis>function( 
-	<emphasis><link linkend="darktable_gui_create_job_cancel_callback_job">job</link></emphasis> : <link linkend="types_dt_lua_backgroundjob_t">types.dt_lua_backgroundjob_t</link>
-)</synopsis>
+	<emphasis><link linkend="darktable_gui_create_job_cancel_callback_job">job</link></emphasis> : <link linkend="types_dt_lua_backgroundjob_t">types.dt_lua_backgroundjob_t</link>, 
+	<emphasis><link linkend="darktable_gui_create_job_cancel_callback_image">image</link></emphasis> : <link linkend="types_dt_lua_image_t">types.dt_lua_image_t</link>
+) : string</synopsis>
 <para>A function called when the cancel button for that job is pressed</para>
 <para>note that the job won't be destroyed automatically. You need to set <link linkend="types_dt_lua_backgroundjob_t_valid">types.dt_lua_backgroundjob_t.valid</link> to false for that</para>
 
@@ -751,6 +753,19 @@
 <para>The job who is being cancelded</para>
 
 </listitem></varlistentry>
+
+<varlistentry id="darktable_gui_create_job_cancel_callback_image"><term>image</term><listitem>
+<synopsis><link linkend="types_dt_lua_image_t">types.dt_lua_image_t</link></synopsis>
+<para>The image to analyze</para>
+
+</listitem></varlistentry>
+
+<varlistentry><term><emphasis>return</emphasis></term><listitem>
+<synopsis>string</synopsis>
+<para>The extra information to display</para>
+
+</listitem></varlistentry>
+
 
 </variablelist>
 </listitem></varlistentry>
@@ -1123,7 +1138,7 @@ end</programlisting></para>
 </indexterm>
 <synopsis>function( 
 	[<emphasis><link linkend="darktable_gui_libs_collect_filter_rules">rules</link></emphasis> : array of<link linkend="types_dt_lib_collect_params_rule_t">types.dt_lib_collect_params_rule_t</link>]
-) : <link linkend="types_dt_lib_collect_params_rule_t">types.dt_lib_collect_params_rule_t</link></synopsis>
+) : array of<link linkend="types_dt_lib_collect_params_rule_t">types.dt_lib_collect_params_rule_t</link></synopsis>
 <para>Allows to get or change the list of visible images</para>
 <informaltable frame="none" width="80%"><tgroup cols="2" colsep="0" rowsep="0">
     <colspec colwidth="2*"/>
@@ -1144,8 +1159,8 @@ end</programlisting></para>
 </listitem></varlistentry>
 
 <varlistentry><term><emphasis>return</emphasis></term><listitem>
-<synopsis><link linkend="types_dt_lib_collect_params_rule_t">types.dt_lib_collect_params_rule_t</link></synopsis>
-<para>The newly created rule</para>
+<synopsis>array of<link linkend="types_dt_lib_collect_params_rule_t">types.dt_lib_collect_params_rule_t</link></synopsis>
+<para>The rules that were applied before this call.</para>
 
 </listitem></varlistentry>
 
@@ -1160,10 +1175,17 @@ end</programlisting></para>
 <secondary>new_rule</secondary>
 </indexterm>
 <synopsis>function( 
-)</synopsis>
+) : <link linkend="types_dt_lib_collect_params_rule_t">types.dt_lib_collect_params_rule_t</link></synopsis>
 <para>Returns a newly created rule object</para>
 
 <variablelist>
+<varlistentry><term><emphasis>return</emphasis></term><listitem>
+<synopsis><link linkend="types_dt_lib_collect_params_rule_t">types.dt_lib_collect_params_rule_t</link></synopsis>
+<para>The newly created rule</para>
+
+</listitem></varlistentry>
+
+
 </variablelist>
 </section>
 
@@ -1251,51 +1273,6 @@ end</programlisting></para>
 </entry>
     </row></tbody>
     </tgroup></informaltable>
-<section status="final" id="darktable_gui_libs_metadata_view_register_info">
-<title>darktable.gui.libs.metadata_view.register_info</title>
-<indexterm>
-<primary>Lua API</primary>
-<secondary>register_info</secondary>
-</indexterm>
-<synopsis>function( 
-	<emphasis><link linkend="darktable_gui_libs_metadata_view_register_info_name">name</link></emphasis> : string, 
-	<emphasis><link linkend="darktable_gui_libs_metadata_view_register_info_callback">callback</link></emphasis> : function
-)</synopsis>
-<para>Register a function providing extra info to display in the widget</para>
-
-<variablelist>
-<varlistentry id="darktable_gui_libs_metadata_view_register_info_name"><term>name</term><listitem>
-<synopsis>string</synopsis>
-<para>The name displayed for the new information</para>
-
-</listitem></varlistentry>
-
-<varlistentry id="darktable_gui_libs_metadata_view_register_info_callback"><term>callback</term><listitem>
-<synopsis>function( 
-	<emphasis><link linkend="darktable_gui_libs_metadata_view_register_info_callback_image">image</link></emphasis> : <link linkend="types_dt_lua_image_t">types.dt_lua_image_t</link>
-) : string</synopsis>
-<para>The function providing the info</para>
-
-<variablelist>
-<varlistentry id="darktable_gui_libs_metadata_view_register_info_callback_image"><term>image</term><listitem>
-<synopsis><link linkend="types_dt_lua_image_t">types.dt_lua_image_t</link></synopsis>
-<para>The image to analyze</para>
-
-</listitem></varlistentry>
-
-<varlistentry><term><emphasis>return</emphasis></term><listitem>
-<synopsis>string</synopsis>
-<para>The extra information to displa</para>
-
-</listitem></varlistentry>
-
-
-</variablelist>
-</listitem></varlistentry>
-
-</variablelist>
-</section>
-
 </section>
 
 <section status="final" id="darktable_gui_libs_metadata">
@@ -2148,6 +2125,99 @@ end</programlisting></para>
 
 </section>
 
+<section status="final" id="darktable_guides">
+<title>darktable.guides</title>
+<indexterm>
+<primary>Lua API</primary>
+<secondary>guides</secondary>
+</indexterm>
+<synopsis>table</synopsis>
+<para>Guide lines to overlay over an image in crop and rotate.</para>
+<para>All guides are clipped to the drawing area.</para>
+
+<section status="final" id="darktable_guides_register_guide">
+<title>darktable.guides.register_guide</title>
+<indexterm>
+<primary>Lua API</primary>
+<secondary>register_guide</secondary>
+</indexterm>
+<synopsis>function( 
+	<emphasis><link linkend="darktable_guides_register_guide_name">name</link></emphasis> : string, 
+	<emphasis><link linkend="darktable_guides_register_guide_draw_callback">draw_callback</link></emphasis> : function, 
+	[<emphasis><link linkend="darktable_guides_register_guide_gui_callback">gui_callback</link></emphasis> : function]
+)</synopsis>
+<para>Register a new guide.</para>
+
+<variablelist>
+<varlistentry id="darktable_guides_register_guide_name"><term>name</term><listitem>
+<synopsis>string</synopsis>
+<para>The name of the guide to show in the GUI.</para>
+
+</listitem></varlistentry>
+
+<varlistentry id="darktable_guides_register_guide_draw_callback"><term>draw_callback</term><listitem>
+<synopsis>function( 
+	<emphasis><link linkend="darktable_guides_register_guide_draw_callback_cr">cr</link></emphasis> : <link linkend="types_dt_lua_cairo_t">types.dt_lua_cairo_t</link>, 
+	<emphasis><link linkend="darktable_guides_register_guide_draw_callback_x">x</link></emphasis> : float, 
+	<emphasis><link linkend="darktable_guides_register_guide_draw_callback_y">y</link></emphasis> : float, 
+	<emphasis><link linkend="darktable_guides_register_guide_draw_callback_width">width</link></emphasis> : float, 
+	<emphasis><link linkend="darktable_guides_register_guide_draw_callback_height">height</link></emphasis> : float, 
+	<emphasis><link linkend="darktable_guides_register_guide_draw_callback_zoom_scale">zoom_scale</link></emphasis> : float
+)</synopsis>
+<para>The function to call to draw the guide lines. The drawn lines will be stroked by darktable.</para>
+<para>THIS IS RUNNING IN THE GUI THREAD AND HAS TO BE FAST!</para>
+
+<variablelist>
+<varlistentry id="darktable_guides_register_guide_draw_callback_cr"><term>cr</term><listitem>
+<synopsis><link linkend="types_dt_lua_cairo_t">types.dt_lua_cairo_t</link></synopsis>
+<para>The cairo object used for drawing.</para>
+
+</listitem></varlistentry>
+
+<varlistentry id="darktable_guides_register_guide_draw_callback_x"><term>x</term><listitem>
+<synopsis>float</synopsis>
+<para>The x coordinate of the top left corner of the drawing area.</para>
+
+</listitem></varlistentry>
+
+<varlistentry id="darktable_guides_register_guide_draw_callback_y"><term>y</term><listitem>
+<synopsis>float</synopsis>
+<para>The y coordinate of the top left corner of the drawing area.</para>
+
+</listitem></varlistentry>
+
+<varlistentry id="darktable_guides_register_guide_draw_callback_width"><term>width</term><listitem>
+<synopsis>float</synopsis>
+<para>The width of the drawing area.</para>
+
+</listitem></varlistentry>
+
+<varlistentry id="darktable_guides_register_guide_draw_callback_height"><term>height</term><listitem>
+<synopsis>float</synopsis>
+<para>The height of the drawing area.</para>
+
+</listitem></varlistentry>
+
+<varlistentry id="darktable_guides_register_guide_draw_callback_zoom_scale"><term>zoom_scale</term><listitem>
+<synopsis>float</synopsis>
+<para>The current zoom_scale. Only needed when setting the line thickness.</para>
+
+</listitem></varlistentry>
+
+</variablelist>
+</listitem></varlistentry>
+
+<varlistentry id="darktable_guides_register_guide_gui_callback"><term>[gui_callback]</term><listitem>
+<synopsis>function</synopsis>
+<para>A function returning a widget to show when the guide is selected. It takes no arguments.</para>
+
+</listitem></varlistentry>
+
+</variablelist>
+</section>
+
+</section>
+
 <section status="final" id="darktable_tags">
 <title>darktable.tags</title>
 <indexterm>
@@ -2481,7 +2551,7 @@ end</programlisting></para>
 
 <varlistentry id="darktable_configuration_check_version____"><term>...</term><listitem>
 <synopsis>table...</synopsis>
-<para>Tables of API versions that are known to work with the scrip</para>
+<para>Tables of API versions that are known to work with the script</para>
 
 </listitem></varlistentry>
 
@@ -2497,7 +2567,7 @@ end</programlisting></para>
 <secondary>preferences</secondary>
 </indexterm>
 <synopsis>table</synopsis>
-<para>Lua allows you do manipulate preferences. Lua has its own namespace for preferences and you can't access nor write normal darktable preferences.</para>
+<para>Lua allows you to manipulate preferences. Lua has its own namespace for preferences and you can't access nor write normal darktable preferences.</para>
 <para>Preference handling functions take a _script_ parameter. This is a string used to avoid name collision in preferences (i.e namespace). Set it to something unique, usually the name of the script handling the preference.</para>
 <para>Preference handling functions can't guess the type of a parameter. You must pass the type of the preference you are handling. </para>
 <para>Note that the directory, enum and file type preferences are stored internally as string. The user can only select valid values, but a lua script can set it to any string</para>
@@ -2549,7 +2619,7 @@ end</programlisting></para>
 
 <varlistentry id="darktable_preferences_register_tooltip"><term>tooltip</term><listitem>
 <synopsis>string</synopsis>
-<para>The tooltip to display in the preference menue.</para>
+<para>The tooltip to display in the preference menu.</para>
 
 </listitem></varlistentry>
 
@@ -3007,7 +3077,7 @@ NOTE2: If the parameter is a directory the call is non-blocking; the film object
 ) : <link linkend="types_dt_lua_image_t">types.dt_lua_image_t</link></synopsis>
 <para>Physically copies an image to another film.</para>
 <para>This will copy the image file and the related XMP to the directory of the new film</para>
-<para>If there is already a file with the same name as the image file, it wil create a duplicate from that file instead</para>
+<para>If there is already a file with the same name as the image file, it will create a duplicate from that file instead</para>
 <para>Note that the parameter order is not relevant.</para>
 
 <variablelist>
@@ -3315,7 +3385,7 @@ NOTE2: If the parameter is a directory the call is non-blocking; the film object
 <secondary>debug</secondary>
 </indexterm>
 <synopsis>table</synopsis>
-<para>This section must be activated separately by calling 
+<para>This section must be activated separately by calling
 
 require "darktable.debug"
 </para>
@@ -3572,6 +3642,17 @@ This function is recursion-safe and can be used to dump _G if needed.</para>
 </indexterm>
 <synopsis>string</synopsis>
 <para>The filename of the image.</para>
+
+</section>
+
+<section status="final" id="types_dt_lua_image_t_sidecar">
+<title>types.dt_lua_image_t.sidecar</title>
+<indexterm>
+<primary>Lua API</primary>
+<secondary>sidecar</secondary>
+</indexterm>
+<synopsis>string</synopsis>
+<para>The filename of the image's sidecar file.</para>
 
 </section>
 
@@ -4274,7 +4355,7 @@ This function is recursion-safe and can be used to dump _G if needed.</para>
 )</synopsis>
 <para>drops the cached version of this image.</para>
 <para>This function should be called if an image is modified out of darktable to force DT to regenerate the thumbnail</para>
-<para>Darktable will regenerate the thumbnail by itself when it is needed</para>
+<para>darktable will regenerate the thumbnail by itself when it is needed</para>
 
 <variablelist>
 <varlistentry id="types_dt_lua_image_t_drop_cache_self"><term>self</term><listitem>
@@ -4861,6 +4942,318 @@ This function is recursion-safe and can be used to dump _G if needed.</para>
     </tgroup></informaltable>
 </section>
 
+</section>
+
+<section status="final" id="types_dt_imageio_module_format_data_pdf">
+<title>types.dt_imageio_module_format_data_pdf</title>
+<indexterm>
+<primary>Lua API</primary>
+<secondary>dt_imageio_module_format_data_pdf</secondary>
+</indexterm>
+<synopsis>dt_type</synopsis>
+<para>Type object describing parameters to export to pdf.</para>
+<informaltable frame="none" width="80%"><tgroup cols="2" colsep="0" rowsep="0">
+    <colspec colwidth="2*"/>
+    <colspec colwidth="8*"/>
+    <tbody><row>
+    <entry>Attributes:</entry>
+    <entry><itemizedlist>
+<listitem><para><emphasis><link linkend="attributes_parent">parent</link> : </emphasis><link linkend="types_dt_imageio_module_format_t">types.dt_imageio_module_format_t</link></para></listitem>
+</itemizedlist>
+</entry>
+    </row></tbody>
+    </tgroup></informaltable>
+<section status="final" id="types_dt_imageio_module_format_data_pdf_dpi">
+<title>types.dt_imageio_module_format_data_pdf.dpi</title>
+<indexterm>
+<primary>Lua API</primary>
+<secondary>dpi</secondary>
+</indexterm>
+<synopsis>number</synopsis>
+<para>The dot per inch value to use at export</para>
+<informaltable frame="none" width="80%"><tgroup cols="2" colsep="0" rowsep="0">
+    <colspec colwidth="2*"/>
+    <colspec colwidth="8*"/>
+    <tbody><row>
+    <entry>Attributes:</entry>
+    <entry><itemizedlist>
+<listitem><para><emphasis><link linkend="attributes_write">write</link></emphasis></para></listitem>
+</itemizedlist>
+</entry>
+    </row></tbody>
+    </tgroup></informaltable>
+</section>
+
+<section status="final" id="types_dt_imageio_module_format_data_pdf_icc">
+<title>types.dt_imageio_module_format_data_pdf.icc</title>
+<indexterm>
+<primary>Lua API</primary>
+<secondary>icc</secondary>
+</indexterm>
+<synopsis>boolean</synopsis>
+<para>Should the images be tagged with their embedded profile</para>
+<informaltable frame="none" width="80%"><tgroup cols="2" colsep="0" rowsep="0">
+    <colspec colwidth="2*"/>
+    <colspec colwidth="8*"/>
+    <tbody><row>
+    <entry>Attributes:</entry>
+    <entry><itemizedlist>
+<listitem><para><emphasis><link linkend="attributes_write">write</link></emphasis></para></listitem>
+</itemizedlist>
+</entry>
+    </row></tbody>
+    </tgroup></informaltable>
+</section>
+
+<section status="final" id="types_dt_imageio_module_format_data_pdf_border">
+<title>types.dt_imageio_module_format_data_pdf.border</title>
+<indexterm>
+<primary>Lua API</primary>
+<secondary>border</secondary>
+</indexterm>
+<synopsis>string</synopsis>
+<para>Empty space around the PDF images</para>
+<informaltable frame="none" width="80%"><tgroup cols="2" colsep="0" rowsep="0">
+    <colspec colwidth="2*"/>
+    <colspec colwidth="8*"/>
+    <tbody><row>
+    <entry>Attributes:</entry>
+    <entry><itemizedlist>
+<listitem><para><emphasis><link linkend="attributes_write">write</link></emphasis></para></listitem>
+</itemizedlist>
+</entry>
+    </row></tbody>
+    </tgroup></informaltable>
+</section>
+
+<section status="final" id="types_dt_imageio_module_format_data_pdf_orientation">
+<title>types.dt_imageio_module_format_data_pdf.orientation</title>
+<indexterm>
+<primary>Lua API</primary>
+<secondary>orientation</secondary>
+</indexterm>
+<synopsis>string</synopsis>
+<para>Orientation of the pages in the document</para>
+<informaltable frame="none" width="80%"><tgroup cols="2" colsep="0" rowsep="0">
+    <colspec colwidth="2*"/>
+    <colspec colwidth="8*"/>
+    <tbody><row>
+    <entry>Attributes:</entry>
+    <entry><itemizedlist>
+<listitem><para><emphasis><link linkend="attributes_write">write</link></emphasis></para></listitem>
+</itemizedlist>
+</entry>
+    </row></tbody>
+    </tgroup></informaltable>
+</section>
+
+<section status="final" id="types_dt_imageio_module_format_data_pdf_title">
+<title>types.dt_imageio_module_format_data_pdf.title</title>
+<indexterm>
+<primary>Lua API</primary>
+<secondary>title</secondary>
+</indexterm>
+<synopsis>string</synopsis>
+<para>The title for the document
+  types.dt_imageio_module_format_data_pdf.rotate:set_text([[Should the images be rotated to match the PDF orientation</para>
+<informaltable frame="none" width="80%"><tgroup cols="2" colsep="0" rowsep="0">
+    <colspec colwidth="2*"/>
+    <colspec colwidth="8*"/>
+    <tbody><row>
+    <entry>Attributes:</entry>
+    <entry><itemizedlist>
+<listitem><para><emphasis><link linkend="attributes_write">write</link></emphasis></para></listitem>
+</itemizedlist>
+</entry>
+    </row></tbody>
+    </tgroup></informaltable>
+</section>
+
+<section status="final" id="types_dt_imageio_module_format_data_pdf_mode">
+<title>types.dt_imageio_module_format_data_pdf.mode</title>
+<indexterm>
+<primary>Lua API</primary>
+<secondary>mode</secondary>
+</indexterm>
+<synopsis>string</synopsis>
+<para>The image mode to use at export time</para>
+<informaltable frame="none" width="80%"><tgroup cols="2" colsep="0" rowsep="0">
+    <colspec colwidth="2*"/>
+    <colspec colwidth="8*"/>
+    <tbody><row>
+    <entry>Attributes:</entry>
+    <entry><itemizedlist>
+<listitem><para><emphasis><link linkend="attributes_write">write</link></emphasis></para></listitem>
+</itemizedlist>
+</entry>
+    </row></tbody>
+    </tgroup></informaltable>
+</section>
+
+<section status="final" id="types_dt_imageio_module_format_data_pdf_size">
+<title>types.dt_imageio_module_format_data_pdf.size</title>
+<indexterm>
+<primary>Lua API</primary>
+<secondary>size</secondary>
+</indexterm>
+<synopsis>string</synopsis>
+<para>The paper size to use</para>
+<informaltable frame="none" width="80%"><tgroup cols="2" colsep="0" rowsep="0">
+    <colspec colwidth="2*"/>
+    <colspec colwidth="8*"/>
+    <tbody><row>
+    <entry>Attributes:</entry>
+    <entry><itemizedlist>
+<listitem><para><emphasis><link linkend="attributes_write">write</link></emphasis></para></listitem>
+</itemizedlist>
+</entry>
+    </row></tbody>
+    </tgroup></informaltable>
+</section>
+
+<section status="final" id="types_dt_imageio_module_format_data_pdf_compression">
+<title>types.dt_imageio_module_format_data_pdf.compression</title>
+<indexterm>
+<primary>Lua API</primary>
+<secondary>compression</secondary>
+</indexterm>
+<synopsis>string</synopsis>
+<para>Compression mode to use for images</para>
+<informaltable frame="none" width="80%"><tgroup cols="2" colsep="0" rowsep="0">
+    <colspec colwidth="2*"/>
+    <colspec colwidth="8*"/>
+    <tbody><row>
+    <entry>Attributes:</entry>
+    <entry><itemizedlist>
+<listitem><para><emphasis><link linkend="attributes_write">write</link></emphasis></para></listitem>
+</itemizedlist>
+</entry>
+    </row></tbody>
+    </tgroup></informaltable>
+</section>
+
+<section status="final" id="types_dt_imageio_module_format_data_pdf_pages">
+<title>types.dt_imageio_module_format_data_pdf.pages</title>
+<indexterm>
+<primary>Lua API</primary>
+<secondary>pages</secondary>
+</indexterm>
+<synopsis>string</synopsis>
+<para>The page type to use</para>
+<informaltable frame="none" width="80%"><tgroup cols="2" colsep="0" rowsep="0">
+    <colspec colwidth="2*"/>
+    <colspec colwidth="8*"/>
+    <tbody><row>
+    <entry>Attributes:</entry>
+    <entry><itemizedlist>
+<listitem><para><emphasis><link linkend="attributes_write">write</link></emphasis></para></listitem>
+</itemizedlist>
+</entry>
+    </row></tbody>
+    </tgroup></informaltable>
+</section>
+
+<section status="final" id="types_dt_imageio_module_format_data_pdf_rotate">
+<title>types.dt_imageio_module_format_data_pdf.rotate</title>
+<indexterm>
+<primary>Lua API</primary>
+<secondary>rotate</secondary>
+</indexterm>
+<synopsis>boolean</synopsis>
+<para>Should the images be rotated in the resulting PDF</para>
+<informaltable frame="none" width="80%"><tgroup cols="2" colsep="0" rowsep="0">
+    <colspec colwidth="2*"/>
+    <colspec colwidth="8*"/>
+    <tbody><row>
+    <entry>Attributes:</entry>
+    <entry><itemizedlist>
+<listitem><para><emphasis><link linkend="attributes_write">write</link></emphasis></para></listitem>
+</itemizedlist>
+</entry>
+    </row></tbody>
+    </tgroup></informaltable>
+</section>
+
+</section>
+
+<section status="final" id="types__pdf_mode_t">
+<title>types._pdf_mode_t</title>
+<indexterm>
+<primary>Lua API</primary>
+<secondary>_pdf_mode_t</secondary>
+</indexterm>
+<synopsis>enum</synopsis>
+<para>The export mode to use for PDF document</para>
+<informaltable frame="none" width="80%"><tgroup cols="2" colsep="0" rowsep="0">
+    <colspec colwidth="2*"/>
+    <colspec colwidth="8*"/>
+    <tbody><row>
+    <entry>Attributes:</entry>
+    <entry><itemizedlist>
+<listitem><para><emphasis>values : </emphasis></para>
+<para><itemizedlist>
+<listitem><para>normal</para></listitem>
+<listitem><para>draft</para></listitem>
+<listitem><para>debug</para></listitem>
+</itemizedlist>
+</para></listitem>
+</itemizedlist>
+</entry>
+    </row></tbody>
+    </tgroup></informaltable>
+</section>
+
+<section status="final" id="types__pdf_pages_t">
+<title>types._pdf_pages_t</title>
+<indexterm>
+<primary>Lua API</primary>
+<secondary>_pdf_pages_t</secondary>
+</indexterm>
+<synopsis>enum</synopsis>
+<para>The different page types for PDF export</para>
+<informaltable frame="none" width="80%"><tgroup cols="2" colsep="0" rowsep="0">
+    <colspec colwidth="2*"/>
+    <colspec colwidth="8*"/>
+    <tbody><row>
+    <entry>Attributes:</entry>
+    <entry><itemizedlist>
+<listitem><para><emphasis>values : </emphasis></para>
+<para><itemizedlist>
+<listitem><para>all</para></listitem>
+<listitem><para>single</para></listitem>
+<listitem><para>contact</para></listitem>
+</itemizedlist>
+</para></listitem>
+</itemizedlist>
+</entry>
+    </row></tbody>
+    </tgroup></informaltable>
+</section>
+
+<section status="final" id="types_dt_pdf_stream_encoder_t">
+<title>types.dt_pdf_stream_encoder_t</title>
+<indexterm>
+<primary>Lua API</primary>
+<secondary>dt_pdf_stream_encoder_t</secondary>
+</indexterm>
+<synopsis>enum</synopsis>
+<para>The compression mode for PDF document</para>
+<informaltable frame="none" width="80%"><tgroup cols="2" colsep="0" rowsep="0">
+    <colspec colwidth="2*"/>
+    <colspec colwidth="8*"/>
+    <tbody><row>
+    <entry>Attributes:</entry>
+    <entry><itemizedlist>
+<listitem><para><emphasis>values : </emphasis></para>
+<para><itemizedlist>
+<listitem><para>uncompressed</para></listitem>
+<listitem><para>deflate</para></listitem>
+</itemizedlist>
+</para></listitem>
+</itemizedlist>
+</entry>
+    </row></tbody>
+    </tgroup></informaltable>
 </section>
 
 <section status="final" id="types_dt_imageio_module_storage_t">
@@ -6358,6 +6751,505 @@ This function is recursion-safe and can be used to dump _G if needed.</para>
     </tgroup></informaltable>
 </section>
 
+<section status="final" id="types_dt_lua_align_t">
+<title>types.dt_lua_align_t</title>
+<indexterm>
+<primary>Lua API</primary>
+<secondary>dt_lua_align_t</secondary>
+</indexterm>
+<synopsis>enum</synopsis>
+<para>The alignment of a label</para>
+<informaltable frame="none" width="80%"><tgroup cols="2" colsep="0" rowsep="0">
+    <colspec colwidth="2*"/>
+    <colspec colwidth="8*"/>
+    <tbody><row>
+    <entry>Attributes:</entry>
+    <entry><itemizedlist>
+<listitem><para><emphasis>values : </emphasis></para>
+<para><itemizedlist>
+<listitem><para>fill</para></listitem>
+<listitem><para>start</para></listitem>
+<listitem><para>end</para></listitem>
+<listitem><para>center</para></listitem>
+<listitem><para>baseline</para></listitem>
+</itemizedlist>
+</para></listitem>
+</itemizedlist>
+</entry>
+    </row></tbody>
+    </tgroup></informaltable>
+</section>
+
+<section status="final" id="types_dt_lua_ellipsize_mode_t">
+<title>types.dt_lua_ellipsize_mode_t</title>
+<indexterm>
+<primary>Lua API</primary>
+<secondary>dt_lua_ellipsize_mode_t</secondary>
+</indexterm>
+<synopsis>enum</synopsis>
+<para>The ellipsize mode of a label</para>
+<informaltable frame="none" width="80%"><tgroup cols="2" colsep="0" rowsep="0">
+    <colspec colwidth="2*"/>
+    <colspec colwidth="8*"/>
+    <tbody><row>
+    <entry>Attributes:</entry>
+    <entry><itemizedlist>
+<listitem><para><emphasis>values : </emphasis></para>
+<para><itemizedlist>
+<listitem><para>none</para></listitem>
+<listitem><para>start</para></listitem>
+<listitem><para>middle</para></listitem>
+<listitem><para>end</para></listitem>
+</itemizedlist>
+</para></listitem>
+</itemizedlist>
+</entry>
+    </row></tbody>
+    </tgroup></informaltable>
+</section>
+
+<section status="final" id="types_dt_lua_cairo_t">
+<title>types.dt_lua_cairo_t</title>
+<indexterm>
+<primary>Lua API</primary>
+<secondary>dt_lua_cairo_t</secondary>
+</indexterm>
+<synopsis>dt_type</synopsis>
+<para>A wrapper around a cairo drawing context.</para>
+<para>You probably shouldn't use this after the callback that got it passed returned.</para>
+<para>For more details of the member functions have a look at the cairo documentation for <ulink url="http://www.cairographics.org/manual/cairo-cairo-t.html">the drawing context</ulink>, <ulink url="http://www.cairographics.org/manual/cairo-Transformations.html">transformations</ulink> and <ulink url="http://www.cairographics.org/manual/cairo-Paths.html">paths</ulink>.</para>
+
+<section status="final" id="types_dt_lua_cairo_t_save">
+<title>types.dt_lua_cairo_t.save</title>
+<indexterm>
+<primary>Lua API</primary>
+<secondary>save</secondary>
+</indexterm>
+<synopsis>self:function( 
+)</synopsis>
+<para>Save the state of the drawing context.</para>
+
+<variablelist>
+<varlistentry id="types_dt_lua_cairo_t_save_self"><term>self</term><listitem>
+<synopsis><link linkend="types_dt_lua_cairo_t">types.dt_lua_cairo_t</link></synopsis>
+<para>The context to modify.</para>
+
+</listitem></varlistentry>
+
+</variablelist>
+</section>
+
+<section status="final" id="types_dt_lua_cairo_t_restore">
+<title>types.dt_lua_cairo_t.restore</title>
+<indexterm>
+<primary>Lua API</primary>
+<secondary>restore</secondary>
+</indexterm>
+<synopsis>self:function( 
+)</synopsis>
+<para>Restore a previously saved state.</para>
+
+<variablelist>
+<varlistentry id="types_dt_lua_cairo_t_restore_self"><term>self</term><listitem>
+<synopsis><link linkend="types_dt_lua_cairo_t">types.dt_lua_cairo_t</link></synopsis>
+<para>The context to modify.</para>
+
+</listitem></varlistentry>
+
+</variablelist>
+</section>
+
+<section status="final" id="types_dt_lua_cairo_t_move_to">
+<title>types.dt_lua_cairo_t.move_to</title>
+<indexterm>
+<primary>Lua API</primary>
+<secondary>move_to</secondary>
+</indexterm>
+<synopsis>self:function( 
+	<emphasis><link linkend="types_dt_lua_cairo_t_move_to_x">x</link></emphasis> : float, 
+	<emphasis><link linkend="types_dt_lua_cairo_t_move_to_y">y</link></emphasis> : float
+)</synopsis>
+<para>Begin a new sub-path.</para>
+
+<variablelist>
+<varlistentry id="types_dt_lua_cairo_t_move_to_self"><term>self</term><listitem>
+<synopsis><link linkend="types_dt_lua_cairo_t">types.dt_lua_cairo_t</link></synopsis>
+<para>The context to modify</para>
+
+</listitem></varlistentry>
+
+<varlistentry id="types_dt_lua_cairo_t_move_to_x"><term>x</term><listitem>
+<synopsis>float</synopsis>
+<para>The x coordinate of the new position.</para>
+
+</listitem></varlistentry>
+
+<varlistentry id="types_dt_lua_cairo_t_move_to_y"><term>y</term><listitem>
+<synopsis>float</synopsis>
+<para>The y coordinate of the new position.</para>
+
+</listitem></varlistentry>
+
+</variablelist>
+</section>
+
+<section status="final" id="types_dt_lua_cairo_t_line_to">
+<title>types.dt_lua_cairo_t.line_to</title>
+<indexterm>
+<primary>Lua API</primary>
+<secondary>line_to</secondary>
+</indexterm>
+<synopsis>self:function( 
+	<emphasis><link linkend="types_dt_lua_cairo_t_line_to_x">x</link></emphasis> : float, 
+	<emphasis><link linkend="types_dt_lua_cairo_t_line_to_y">y</link></emphasis> : float
+)</synopsis>
+<para>Add a line to the path.</para>
+
+<variablelist>
+<varlistentry id="types_dt_lua_cairo_t_line_to_self"><term>self</term><listitem>
+<synopsis><link linkend="types_dt_lua_cairo_t">types.dt_lua_cairo_t</link></synopsis>
+<para>The context to modify.</para>
+
+</listitem></varlistentry>
+
+<varlistentry id="types_dt_lua_cairo_t_line_to_x"><term>x</term><listitem>
+<synopsis>float</synopsis>
+<para>The x coordinate of the end of the new line.</para>
+
+</listitem></varlistentry>
+
+<varlistentry id="types_dt_lua_cairo_t_line_to_y"><term>y</term><listitem>
+<synopsis>float</synopsis>
+<para>The y coordinate of the end of the new line.</para>
+
+</listitem></varlistentry>
+
+</variablelist>
+</section>
+
+<section status="final" id="types_dt_lua_cairo_t_rectangle">
+<title>types.dt_lua_cairo_t.rectangle</title>
+<indexterm>
+<primary>Lua API</primary>
+<secondary>rectangle</secondary>
+</indexterm>
+<synopsis>self:function( 
+	<emphasis><link linkend="types_dt_lua_cairo_t_rectangle_x">x</link></emphasis> : float, 
+	<emphasis><link linkend="types_dt_lua_cairo_t_rectangle_y">y</link></emphasis> : float, 
+	<emphasis><link linkend="types_dt_lua_cairo_t_rectangle_width">width</link></emphasis> : float, 
+	<emphasis><link linkend="types_dt_lua_cairo_t_rectangle_height">height</link></emphasis> : float
+)</synopsis>
+<para>Add a closed sub-path rectangle.</para>
+
+<variablelist>
+<varlistentry id="types_dt_lua_cairo_t_rectangle_self"><term>self</term><listitem>
+<synopsis><link linkend="types_dt_lua_cairo_t">types.dt_lua_cairo_t</link></synopsis>
+<para>The context to modify.</para>
+
+</listitem></varlistentry>
+
+<varlistentry id="types_dt_lua_cairo_t_rectangle_x"><term>x</term><listitem>
+<synopsis>float</synopsis>
+<para>The x coordinate of the top left corner of the rectangle.</para>
+
+</listitem></varlistentry>
+
+<varlistentry id="types_dt_lua_cairo_t_rectangle_y"><term>y</term><listitem>
+<synopsis>float</synopsis>
+<para>The y coordinate of the top left corner of the rectangle.</para>
+
+</listitem></varlistentry>
+
+<varlistentry id="types_dt_lua_cairo_t_rectangle_width"><term>width</term><listitem>
+<synopsis>float</synopsis>
+<para>The width of the rectangle.</para>
+
+</listitem></varlistentry>
+
+<varlistentry id="types_dt_lua_cairo_t_rectangle_height"><term>height</term><listitem>
+<synopsis>float</synopsis>
+<para>The height of the rectangle.</para>
+
+</listitem></varlistentry>
+
+</variablelist>
+</section>
+
+<section status="final" id="types_dt_lua_cairo_t_arc">
+<title>types.dt_lua_cairo_t.arc</title>
+<indexterm>
+<primary>Lua API</primary>
+<secondary>arc</secondary>
+</indexterm>
+<synopsis>self:function( 
+	<emphasis><link linkend="types_dt_lua_cairo_t_arc_x">x</link></emphasis> : float, 
+	<emphasis><link linkend="types_dt_lua_cairo_t_arc_y">y</link></emphasis> : float, 
+	<emphasis><link linkend="types_dt_lua_cairo_t_arc_radius">radius</link></emphasis> : float, 
+	<emphasis><link linkend="types_dt_lua_cairo_t_arc_angle1">angle1</link></emphasis> : float, 
+	<emphasis><link linkend="types_dt_lua_cairo_t_arc_angle2">angle2</link></emphasis> : float
+)</synopsis>
+<para>Add a circular arc.</para>
+
+<variablelist>
+<varlistentry id="types_dt_lua_cairo_t_arc_self"><term>self</term><listitem>
+<synopsis><link linkend="types_dt_lua_cairo_t">types.dt_lua_cairo_t</link></synopsis>
+<para>The context to modify.</para>
+
+</listitem></varlistentry>
+
+<varlistentry id="types_dt_lua_cairo_t_arc_x"><term>x</term><listitem>
+<synopsis>float</synopsis>
+<para>The x position of the center of the arc.</para>
+
+</listitem></varlistentry>
+
+<varlistentry id="types_dt_lua_cairo_t_arc_y"><term>y</term><listitem>
+<synopsis>float</synopsis>
+<para>The y position of the center of the arc.</para>
+
+</listitem></varlistentry>
+
+<varlistentry id="types_dt_lua_cairo_t_arc_radius"><term>radius</term><listitem>
+<synopsis>float</synopsis>
+<para>The radius of the arc.</para>
+
+</listitem></varlistentry>
+
+<varlistentry id="types_dt_lua_cairo_t_arc_angle1"><term>angle1</term><listitem>
+<synopsis>float</synopsis>
+<para>The start angle, in radians.</para>
+
+</listitem></varlistentry>
+
+<varlistentry id="types_dt_lua_cairo_t_arc_angle2"><term>angle2</term><listitem>
+<synopsis>float</synopsis>
+<para>The end angle, in radians.</para>
+
+</listitem></varlistentry>
+
+</variablelist>
+</section>
+
+<section status="final" id="types_dt_lua_cairo_t_arc_negative">
+<title>types.dt_lua_cairo_t.arc_negative</title>
+<indexterm>
+<primary>Lua API</primary>
+<secondary>arc_negative</secondary>
+</indexterm>
+<synopsis>self:function( 
+	<emphasis><link linkend="types_dt_lua_cairo_t_arc_negative_x">x</link></emphasis> : float, 
+	<emphasis><link linkend="types_dt_lua_cairo_t_arc_negative_y">y</link></emphasis> : float, 
+	<emphasis><link linkend="types_dt_lua_cairo_t_arc_negative_radius">radius</link></emphasis> : float, 
+	<emphasis><link linkend="types_dt_lua_cairo_t_arc_negative_angle1">angle1</link></emphasis> : float, 
+	<emphasis><link linkend="types_dt_lua_cairo_t_arc_negative_angle2">angle2</link></emphasis> : float
+)</synopsis>
+<para>Add a circular arc. It only differs in the direction from <link linkend="types_dt_lua_cairo_t_arc">types.dt_lua_cairo_t.arc</link>.</para>
+
+<variablelist>
+<varlistentry id="types_dt_lua_cairo_t_arc_negative_self"><term>self</term><listitem>
+<synopsis><link linkend="types_dt_lua_cairo_t">types.dt_lua_cairo_t</link></synopsis>
+<para>The context to modify.</para>
+
+</listitem></varlistentry>
+
+<varlistentry id="types_dt_lua_cairo_t_arc_negative_x"><term>x</term><listitem>
+<synopsis>float</synopsis>
+<para>The x position of the center of the arc.</para>
+
+</listitem></varlistentry>
+
+<varlistentry id="types_dt_lua_cairo_t_arc_negative_y"><term>y</term><listitem>
+<synopsis>float</synopsis>
+<para>The y position of the center of the arc.</para>
+
+</listitem></varlistentry>
+
+<varlistentry id="types_dt_lua_cairo_t_arc_negative_radius"><term>radius</term><listitem>
+<synopsis>float</synopsis>
+<para>The radius of the arc.</para>
+
+</listitem></varlistentry>
+
+<varlistentry id="types_dt_lua_cairo_t_arc_negative_angle1"><term>angle1</term><listitem>
+<synopsis>float</synopsis>
+<para>The start angle, in radians.</para>
+
+</listitem></varlistentry>
+
+<varlistentry id="types_dt_lua_cairo_t_arc_negative_angle2"><term>angle2</term><listitem>
+<synopsis>float</synopsis>
+<para>The end angle, in radians.</para>
+
+</listitem></varlistentry>
+
+</variablelist>
+</section>
+
+<section status="final" id="types_dt_lua_cairo_t_rotate">
+<title>types.dt_lua_cairo_t.rotate</title>
+<indexterm>
+<primary>Lua API</primary>
+<secondary>rotate</secondary>
+</indexterm>
+<synopsis>self:function( 
+	<emphasis><link linkend="types_dt_lua_cairo_t_rotate_angle">angle</link></emphasis> : float
+)</synopsis>
+<para>Add a rotation to the transformation matrix.</para>
+
+<variablelist>
+<varlistentry id="types_dt_lua_cairo_t_rotate_self"><term>self</term><listitem>
+<synopsis><link linkend="types_dt_lua_cairo_t">types.dt_lua_cairo_t</link></synopsis>
+<para>The context to modify.</para>
+
+</listitem></varlistentry>
+
+<varlistentry id="types_dt_lua_cairo_t_rotate_angle"><term>angle</term><listitem>
+<synopsis>float</synopsis>
+<para>The angle (in radians) by which the user-space axes will be rotated.</para>
+
+</listitem></varlistentry>
+
+</variablelist>
+</section>
+
+<section status="final" id="types_dt_lua_cairo_t_scale">
+<title>types.dt_lua_cairo_t.scale</title>
+<indexterm>
+<primary>Lua API</primary>
+<secondary>scale</secondary>
+</indexterm>
+<synopsis>self:function( 
+	<emphasis><link linkend="types_dt_lua_cairo_t_scale_x">x</link></emphasis> : float, 
+	<emphasis><link linkend="types_dt_lua_cairo_t_scale_y">y</link></emphasis> : float
+)</synopsis>
+<para>Add a scaling to the transformation matrix.</para>
+
+<variablelist>
+<varlistentry id="types_dt_lua_cairo_t_scale_self"><term>self</term><listitem>
+<synopsis><link linkend="types_dt_lua_cairo_t">types.dt_lua_cairo_t</link></synopsis>
+<para>The context to modify.</para>
+
+</listitem></varlistentry>
+
+<varlistentry id="types_dt_lua_cairo_t_scale_x"><term>x</term><listitem>
+<synopsis>float</synopsis>
+<para>The scale factor for the x dimension.</para>
+
+</listitem></varlistentry>
+
+<varlistentry id="types_dt_lua_cairo_t_scale_y"><term>y</term><listitem>
+<synopsis>float</synopsis>
+<para>The scale factor for the y dimension.</para>
+
+</listitem></varlistentry>
+
+</variablelist>
+</section>
+
+<section status="final" id="types_dt_lua_cairo_t_translate">
+<title>types.dt_lua_cairo_t.translate</title>
+<indexterm>
+<primary>Lua API</primary>
+<secondary>translate</secondary>
+</indexterm>
+<synopsis>self:function( 
+	<emphasis><link linkend="types_dt_lua_cairo_t_translate_x">x</link></emphasis> : float, 
+	<emphasis><link linkend="types_dt_lua_cairo_t_translate_y">y</link></emphasis> : float
+)</synopsis>
+<para>Add a translation to the transformation matrix.</para>
+
+<variablelist>
+<varlistentry id="types_dt_lua_cairo_t_translate_self"><term>self</term><listitem>
+<synopsis><link linkend="types_dt_lua_cairo_t">types.dt_lua_cairo_t</link></synopsis>
+<para>The context to modify.</para>
+
+</listitem></varlistentry>
+
+<varlistentry id="types_dt_lua_cairo_t_translate_x"><term>x</term><listitem>
+<synopsis>float</synopsis>
+<para>Amount to translate in the x direction</para>
+
+</listitem></varlistentry>
+
+<varlistentry id="types_dt_lua_cairo_t_translate_y"><term>y</term><listitem>
+<synopsis>float</synopsis>
+<para>Amount to translate in the y direction</para>
+
+</listitem></varlistentry>
+
+</variablelist>
+</section>
+
+<section status="final" id="types_dt_lua_cairo_t_new_sub_path">
+<title>types.dt_lua_cairo_t.new_sub_path</title>
+<indexterm>
+<primary>Lua API</primary>
+<secondary>new_sub_path</secondary>
+</indexterm>
+<synopsis>self:function( 
+)</synopsis>
+<para>Begin a new sub-path.</para>
+
+<variablelist>
+<varlistentry id="types_dt_lua_cairo_t_new_sub_path_self"><term>self</term><listitem>
+<synopsis><link linkend="types_dt_lua_cairo_t">types.dt_lua_cairo_t</link></synopsis>
+<para>The context to modify.</para>
+
+</listitem></varlistentry>
+
+</variablelist>
+</section>
+
+<section status="final" id="types_dt_lua_cairo_t_draw_line">
+<title>types.dt_lua_cairo_t.draw_line</title>
+<indexterm>
+<primary>Lua API</primary>
+<secondary>draw_line</secondary>
+</indexterm>
+<synopsis>self:function( 
+	<emphasis><link linkend="types_dt_lua_cairo_t_draw_line_x_start">x_start</link></emphasis> : float, 
+	<emphasis><link linkend="types_dt_lua_cairo_t_draw_line_y_start">y_start</link></emphasis> : float, 
+	<emphasis><link linkend="types_dt_lua_cairo_t_draw_line_x_end">x_end</link></emphasis> : float, 
+	<emphasis><link linkend="types_dt_lua_cairo_t_draw_line_y_end">y_end</link></emphasis> : float
+)</synopsis>
+<para>Helper function to draw a line with a given start and end.</para>
+
+<variablelist>
+<varlistentry id="types_dt_lua_cairo_t_draw_line_self"><term>self</term><listitem>
+<synopsis><link linkend="types_dt_lua_cairo_t">types.dt_lua_cairo_t</link></synopsis>
+<para>The context to modify.</para>
+
+</listitem></varlistentry>
+
+<varlistentry id="types_dt_lua_cairo_t_draw_line_x_start"><term>x_start</term><listitem>
+<synopsis>float</synopsis>
+<para>The x coordinate of the start of the new line.</para>
+
+</listitem></varlistentry>
+
+<varlistentry id="types_dt_lua_cairo_t_draw_line_y_start"><term>y_start</term><listitem>
+<synopsis>float</synopsis>
+<para>The y coordinate of the start of the new line.</para>
+
+</listitem></varlistentry>
+
+<varlistentry id="types_dt_lua_cairo_t_draw_line_x_end"><term>x_end</term><listitem>
+<synopsis>float</synopsis>
+<para>The x coordinate of the end of the new line.</para>
+
+</listitem></varlistentry>
+
+<varlistentry id="types_dt_lua_cairo_t_draw_line_y_end"><term>y_end</term><listitem>
+<synopsis>float</synopsis>
+<para>The y coordinate of the end of the new line.</para>
+
+</listitem></varlistentry>
+
+</variablelist>
+</section>
+
+</section>
+
 <section status="final" id="types_lua_widget">
 <title>types.lua_widget</title>
 <indexterm>
@@ -6366,7 +7258,17 @@ This function is recursion-safe and can be used to dump _G if needed.</para>
 </indexterm>
 <synopsis>dt_type</synopsis>
 <para>Common parent type for all lua-handled widgets</para>
-
+<informaltable frame="none" width="80%"><tgroup cols="2" colsep="0" rowsep="0">
+    <colspec colwidth="2*"/>
+    <colspec colwidth="8*"/>
+    <tbody><row>
+    <entry>Attributes:</entry>
+    <entry><itemizedlist>
+<listitem><para><emphasis><link linkend="attributes_has_tostring">has_tostring</link></emphasis></para></listitem>
+</itemizedlist>
+</entry>
+    </row></tbody>
+    </tgroup></informaltable>
 <section status="final" id="types_lua_widget_sensitive">
 <title>types.lua_widget.sensitive</title>
 <indexterm>
@@ -6493,6 +7395,7 @@ This function is recursion-safe and can be used to dump _G if needed.</para>
     <tbody><row>
     <entry>Attributes:</entry>
     <entry><itemizedlist>
+<listitem><para><emphasis><link linkend="attributes_has_tostring">has_tostring</link></emphasis></para></listitem>
 <listitem><para><emphasis><link linkend="attributes_parent">parent</link> : </emphasis><link linkend="types_lua_widget">types.lua_widget</link></para></listitem>
 </itemizedlist>
 </entry>
@@ -6536,6 +7439,7 @@ This function is recursion-safe and can be used to dump _G if needed.</para>
     <tbody><row>
     <entry>Attributes:</entry>
     <entry><itemizedlist>
+<listitem><para><emphasis><link linkend="attributes_has_tostring">has_tostring</link></emphasis></para></listitem>
 <listitem><para><emphasis><link linkend="attributes_parent">parent</link> : </emphasis><link linkend="types_lua_widget">types.lua_widget</link></para></listitem>
 </itemizedlist>
 </entry>
@@ -6639,6 +7543,7 @@ This function is recursion-safe and can be used to dump _G if needed.</para>
     <tbody><row>
     <entry>Attributes:</entry>
     <entry><itemizedlist>
+<listitem><para><emphasis><link linkend="attributes_has_tostring">has_tostring</link></emphasis></para></listitem>
 <listitem><para><emphasis><link linkend="attributes_parent">parent</link> : </emphasis><link linkend="types_lua_widget">types.lua_widget</link></para></listitem>
 </itemizedlist>
 </entry>
@@ -6695,6 +7600,48 @@ This function is recursion-safe and can be used to dump _G if needed.</para>
     </tgroup></informaltable>
 </section>
 
+<section status="final" id="types_lua_label_halign">
+<title>types.lua_label.halign</title>
+<indexterm>
+<primary>Lua API</primary>
+<secondary>halign</secondary>
+</indexterm>
+<synopsis><link linkend="types_dt_lua_align_t">types.dt_lua_align_t</link></synopsis>
+<para>The horizontal alignment of the label</para>
+<informaltable frame="none" width="80%"><tgroup cols="2" colsep="0" rowsep="0">
+    <colspec colwidth="2*"/>
+    <colspec colwidth="8*"/>
+    <tbody><row>
+    <entry>Attributes:</entry>
+    <entry><itemizedlist>
+<listitem><para><emphasis><link linkend="attributes_write">write</link></emphasis></para></listitem>
+</itemizedlist>
+</entry>
+    </row></tbody>
+    </tgroup></informaltable>
+</section>
+
+<section status="final" id="types_lua_label_ellipsize">
+<title>types.lua_label.ellipsize</title>
+<indexterm>
+<primary>Lua API</primary>
+<secondary>ellipsize</secondary>
+</indexterm>
+<synopsis><link linkend="types_dt_lua_ellipsize_mode_t">types.dt_lua_ellipsize_mode_t</link></synopsis>
+<para>The ellipsize mode of the label</para>
+<informaltable frame="none" width="80%"><tgroup cols="2" colsep="0" rowsep="0">
+    <colspec colwidth="2*"/>
+    <colspec colwidth="8*"/>
+    <tbody><row>
+    <entry>Attributes:</entry>
+    <entry><itemizedlist>
+<listitem><para><emphasis><link linkend="attributes_write">write</link></emphasis></para></listitem>
+</itemizedlist>
+</entry>
+    </row></tbody>
+    </tgroup></informaltable>
+</section>
+
 </section>
 
 <section status="final" id="types_lua_button">
@@ -6711,6 +7658,7 @@ This function is recursion-safe and can be used to dump _G if needed.</para>
     <tbody><row>
     <entry>Attributes:</entry>
     <entry><itemizedlist>
+<listitem><para><emphasis><link linkend="attributes_has_tostring">has_tostring</link></emphasis></para></listitem>
 <listitem><para><emphasis><link linkend="attributes_parent">parent</link> : </emphasis><link linkend="types_lua_widget">types.lua_widget</link></para></listitem>
 </itemizedlist>
 </entry>
@@ -6731,7 +7679,7 @@ This function is recursion-safe and can be used to dump _G if needed.</para>
 <primary>Lua API</primary>
 <secondary>label</secondary>
 </indexterm>
-<synopsis><link linkend="types_dt_lua_orientation_t">types.dt_lua_orientation_t</link></synopsis>
+<synopsis>string</synopsis>
 <para>The label displayed on the button</para>
 <informaltable frame="none" width="80%"><tgroup cols="2" colsep="0" rowsep="0">
     <colspec colwidth="2*"/>
@@ -6793,6 +7741,7 @@ This function is recursion-safe and can be used to dump _G if needed.</para>
     <tbody><row>
     <entry>Attributes:</entry>
     <entry><itemizedlist>
+<listitem><para><emphasis><link linkend="attributes_has_tostring">has_tostring</link></emphasis></para></listitem>
 <listitem><para><emphasis><link linkend="attributes_parent">parent</link> : </emphasis><link linkend="types_lua_container">types.lua_container</link></para></listitem>
 </itemizedlist>
 </entry>
@@ -6813,7 +7762,7 @@ This function is recursion-safe and can be used to dump _G if needed.</para>
 <primary>Lua API</primary>
 <secondary>orientation</secondary>
 </indexterm>
-<synopsis>string</synopsis>
+<synopsis><link linkend="types_dt_lua_orientation_t">types.dt_lua_orientation_t</link></synopsis>
 <para>The orientation of the box.</para>
 <informaltable frame="none" width="80%"><tgroup cols="2" colsep="0" rowsep="0">
     <colspec colwidth="2*"/>
@@ -6844,6 +7793,7 @@ This function is recursion-safe and can be used to dump _G if needed.</para>
     <tbody><row>
     <entry>Attributes:</entry>
     <entry><itemizedlist>
+<listitem><para><emphasis><link linkend="attributes_has_tostring">has_tostring</link></emphasis></para></listitem>
 <listitem><para><emphasis><link linkend="attributes_parent">parent</link> : </emphasis><link linkend="types_lua_widget">types.lua_widget</link></para></listitem>
 </itemizedlist>
 </entry>
@@ -6958,6 +7908,7 @@ This function is recursion-safe and can be used to dump _G if needed.</para>
     <tbody><row>
     <entry>Attributes:</entry>
     <entry><itemizedlist>
+<listitem><para><emphasis><link linkend="attributes_has_tostring">has_tostring</link></emphasis></para></listitem>
 <listitem><para><emphasis><link linkend="attributes_parent">parent</link> : </emphasis><link linkend="types_lua_widget">types.lua_widget</link></para></listitem>
 </itemizedlist>
 </entry>
@@ -7011,6 +7962,7 @@ This function is recursion-safe and can be used to dump _G if needed.</para>
     <tbody><row>
     <entry>Attributes:</entry>
     <entry><itemizedlist>
+<listitem><para><emphasis><link linkend="attributes_has_tostring">has_tostring</link></emphasis></para></listitem>
 <listitem><para><emphasis><link linkend="attributes_parent">parent</link> : </emphasis><link linkend="types_lua_widget">types.lua_widget</link></para></listitem>
 </itemizedlist>
 </entry>
@@ -7151,6 +8103,7 @@ This function is recursion-safe and can be used to dump _G if needed.</para>
     <tbody><row>
     <entry>Attributes:</entry>
     <entry><itemizedlist>
+<listitem><para><emphasis><link linkend="attributes_has_tostring">has_tostring</link></emphasis></para></listitem>
 <listitem><para><emphasis><link linkend="attributes_parent">parent</link> : </emphasis><link linkend="types_lua_widget">types.lua_widget</link></para></listitem>
 </itemizedlist>
 </entry>
@@ -7275,6 +8228,7 @@ This function is recursion-safe and can be used to dump _G if needed.</para>
     <tbody><row>
     <entry>Attributes:</entry>
     <entry><itemizedlist>
+<listitem><para><emphasis><link linkend="attributes_has_tostring">has_tostring</link></emphasis></para></listitem>
 <listitem><para><emphasis><link linkend="attributes_parent">parent</link> : </emphasis><link linkend="types_lua_container">types.lua_container</link></para></listitem>
 </itemizedlist>
 </entry>
@@ -7326,6 +8280,7 @@ This function is recursion-safe and can be used to dump _G if needed.</para>
     <tbody><row>
     <entry>Attributes:</entry>
     <entry><itemizedlist>
+<listitem><para><emphasis><link linkend="attributes_has_tostring">has_tostring</link></emphasis></para></listitem>
 <listitem><para><emphasis><link linkend="attributes_parent">parent</link> : </emphasis><link linkend="types_lua_widget">types.lua_widget</link></para></listitem>
 </itemizedlist>
 </entry>
@@ -7466,27 +8421,6 @@ This function is recursion-safe and can be used to dump _G if needed.</para>
     </tgroup></informaltable>
 </section>
 
-</section>
-
-<section status="final" id="types_dt_imageio_module_format_data_pdf">
-<title>types.dt_imageio_module_format_data_pdf</title>
-<indexterm>
-<primary>Lua API</primary>
-<secondary>dt_imageio_module_format_data_pdf</secondary>
-</indexterm>
-<synopsis>dt_type</synopsis>
-<para>undocumented</para>
-<informaltable frame="none" width="80%"><tgroup cols="2" colsep="0" rowsep="0">
-    <colspec colwidth="2*"/>
-    <colspec colwidth="8*"/>
-    <tbody><row>
-    <entry>Attributes:</entry>
-    <entry><itemizedlist>
-<listitem><para><emphasis><link linkend="attributes_parent">parent</link> : </emphasis><link linkend="types_dt_imageio_module_format_t">types.dt_imageio_module_format_t</link></para></listitem>
-</itemizedlist>
-</entry>
-    </row></tbody>
-    </tgroup></informaltable>
 </section>
 
 </section>
@@ -8112,4 +9046,4 @@ This function is recursion-safe and can be used to dump _G if needed.</para>
 
 </section>
 
-</section>
+</article>

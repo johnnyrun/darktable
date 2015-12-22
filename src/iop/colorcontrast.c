@@ -253,8 +253,8 @@ void reload_defaults(dt_iop_module_t *module)
 /** init, cleanup, commit to pipeline */
 void init(dt_iop_module_t *module)
 {
-  module->params = malloc(sizeof(dt_iop_colorcontrast_params_t));
-  module->default_params = malloc(sizeof(dt_iop_colorcontrast_params_t));
+  module->params = calloc(1, sizeof(dt_iop_colorcontrast_params_t));
+  module->default_params = calloc(1, sizeof(dt_iop_colorcontrast_params_t));
   // our module is disabled by default
   module->default_enabled = 0;
   // we are pretty late in the pipe:
@@ -269,12 +269,8 @@ void init(dt_iop_module_t *module)
 
 void cleanup(dt_iop_module_t *module)
 {
-  free(module->gui_data);
-  module->gui_data = NULL; // just to be sure
   free(module->params);
   module->params = NULL;
-  free(module->default_params);
-  module->default_params = NULL;
 }
 
 /** commit is the synch point between core and gui, so it copies params to pipe data. */

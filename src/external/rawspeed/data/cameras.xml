@@ -133,9 +133,6 @@
 		</CFA>
 		<Crop x="48" y="6" width="0" height="-2"/>
 		<Sensor black="126" white="4095"/>
-		<Hints>
-			<Hint name="override_whitebalance" value="2093285,1000000,1055975"/>
-		</Hints>
 		<BlackAreas>
 			<Vertical x="0" width="46"/>
 		</BlackAreas>
@@ -220,6 +217,7 @@
 			<Alias id="Digital Rebel XT">Canon EOS DIGITAL REBEL XT</Alias>
 			<Alias id="Kiss Digital N">Canon EOS Kiss Digital N</Alias>
 			<Alias id="EOS 350D">Canon EOS 350D</Alias>
+			<Alias id="EOS 350D">Canon EOS 350D Digital</Alias>
 		</Aliases>
 	</Camera>
 	<Camera make="Canon" model="Canon EOS 40D" decoder_version="2">
@@ -588,7 +586,7 @@
 			<Horizontal y="2" height="60"/>
 		</BlackAreas>
 		<Aliases>
-			<Alias>Canon EOS 5DS R</Alias>
+			<Alias id="EOS 5DS R">Canon EOS 5DS R</Alias>
 		</Aliases>
 	</Camera>
 	<Camera make="Canon" model="Canon EOS 6D" decoder_version="2">
@@ -811,6 +809,9 @@
 			<Vertical x="2" width="68"/>
 			<Horizontal y="2" height="30"/>
 		</BlackAreas>
+		<Hints>
+			<Hint name="wb_offset" value="142"/>
+		</Hints>
 	</Camera>
 	<Camera make="Canon" model="Canon EOS-1D" decoder_version="5">
 		<ID make="Canon" model="EOS-1D">Canon EOS-1D</ID>
@@ -853,7 +854,6 @@
 		<Sensor black="96" white="4095"/>
 		<Hints>
 			<Hint name="old_format" value=""/>
-			<Hint name="override_whitebalance" value="1003807,1000000,2468898"/>
 		</Hints>
 	</Camera>
 	<Camera make="Canon" model="Canon EOS-1D Mark II">
@@ -1025,12 +1025,13 @@
 		</CFA>
 		<Crop x="4" y="6" width="-52" height="-6"/>
 		<Sensor black="129" white="4095"/>
-		<Hints>
-			<Hint name="override_whitebalance" value="2185173,1000000,1342573"/>
-		</Hints>
 		<BlackAreas>
 			<Vertical x="3294" width="50"/>
 		</BlackAreas>
+		<Hints>
+			<Hint name="wb_offset" value="96"/>
+			<Hint name="wb_mangle" value="true"/>
+		</Hints>
 	</Camera>
 	<Camera make="Canon" model="Canon PowerShot Pro70" supported="no">
 		<ID make="Canon" model="PowerShot Pro70">Canon PowerShot Pro70</ID>
@@ -1080,13 +1081,28 @@
 		</CFA>
 		<Crop x="12" y="6" width="-52" height="-2"/>
 		<Sensor black="0" white="4095"/>
-		<Hints>
-			<Hint name="override_whitebalance" value="1757692,1000000,2071795"/>
-		</Hints>
 		<BlackAreas>
 			<Vertical x="2326" width="50"/>
 			<Horizontal y="0" height="10"/>
 		</BlackAreas>
+	</Camera>
+	<Camera make="Canon" model="Canon PowerShot G3 X">
+		<ID make="Canon" model="PowerShot G3 X">Canon PowerShot G3 X</ID>
+		<CFA width="2" height="2">
+			<Color x="0" y="0">RED</Color>
+			<Color x="1" y="0">GREEN</Color>
+			<Color x="0" y="1">GREEN</Color>
+			<Color x="1" y="1">BLUE</Color>
+		</CFA>
+		<Crop x="96" y="17" width="0" height="0"/>
+		<Sensor black="2047" white="16000"/>
+		<BlackAreas>
+			<Vertical x="0" width="90"/>
+			<Horizontal y="0" height="16"/>
+		</BlackAreas>
+		<Hints>
+			<Hint name="wb_offset" value="142"/>
+		</Hints>
 	</Camera>
 	<Camera make="Canon" model="Canon PowerShot G5">
 		<ID make="Canon" model="PowerShot G5">Canon PowerShot G5</ID>
@@ -1098,13 +1114,24 @@
 		</CFA>
 		<Crop x="12" y="6" width="-44" height="-2"/>
 		<Sensor black="0" white="4095"/>
-		<Hints>
-			<Hint name="override_whitebalance" value="1984870,1000000,1237501"/>
-		</Hints>
 		<BlackAreas>
 			<Vertical x="2632" width="40"/>
 			<Horizontal y="0" height="10"/>
 		</BlackAreas>
+	</Camera>
+	<Camera make="Canon" model="Canon PowerShot G5 X">
+		<ID make="Canon" model="PowerShot G5 X">Canon PowerShot G5 X</ID>
+		<CFA width="2" height="2">
+			<Color x="0" y="0">RED</Color>
+			<Color x="1" y="0">GREEN</Color>
+			<Color x="0" y="1">GREEN</Color>
+			<Color x="1" y="1">BLUE</Color>
+		</CFA>
+		<Crop x="96" y="17" width="0" height="0"/>
+		<Sensor black="2047" white="16000"/>
+		<Hints>
+			<Hint name="wb_offset" value="142"/>
+		</Hints>
 	</Camera>
 	<Camera make="Canon" model="Canon PowerShot G6">
 		<ID make="Canon" model="PowerShot G6">Canon PowerShot G6</ID>
@@ -1116,13 +1143,14 @@
 		</CFA>
 		<Crop x="44" y="12" width="-4" height="-4"/>
 		<Sensor black="128" white="4095"/>
-		<Hints>
-			<Hint name="override_whitebalance" value="2340268,1000000,1351293"/>
-		</Hints>
 		<BlackAreas>
 			<Vertical x="0" width="40"/>
 			<Horizontal y="0" height="10"/>
 		</BlackAreas>
+		<Hints>
+			<Hint name="wb_offset" value="96"/>
+			<Hint name="wb_mangle" value="true"/>
+		</Hints>
 	</Camera>
 	<Camera make="Canon" model="Canon PowerShot G7 X">
 		<ID make="Canon" model="PowerShot G7 X">Canon PowerShot G7 X</ID>
@@ -1170,6 +1198,9 @@
 			<Vertical x="0" width="68"/>
 			<Horizontal y="0" height="46"/>
 		</BlackAreas>
+		<Hints>
+			<Hint name="wb_offset" value="142"/>
+		</Hints>
 	</Camera>
 	<Camera make="Canon" model="Canon PowerShot G12">
 		<ID make="Canon" model="PowerShot G12">Canon PowerShot G12</ID>
@@ -1257,6 +1288,9 @@
 			<Vertical x="0" width="100"/>
 			<Horizontal y="3062" height="60"/>
 		</BlackAreas>
+		<Hints>
+			<Hint name="wb_offset" value="142"/>
+		</Hints>
 	</Camera>
 	<Camera make="Canon" model="Canon PowerShot G16" decoder_version="4">
 		<ID make="Canon" model="PowerShot G16">Canon PowerShot G16</ID>
@@ -1272,6 +1306,9 @@
 			<Vertical x="0" width="80"/>
 			<Horizontal y="0" height="16"/>
 		</BlackAreas>
+		<Hints>
+			<Hint name="wb_offset" value="142"/>
+		</Hints>
 	</Camera>
 	<Camera make="Canon" model="Canon PowerShot SX1 IS">
 		<ID make="Canon" model="PowerShot SX1 IS">Canon PowerShot SX1 IS</ID>
@@ -1336,9 +1373,6 @@
 		</CFA>
 		<Crop x="12" y="6" width="-52" height="-2"/>
 		<Sensor black="129" white="4095"/>
-		<Hints>
-			<Hint name="override_whitebalance" value="2466639,1000000,1153626"/>
-		</Hints>
 		<BlackAreas>
 			<Vertical x="2326" width="50"/>
 		</BlackAreas>
@@ -1353,9 +1387,6 @@
 		</CFA>
 		<Crop x="12" y="6" width="-44" height="-2"/>
 		<Sensor black="129" white="4095"/>
-		<Hints>
-			<Hint name="override_whitebalance" value="2168080,1000000,1356259"/>
-		</Hints>
 		<BlackAreas>
 			<Vertical x="2632" width="40"/>
 			<Horizontal y="0" height="10"/>
@@ -1371,13 +1402,14 @@
 		</CFA>
 		<Crop x="12" y="6" width="-44" height="-2"/>
 		<Sensor black="129" white="4095"/>
-		<Hints>
-			<Hint name="override_whitebalance" value="2143041,1000000,1136598"/>
-		</Hints>
 		<BlackAreas>
 			<Vertical x="2632" width="40"/>
 			<Horizontal y="0" height="10"/>
 		</BlackAreas>
+		<Hints>
+			<Hint name="wb_offset" value="96"/>
+			<Hint name="wb_mangle" value="true"/>
+		</Hints>
 	</Camera>
 	<Camera make="Canon" model="Canon PowerShot S70">
 		<ID make="Canon" model="PowerShot S70">Canon PowerShot S70</ID>
@@ -1389,13 +1421,14 @@
 		</CFA>
 		<Crop x="44" y="12" width="-4" height="-4"/>
 		<Sensor black="129" white="4095"/>
-		<Hints>
-			<Hint name="override_whitebalance" value="2279613,1000000,1245660"/>
-		</Hints>
 		<BlackAreas>
 			<Vertical x="0" width="40"/>
 			<Horizontal y="0" height="10"/>
 		</BlackAreas>
+		<Hints>
+			<Hint name="wb_offset" value="96"/>
+			<Hint name="wb_mangle" value="true"/>
+		</Hints>
 	</Camera>
 	<Camera make="Canon" model="Canon PowerShot S90">
 		<ID make="Canon" model="PowerShot S90">Canon PowerShot S90</ID>
@@ -1411,6 +1444,9 @@
 			<Vertical x="0" width="6"/>
 			<Horizontal y="0" height="14"/>
 		</BlackAreas>
+		<Hints>
+			<Hint name="wb_offset" value="142"/>
+		</Hints>
 	</Camera>
 	<Camera make="Canon" model="Canon PowerShot S95">
 		<ID make="Canon" model="PowerShot S95">Canon PowerShot S95</ID>
@@ -1444,6 +1480,9 @@
 			<Horizontal y="0" height="10"/>
 			<Horizontal y="3062" height="60"/>
 		</BlackAreas>
+		<Hints>
+			<Hint name="wb_offset" value="142"/>
+		</Hints>
 	</Camera>
 	<Camera make="Canon" model="Canon PowerShot S110">
 		<ID make="Canon" model="PowerShot S110">Canon PowerShot S110</ID>
@@ -1460,6 +1499,9 @@
 			<Vertical x="0" width="100"/>
 			<Horizontal y="3062" height="60"/>
 		</BlackAreas>
+		<Hints>
+			<Hint name="wb_offset" value="142"/>
+		</Hints>
 	</Camera>
 	<Camera make="Canon" model="Canon PowerShot S120">
 		<ID make="Canon" model="PowerShot S120">Canon PowerShot S120</ID>
@@ -1537,7 +1579,7 @@
 		<Crop x="0" y="0" width="2000" height="1312"/>
 		<Sensor black="0" white="4095"/>
 		<Hints>
-			<Hint name="override_whitebalance" value="960152,1000000,1041009"/>
+			<Hint name="nikon_wb_adjustment" value="true"/>
 		</Hints>
 	</Camera>
 	<Camera make="NIKON CORPORATION" model="NIKON D1H">
@@ -1710,9 +1752,6 @@
 		</CFA>
 		<Crop x="2" y="0" width="-50" height="0"/>
 		<Sensor black="0" white="16383"/>
-		<BlackAreas>
-			<Vertical x="4984" width="8"/>
-		</BlackAreas>
 	</Camera>
 	<Camera make="NIKON CORPORATION" model="NIKON Df">
 		<ID make="Nikon" model="Df">Nikon Df</ID>
@@ -2742,6 +2781,17 @@
 		<Crop x="0" y="0" width="4096" height="3072"/>
 		<Sensor black="64" white="4095"/>
 	</Camera>
+	<Camera make="OLYMPUS IMAGING CORP." model="SP320">
+		<ID make="Olympus" model="SP320">Olympus SP320</ID>
+		<CFA width="2" height="2">
+			<Color x="0" y="0">RED</Color>
+			<Color x="1" y="0">GREEN</Color>
+			<Color x="0" y="1">GREEN</Color>
+			<Color x="1" y="1">BLUE</Color>
+		</CFA>
+		<Crop x="0" y="0" width="0" height="0"/>
+		<Sensor black="0" white="4095"/>
+	</Camera>
 	<Camera make="OLYMPUS IMAGING CORP." model="SP350">
 		<ID make="Olympus" model="SP350">Olympus SP350</ID>
 		<CFA width="2" height="2">
@@ -2817,6 +2867,17 @@
 			<Color x="1" y="1">BLUE</Color>
 		</CFA>
 		<Crop x="8" y="8" width="-24" height="-8"/>
+		<Sensor black="254" white="4000"/>
+	</Camera>
+	<Camera make="OLYMPUS CORPORATION" model="E-M10MarkII">
+		<ID make="Olympus" model="E-M10 Mark II">Olympus E-M10 Mark II</ID>
+		<CFA width="2" height="2">
+			<Color x="0" y="0">RED</Color>
+			<Color x="1" y="0">GREEN</Color>
+			<Color x="0" y="1">GREEN</Color>
+			<Color x="1" y="1">BLUE</Color>
+		</CFA>
+		<Crop x="0" y="0" width="0" height="0"/>
 		<Sensor black="254" white="4000"/>
 	</Camera>
 	<Camera make="OLYMPUS IMAGING CORP." model="E-M5">
@@ -3063,9 +3124,6 @@
 		</CFA>
 		<Crop x="0" y="0" width="0" height="0"/>
 		<Sensor black="142" white="4095"/>
-		<Hints>
-			<Hint name="zero_is_bad" value=""/>
-		</Hints>
 	</Camera>
 	<Camera make="Panasonic" model = "DMC-CM1" mode="3:2">
 		<ID make="Panasonic" model="DMC-CM1">Panasonic DMC-CM1</ID>
@@ -3077,9 +3135,6 @@
 		</CFA>
 		<Crop x="0" y="0" width="0" height="0"/>
 		<Sensor black="142" white="4095"/>
-		<Hints>
-			<Hint name="zero_is_bad" value=""/>
-		</Hints>
 	</Camera>
 	<Camera make="Panasonic" model = "DMC-FX150">
 		<ID make="Panasonic" model="DMC-FX150">Panasonic DMC-FX150</ID>
@@ -3091,9 +3146,6 @@
 		</CFA>
 		<Crop x="0" y="0" width="4429" height="3324"/>
 		<Sensor black="15" white="3986"/>
-		<Hints>
-			<Hint name="zero_is_bad" value=""/>
-		</Hints>
 	</Camera>
 	<Camera make="Panasonic" model = "DMC-FX150" mode = "4:3">
 		<ID make="Panasonic" model="DMC-FX150">Panasonic DMC-FX150</ID>
@@ -3105,9 +3157,6 @@
 		</CFA>
 		<Crop x="0" y="0" width="4429" height="3324"/>
 		<Sensor black="15" white="3986"/>
-		<Hints>
-			<Hint name="zero_is_bad" value=""/>
-		</Hints>
 	</Camera>
 	<Camera make="Panasonic" model = "DMC-FZ28" mode = "4:3">
 		<ID make="Panasonic" model="DMC-FZ28">Panasonic DMC-FZ28</ID>
@@ -3119,9 +3168,6 @@
 		</CFA>
 		<Crop x="0" y="0" width="3668" height="2754"/>
 		<Sensor black="15" white="3986"/>
-		<Hints>
-			<Hint name="zero_is_bad" value=""/>
-		</Hints>
 	</Camera>
 	<Camera make="Panasonic" model = "DMC-FZ28" mode = "16:9">
 		<ID make="Panasonic" model="DMC-FZ28">Panasonic DMC-FZ28</ID>
@@ -3133,9 +3179,6 @@
 		</CFA>
 		<Crop x="0" y="0" width="3668" height="2754"/>
 		<Sensor black="15" white="3986"/>
-		<Hints>
-			<Hint name="zero_is_bad" value=""/>
-		</Hints>
 	</Camera>
 	<Camera make="Panasonic" model = "DMC-FZ28">
 		<ID make="Panasonic" model="DMC-FZ28">Panasonic DMC-FZ28</ID>
@@ -3147,9 +3190,6 @@
 		</CFA>
 		<Crop x="0" y="0" width="-56" height="-4"/>
 		<Sensor black="15" white="3986"/>
-		<Hints>
-			<Hint name="zero_is_bad" value=""/>
-		</Hints>
 	</Camera>
 	<Camera make="Panasonic" model = "DMC-FZ150">
 		<ID make="Panasonic" model="DMC-FZ150">Panasonic DMC-FZ150</ID>
@@ -3161,11 +3201,8 @@
 		</CFA>
 		<Crop x="0" y="0" width="-128" height="0"/>
 		<Sensor black="15" white="3956"/>
-		<Hints>
-			<Hint name="zero_is_bad" value=""/>
-		</Hints>
 	</Camera>
-	<Camera make="Panasonic" model = "DMC-FZ150" mode="4:3">
+	<Camera make="Panasonic" model="DMC-FZ150" mode="4:3">
 		<ID make="Panasonic" model="DMC-FZ150">Panasonic DMC-FZ150</ID>
 		<CFA width="2" height="2">
 			<Color x="0" y="0">GREEN</Color>
@@ -3174,10 +3211,18 @@
 			<Color x="1" y="1">GREEN</Color>
 		</CFA>
 		<Crop x="0" y="0" width="-128" height="0"/>
-		<Sensor black="15" white="3956"/>
-		<Hints>
-			<Hint name="zero_is_bad" value=""/>
-		</Hints>
+		<Sensor black="145" white="3956"/>
+	</Camera>
+	<Camera make="Panasonic" model="DMC-FZ150" mode="3:2">
+		<ID make="Panasonic" model="DMC-FZ150">Panasonic DMC-FZ150</ID>
+		<CFA width="2" height="2">
+			<Color x="0" y="0">GREEN</Color>
+			<Color x="1" y="0">BLUE</Color>
+			<Color x="0" y="1">RED</Color>
+			<Color x="1" y="1">GREEN</Color>
+		</CFA>
+		<Crop x="0" y="0" width="-128" height="0"/>
+		<Sensor black="143" white="3971"/>
 	</Camera>
 	<Camera make="Panasonic" model = "DMC-FZ200">
 		<ID make="Panasonic" model="DMC-FZ200">Panasonic DMC-FZ200</ID>
@@ -3189,9 +3234,6 @@
 		</CFA>
 		<Crop x="0" y="0" width="-128" height="-4"/>
 		<Sensor black="150" white="3956"/>
-		<Hints>
-			<Hint name="zero_is_bad" value=""/>
-		</Hints>
 	</Camera>
 	<Camera make="Panasonic" model = "DMC-FZ200" mode="4:3">
 		<ID make="Panasonic" model="DMC-FZ200">Panasonic DMC-FZ200</ID>
@@ -3203,9 +3245,6 @@
 		</CFA>
 		<Crop x="0" y="0" width="-128" height="-4"/>
 		<Sensor black="150" white="3956"/>
-		<Hints>
-			<Hint name="zero_is_bad" value=""/>
-		</Hints>
 	</Camera>
 	<Camera make="Panasonic" model = "DMC-FZ200" mode="3:2">
 		<ID make="Panasonic" model="DMC-FZ200">Panasonic DMC-FZ200</ID>
@@ -3217,9 +3256,6 @@
 		</CFA>
 		<Crop x="0" y="0" width="-128" height="0"/>
 		<Sensor black="150" white="3956"/>
-		<Hints>
-			<Hint name="zero_is_bad" value=""/>
-		</Hints>
 	</Camera>
 	<Camera make="Panasonic" model = "DMC-FZ200" mode="1:1">
 		<ID make="Panasonic" model="DMC-FZ200">Panasonic DMC-FZ200</ID>
@@ -3231,9 +3267,6 @@
 		</CFA>
 		<Crop x="0" y="0" width="-16" height="0"/>
 		<Sensor black="150" white="3956"/>
-		<Hints>
-			<Hint name="zero_is_bad" value=""/>
-		</Hints>
 	</Camera>
 	<Camera make="Panasonic" model = "DMC-FZ200" mode="16:9">
 		<ID make="Panasonic" model="DMC-FZ200">Panasonic DMC-FZ200</ID>
@@ -3245,9 +3278,6 @@
 		</CFA>
 		<Crop x="0" y="0" width="-128" height="0"/>
 		<Sensor black="150" white="3956"/>
-		<Hints>
-			<Hint name="zero_is_bad" value=""/>
-		</Hints>
 	</Camera>
 	<Camera make="Panasonic" model = "DMC-G1">
 		<ID make="Panasonic" model="DMC-G1">Panasonic DMC-G1</ID>
@@ -3259,9 +3289,6 @@
 		</CFA>
 		<Crop x="0" y="0" width="4018" height="3016" />
 		<Sensor black="15" white="3986"/>
-		<Hints>
-			<Hint name="zero_is_bad" value=""/>
-		</Hints>
 	</Camera>
 	<Camera make="Panasonic" model = "DMC-G1" mode="4:3">
 		<ID make="Panasonic" model="DMC-G1">Panasonic DMC-G1</ID>
@@ -3273,9 +3300,6 @@
 		</CFA>
 		<Crop x="0" y="0" width="4018" height="3016" />
 		<Sensor black="15" white="3986"/>
-		<Hints>
-			<Hint name="zero_is_bad" value=""/>
-		</Hints>
 	</Camera>
 	<Camera make="Panasonic" model = "DMC-G1" mode="16:9">
 		<ID make="Panasonic" model="DMC-G1">Panasonic DMC-G1</ID>
@@ -3287,9 +3311,6 @@
 		</CFA>
 		<Crop x="0" y="0" width="-32" height="0" />
 		<Sensor black="15" white="3986"/>
-		<Hints>
-			<Hint name="zero_is_bad" value=""/>
-		</Hints>
 	</Camera>
 	<Camera make="Panasonic" model = "DMC-G1" mode="3:2">
 		<ID make="Panasonic" model="DMC-G1">Panasonic DMC-G1</ID>
@@ -3301,9 +3322,6 @@
 		</CFA>
 		<Crop x="0" y="0" width="-44" height="0" />
 		<Sensor black="15" white="3986"/>
-		<Hints>
-			<Hint name="zero_is_bad" value=""/>
-		</Hints>
 	</Camera>
 	<Camera make="Panasonic" model = "DMC-G2" mode="4:3">
 		<ID make="Panasonic" model="DMC-G2">Panasonic DMC-G2</ID>
@@ -3315,9 +3333,6 @@
 		</CFA>
 		<Crop x="0" y="0" width="-44" height="0" />
 		<Sensor black="0" white="3900"/>
-		<Hints>
-			<Hint name="zero_is_bad" value=""/>
-		</Hints>
 	</Camera>
 	<Camera make="Panasonic" model = "DMC-G2" mode="3:2">
 		<ID make="Panasonic" model="DMC-G2">Panasonic DMC-G2</ID>
@@ -3329,9 +3344,6 @@
 		</CFA>
 		<Crop x="0" y="0" width="-44" height="0" />
 		<Sensor black="0" white="3900"/>
-		<Hints>
-			<Hint name="zero_is_bad" value=""/>
-		</Hints>
 	</Camera>
 	<Camera make="Panasonic" model = "DMC-G2" mode="16:9">
 		<ID make="Panasonic" model="DMC-G2">Panasonic DMC-G2</ID>
@@ -3343,9 +3355,6 @@
 		</CFA>
 		<Crop x="0" y="0" width="-44" height="0" />
 		<Sensor black="0" white="3900"/>
-		<Hints>
-			<Hint name="zero_is_bad" value=""/>
-		</Hints>
 	</Camera>
 	<Camera make="Panasonic" model = "DMC-G2" mode="1:1">
 		<ID make="Panasonic" model="DMC-G2">Panasonic DMC-G2</ID>
@@ -3357,9 +3366,6 @@
 		</CFA>
 		<Crop x="0" y="0" width="0" height="0" />
 		<Sensor black="0" white="3900"/>
-		<Hints>
-			<Hint name="zero_is_bad" value=""/>
-		</Hints>
 	</Camera>
 	<Camera make="Panasonic" model = "DMC-G2">
 		<ID make="Panasonic" model="DMC-G2">Panasonic DMC-G2</ID>
@@ -3440,9 +3446,6 @@
 		<Crop x="0" y="0" width="-194" height="0"/>
 		<Sensor black="155" white="3956"/>
 		<Sensor black="165" white="3941" iso_min="6400"/>
-		<Hints>
-			<Hint name="zero_is_bad" value=""/>
-		</Hints>
 	</Camera>
 	<Camera make="Panasonic" model = "DMC-GH3" mode="3:2">
 		<ID make="Panasonic" model="DMC-GH3">Panasonic DMC-GH3</ID>
@@ -3455,9 +3458,6 @@
 		<Crop x="0" y="0" width="-194" height="0"/>
 		<Sensor black="155" white="3956"/>
 		<Sensor black="165" white="3941" iso_min="6400"/>
-		<Hints>
-			<Hint name="zero_is_bad" value=""/>
-		</Hints>
 	</Camera>
 	<Camera make="Panasonic" model = "DMC-GH3" mode="16:9">
 		<ID make="Panasonic" model="DMC-GH3">Panasonic DMC-GH3</ID>
@@ -3470,9 +3470,6 @@
 		<Crop x="0" y="0" width="-194" height="0"/>
 		<Sensor black="155" white="3956"/>
 		<Sensor black="165" white="3941" iso_min="6400"/>
-		<Hints>
-			<Hint name="zero_is_bad" value=""/>
-		</Hints>
 	</Camera>
 	<Camera make="Panasonic" model = "DMC-GH3" mode="1:1">
 		<ID make="Panasonic" model="DMC-GH3">Panasonic DMC-GH3</ID>
@@ -3485,9 +3482,6 @@
 		<Crop x="0" y="0" width="0" height="0"/>
 		<Sensor black="155" white="3956"/>
 		<Sensor black="165" white="3941" iso_min="6400"/>
-		<Hints>
-			<Hint name="zero_is_bad" value=""/>
-		</Hints>
 	</Camera>
 	<!-- Default Guess -->
 	<Camera make="Panasonic" model = "DMC-GH3">
@@ -3501,9 +3495,6 @@
 		<Crop x="0" y="0" width="-194" height="0"/>
 		<Sensor black="155" white="3956"/>
 		<Sensor black="165" white="3941" iso_min="6400"/>
-		<Hints>
-			<Hint name="zero_is_bad" value=""/>
-		</Hints>
 	</Camera>
 	<Camera make="Panasonic" model = "DMC-GH4" mode="4:3">
 		<ID make="Panasonic" model="DMC-GH4">Panasonic DMC-GH4</ID>
@@ -3515,9 +3506,6 @@
 		</CFA>
 		<Crop x="8" y="8" width="-200" height="-8"/>
 		<Sensor black="142" white="4095"/>
-		<Hints>
-			<Hint name="zero_is_bad" value=""/>
-		</Hints>
 	</Camera>
 	<Camera make="Panasonic" model = "DMC-GH4" mode="3:2">
 		<ID make="Panasonic" model="DMC-GH4">Panasonic DMC-GH4</ID>
@@ -3529,9 +3517,6 @@
 		</CFA>
 		<Crop x="8" y="8" width="-200" height="-8"/>
 		<Sensor black="142" white="4095"/>
-		<Hints>
-			<Hint name="zero_is_bad" value=""/>
-		</Hints>
 	</Camera>
 	<Camera make="Panasonic" model = "DMC-GH4" mode="16:9">
 		<ID make="Panasonic" model="DMC-GH4">Panasonic DMC-GH4</ID>
@@ -3543,9 +3528,6 @@
 		</CFA>
 		<Crop x="8" y="8" width="-200" height="-8"/>
 		<Sensor black="142" white="4095"/>
-		<Hints>
-			<Hint name="zero_is_bad" value=""/>
-		</Hints>
 	</Camera>
 	<Camera make="Panasonic" model = "DMC-GH4" mode="1:1">
 		<ID make="Panasonic" model="DMC-GH4">Panasonic DMC-GH4</ID>
@@ -3557,9 +3539,6 @@
 		</CFA>
 		<Crop x="0" y="0" width="0" height="0"/>
 		<Sensor black="142" white="4095"/>
-		<Hints>
-			<Hint name="zero_is_bad" value=""/>
-		</Hints>
 	</Camera>
 	<!-- Default Guess -->
 	<Camera make="Panasonic" model = "DMC-GH4">
@@ -3572,9 +3551,6 @@
 		</CFA>
 		<Crop x="8" y="8" width="-200" height="8"/>
 		<Sensor black="142" white="4095"/>
-		<Hints>
-			<Hint name="zero_is_bad" value=""/>
-		</Hints>
 	</Camera>
 	<Camera make="Panasonic" model = "DMC-GF1">
 		<ID make="Panasonic" model="DMC-GF1">Panasonic DMC-GF1</ID>
@@ -3586,9 +3562,6 @@
 		</CFA>
 		<Crop x="0" y="0" width="-44" height="0"/>
 		<Sensor black="15" white="3986"/>
-		<Hints>
-			<Hint name="zero_is_bad" value=""/>
-		</Hints>
 	</Camera>
 	<Camera make="Panasonic" model = "DMC-GF1" mode="4:3">
 		<ID make="Panasonic" model="DMC-GF1">Panasonic DMC-GF1</ID>
@@ -3600,9 +3573,6 @@
 		</CFA>
 		<Crop x="0" y="0" width="-44" height="0"/>
 		<Sensor black="15" white="3986"/>
-		<Hints>
-			<Hint name="zero_is_bad" value=""/>
-		</Hints>
 	</Camera>
 	<Camera make="Panasonic" model = "DMC-GF1" mode="16:9">
 		<ID make="Panasonic" model="DMC-GF1">Panasonic DMC-GF1</ID>
@@ -3614,9 +3584,6 @@
 		</CFA>
 		<Crop x="0" y="0" width="-44" height="0"/>
 		<Sensor black="15" white="3986"/>
-		<Hints>
-			<Hint name="zero_is_bad" value=""/>
-		</Hints>
 	</Camera>
 	<Camera make="Panasonic" model = "DMC-GF1" mode="3:2">
 		<ID make="Panasonic" model="DMC-GF1">Panasonic DMC-GF1</ID>
@@ -3628,9 +3595,6 @@
 		</CFA>
 		<Crop x="0" y="0" width="-44" height="0"/>
 		<Sensor black="15" white="3986"/>
-		<Hints>
-			<Hint name="zero_is_bad" value=""/>
-		</Hints>
 	</Camera>
 	<Camera make="Panasonic" model = "DMC-GF1" mode="1:1">
 		<ID make="Panasonic" model="DMC-GF1">Panasonic DMC-GF1</ID>
@@ -3642,9 +3606,6 @@
 		</CFA>
 		<Crop x="0" y="0" width="-44" height="0"/>
 		<Sensor black="15" white="3986"/>
-		<Hints>
-			<Hint name="zero_is_bad" value=""/>
-		</Hints>
 	</Camera>
 	<Camera make="Panasonic" model = "DMC-GF2">
 		<ID make="Panasonic" model="DMC-GF2">Panasonic DMC-GF2</ID>
@@ -3656,9 +3617,6 @@
 		</CFA>
 		<Crop x="0" y="0" width="-74" height="0"/>
 		<Sensor black="150" white="3956"/>
-		<Hints>
-			<Hint name="zero_is_bad" value=""/>
-		</Hints>
 	</Camera>
 	<Camera make="Panasonic" model = "DMC-GF2" mode="4:3">
 		<ID make="Panasonic" model="DMC-GF2">Panasonic DMC-GF2</ID>
@@ -3670,9 +3628,6 @@
 		</CFA>
 		<Crop x="0" y="0" width="-74" height="0"/>
 		<Sensor black="150" white="3956"/>
-		<Hints>
-			<Hint name="zero_is_bad" value=""/>
-		</Hints>
 	</Camera>
 	<Camera make="Panasonic" model = "DMC-GF2" mode="16:9">
 		<ID make="Panasonic" model="DMC-GF2">Panasonic DMC-GF2</ID>
@@ -3684,9 +3639,6 @@
 		</CFA>
 		<Crop x="0" y="0" width="-74" height="0"/>
 		<Sensor black="150" white="3956"/>
-		<Hints>
-			<Hint name="zero_is_bad" value=""/>
-		</Hints>
 	</Camera>
 	<Camera make="Panasonic" model = "DMC-GF2" mode="3:2">
 		<ID make="Panasonic" model="DMC-GF2">Panasonic DMC-GF2</ID>
@@ -3698,9 +3650,6 @@
 		</CFA>
 		<Crop x="0" y="0" width="-74" height="0"/>
 		<Sensor black="150" white="3956"/>
-		<Hints>
-			<Hint name="zero_is_bad" value=""/>
-		</Hints>
 	</Camera>
 	<Camera make="Panasonic" model = "DMC-GF2" mode="1:1">
 		<ID make="Panasonic" model="DMC-GF2">Panasonic DMC-GF2</ID>
@@ -3723,9 +3672,6 @@
 		</CFA>
 		<Crop x="0" y="0" width="-206" height="0"/>
 		<Sensor black="143" white="3971"/>
-		<Hints>
-			<Hint name="zero_is_bad" value=""/>
-		</Hints>
 	</Camera>
 	<Camera make="Panasonic" model = "DMC-GM1" mode="3:2">
 		<ID make="Panasonic" model="DMC-GM1">Panasonic DMC-GM1</ID>
@@ -3737,9 +3683,6 @@
 		</CFA>
 		<Crop x="0" y="0" width="-206" height="0"/>
 		<Sensor black="143" white="3971"/>
-		<Hints>
-			<Hint name="zero_is_bad" value=""/>
-		</Hints>
 	</Camera>
 	<Camera make="Panasonic" model = "DMC-GM1" mode="16:9">
 		<ID make="Panasonic" model="DMC-GM1">Panasonic DMC-GM1</ID>
@@ -3751,9 +3694,6 @@
 		</CFA>
 		<Crop x="0" y="0" width="-206" height="0"/>
 		<Sensor black="143" white="3971"/>
-		<Hints>
-			<Hint name="zero_is_bad" value=""/>
-		</Hints>
 	</Camera>
 	<Camera make="Panasonic" model = "DMC-GM1" mode="1:1">
 		<ID make="Panasonic" model="DMC-GM1">Panasonic DMC-GM1</ID>
@@ -3765,9 +3705,6 @@
 		</CFA>
 		<Crop x="0" y="0" width="0" height="0"/>
 		<Sensor black="143" white="3971"/>
-		<Hints>
-			<Hint name="zero_is_bad" value=""/>
-		</Hints>
 	</Camera>
 	<!-- Default Guess -->
 	<Camera make="Panasonic" model = "DMC-GM1">
@@ -3780,9 +3717,6 @@
 		</CFA>
 		<Crop x="0" y="0" width="-206" height="0"/>
 		<Sensor black="143" white="3971"/>
-		<Hints>
-			<Hint name="zero_is_bad" value=""/>
-		</Hints>
 	</Camera>
 	<Camera make="Panasonic" model="DMC-GM5">
 		<ID make="Panasonic" model="DMC-GM5">Panasonic DMC-GM5</ID>
@@ -3848,9 +3782,6 @@
 			<Color x="1" y="1">GREEN</Color>
 		</CFA>
 		<Crop x="0" y="0" width="-152" height="0"/>
-		<Hints>
-			<Hint name="zero_is_bad" value=""/>
-		</Hints>
 		<Sensor black="143" white="3956"/>
 	</Camera>
 	<Camera make="Panasonic" model="DMC-G3" mode="1:1">
@@ -3862,9 +3793,6 @@
 			<Color x="1" y="1">GREEN</Color>
 		</CFA>
 		<Crop x="0" y="0" width="-200" height="0"/>
-		<Hints>
-			<Hint name="zero_is_bad" value=""/>
-		</Hints>
 		<Sensor black="143" white="3956"/>
 	</Camera>
 	<Camera make="Panasonic" model="DMC-G3" mode="16:9">
@@ -3876,9 +3804,6 @@
 			<Color x="1" y="1">GREEN</Color>
 		</CFA>
 		<Crop x="0" y="0" width="-168" height="0"/>
-		<Hints>
-			<Hint name="zero_is_bad" value=""/>
-		</Hints>
 		<Sensor black="143" white="3956"/>
 	</Camera>
 	<Camera make="Panasonic" model="DMC-G3" mode="3:2">
@@ -3890,9 +3815,6 @@
 			<Color x="1" y="1">GREEN</Color>
 		</CFA>
 		<Crop x="0" y="0" width="-168" height="0"/>
-		<Hints>
-			<Hint name="zero_is_bad" value=""/>
-		</Hints>
 		<Sensor black="143" white="3956"/>
 	</Camera>
 	<Camera make="Panasonic" model="DMC-G3">
@@ -3904,9 +3826,6 @@
 			<Color x="1" y="1">GREEN</Color>
 		</CFA>
 		<Crop x="0" y="0" width="0" height="0"/>
-		<Hints>
-			<Hint name="zero_is_bad" value=""/>
-		</Hints>
 		<Sensor black="143" white="3956"/>
 	</Camera>
 	<Camera make="Panasonic" model = "DMC-G5" mode="4:3">
@@ -3919,9 +3838,6 @@
 		</CFA>
 		<Crop x="0" y="0" width="-192" height="0"/>
 		<Sensor black="150" white="3956"/>
-		<Hints>
-			<Hint name="zero_is_bad" value=""/>
-		</Hints>
 	</Camera>
 	<Camera make="Panasonic" model = "DMC-G5" mode="3:2">
 		<ID make="Panasonic" model="DMC-G5">Panasonic DMC-G5</ID>
@@ -3933,9 +3849,6 @@
 		</CFA>
 		<Crop x="0" y="0" width="-192" height="0"/>
 		<Sensor black="150" white="3956"/>
-		<Hints>
-			<Hint name="zero_is_bad" value=""/>
-		</Hints>
 	</Camera>
 	<Camera make="Panasonic" model = "DMC-G5" mode="16:9">
 		<CFA width="2" height="2">
@@ -3946,9 +3859,6 @@
 		</CFA>
 		<Crop x="0" y="0" width="-192" height="0"/>
 		<Sensor black="150" white="3956"/>
-		<Hints>
-			<Hint name="zero_is_bad" value=""/>
-		</Hints>
 	</Camera>
 	<Camera make="Panasonic" model = "DMC-G5" mode="1:1">
 		<CFA width="2" height="2">
@@ -3959,9 +3869,6 @@
 		</CFA>
 		<Crop x="0" y="0" width="0" height="0"/>
 		<Sensor black="150" white="3956"/>
-		<Hints>
-			<Hint name="zero_is_bad" value=""/>
-		</Hints>
 	</Camera>
 	<Camera make="Panasonic" model = "DMC-G5">
 		<ID make="Panasonic" model="DMC-G5">Panasonic DMC-G5</ID>
@@ -3973,9 +3880,6 @@
 		</CFA>
 		<Crop x="0" y="0" width="-192" height="0"/>
 		<Sensor black="150" white="3956"/>
-		<Hints>
-			<Hint name="zero_is_bad" value=""/>
-		</Hints>
 	</Camera>
 	<Camera make="Panasonic" model = "DMC-G6">
 		<ID make="Panasonic" model="DMC-G6">Panasonic DMC-G6</ID>
@@ -3987,9 +3891,6 @@
 		</CFA>
 		<Crop x="0" y="0" width="-194" height="0"/>
 		<Sensor black="142" white="3956"/>
-		<Hints>
-			<Hint name="zero_is_bad" value=""/>
-		</Hints>
 	</Camera>
 	<Camera make="Panasonic" model = "DMC-G6" mode="4:3">
 		<ID make="Panasonic" model="DMC-G6">Panasonic DMC-G6</ID>
@@ -4001,9 +3902,6 @@
 		</CFA>
 		<Crop x="0" y="0" width="-194" height="0"/>
 		<Sensor black="142" white="3956"/>
-		<Hints>
-			<Hint name="zero_is_bad" value=""/>
-		</Hints>
 	</Camera>
 	<Camera make="Panasonic" model = "DMC-G6" mode="3:2">
 		<ID make="Panasonic" model="DMC-G6">Panasonic DMC-G6</ID>
@@ -4015,9 +3913,6 @@
 		</CFA>
 		<Crop x="0" y="0" width="-194" height="0"/>
 		<Sensor black="142" white="3956"/>
-		<Hints>
-			<Hint name="zero_is_bad" value=""/>
-		</Hints>
 	</Camera>
 	<Camera make="Panasonic" model = "DMC-G6" mode="16:9">
 		<ID make="Panasonic" model="DMC-G6">Panasonic DMC-G6</ID>
@@ -4029,9 +3924,6 @@
 		</CFA>
 		<Crop x="0" y="0" width="-194" height="0"/>
 		<Sensor black="142" white="3956"/>
-		<Hints>
-			<Hint name="zero_is_bad" value=""/>
-		</Hints>
 	</Camera>
 	<Camera make="Panasonic" model = "DMC-G6" mode="1:1">
 		<ID make="Panasonic" model="DMC-G6">Panasonic DMC-G6</ID>
@@ -4043,9 +3935,6 @@
 		</CFA>
 		<Crop x="0" y="0" width="0" height="0"/>
 		<Sensor black="142" white="3956"/>
-		<Hints>
-			<Hint name="zero_is_bad" value=""/>
-		</Hints>
 	</Camera>
 	<Camera make="Panasonic" model="DMC-G7">
 		<ID make="Panasonic" model="DMC-G7">Panasonic DMC-G7</ID>
@@ -4057,9 +3946,6 @@
 		</CFA>
 		<Crop x="0" y="0" width="-208" height="0"/>
 		<Sensor black="143" white="4095"/>
-		<Hints>
-			<Hint name="zero_is_bad" value=""/>
-		</Hints>
 		<Aliases>
 			<Alias>DMC-G70</Alias>
 		</Aliases>
@@ -4074,9 +3960,6 @@
 		</CFA>
 		<Crop x="0" y="0" width="-208" height="0"/>
 		<Sensor black="143" white="4095"/>
-		<Hints>
-			<Hint name="zero_is_bad" value=""/>
-		</Hints>
 		<Aliases>
 			<Alias>DMC-G70</Alias>
 		</Aliases>
@@ -4091,9 +3974,6 @@
 		</CFA>
 		<Crop x="0" y="0" width="-208" height="0"/>
 		<Sensor black="143" white="4095"/>
-		<Hints>
-			<Hint name="zero_is_bad" value=""/>
-		</Hints>
 		<Aliases>
 			<Alias>DMC-G70</Alias>
 		</Aliases>
@@ -4108,9 +3988,6 @@
 		</CFA>
 		<Crop x="0" y="0" width="-32" height="0"/>
 		<Sensor black="143" white="4095"/>
-		<Hints>
-			<Hint name="zero_is_bad" value=""/>
-		</Hints>
 		<Aliases>
 			<Alias>DMC-G70</Alias>
 		</Aliases>
@@ -4125,9 +4002,6 @@
 		</CFA>
 		<Crop x="0" y="0" width="-208" height="0"/>
 		<Sensor black="143" white="4095"/>
-		<Hints>
-			<Hint name="zero_is_bad" value=""/>
-		</Hints>
 		<Aliases>
 			<Alias>DMC-G70</Alias>
 		</Aliases>
@@ -4142,9 +4016,6 @@
 		</CFA>
 		<Crop x="0" y="0" width="-72" height="0"/>
 		<Sensor black="150" white="3956"/>
-		<Hints>
-			<Hint name="zero_is_bad" value=""/>
-		</Hints>
 	</Camera>
 	<Camera make="Panasonic" model = "DMC-GF3" mode= "4:3">
 		<ID make="Panasonic" model="DMC-GF3">Panasonic DMC-GF3</ID>
@@ -4156,9 +4027,6 @@
 		</CFA>
 		<Crop x="0" y="0" width="-72" height="0"/>
 		<Sensor black="150" white="3956"/>
-		<Hints>
-			<Hint name="zero_is_bad" value=""/>
-		</Hints>
 	</Camera>
 	<Camera make="Panasonic" model = "DMC-GF3" mode= "3:2">
 		<ID make="Panasonic" model="DMC-GF3">Panasonic DMC-GF3</ID>
@@ -4170,9 +4038,6 @@
 		</CFA>
 		<Crop x="0" y="0" width="-72" height="0"/>
 		<Sensor black="150" white="3956"/>
-		<Hints>
-			<Hint name="zero_is_bad" value=""/>
-		</Hints>
 	</Camera>
 	<Camera make="Panasonic" model = "DMC-GF3" mode= "16:9">
 		<ID make="Panasonic" model="DMC-GF3">Panasonic DMC-GF3</ID>
@@ -4184,9 +4049,6 @@
 		</CFA>
 		<Crop x="0" y="0" width="-72" height="0"/>
 		<Sensor black="150" white="3956"/>
-		<Hints>
-			<Hint name="zero_is_bad" value=""/>
-		</Hints>
 	</Camera>
 	<Camera make="Panasonic" model = "DMC-GF3" mode= "1:1">
 		<ID make="Panasonic" model="DMC-GF3">Panasonic DMC-GF3</ID>
@@ -4198,9 +4060,6 @@
 		</CFA>
 		<Crop x="0" y="0" width="-184" height="0"/>
 		<Sensor black="150" white="3956"/>
-		<Hints>
-			<Hint name="zero_is_bad" value=""/>
-		</Hints>
 	</Camera>
 	<Camera make="Panasonic" model = "DMC-GF5">
 		<ID make="Panasonic" model="DMC-GF5">Panasonic DMC-GF5</ID>
@@ -4212,9 +4071,6 @@
 		</CFA>
 		<Crop x="0" y="0" width="-128" height="0"/>
 		<Sensor black="150" white="3956"/>
-		<Hints>
-			<Hint name="zero_is_bad" value=""/>
-		</Hints>
 	</Camera>
 	<Camera make="Panasonic" model = "DMC-GF5" mode= "4:3">
 		<ID make="Panasonic" model="DMC-GF5">Panasonic DMC-GF5</ID>
@@ -4226,9 +4082,6 @@
 		</CFA>
 		<Crop x="0" y="0" width="-128" height="0"/>
 		<Sensor black="150" white="3956"/>
-		<Hints>
-			<Hint name="zero_is_bad" value=""/>
-		</Hints>
 	</Camera>
 	<Camera make="Panasonic" model = "DMC-GF5" mode= "16:9">
 		<ID make="Panasonic" model="DMC-GF5">Panasonic DMC-GF5</ID>
@@ -4240,9 +4093,6 @@
 		</CFA>
 		<Crop x="0" y="0" width="-128" height="0"/>
 		<Sensor black="150" white="3956"/>
-		<Hints>
-			<Hint name="zero_is_bad" value=""/>
-		</Hints>
 	</Camera>
 	<Camera make="Panasonic" model = "DMC-GF5" mode= "3:2">
 		<ID make="Panasonic" model="DMC-GF5">Panasonic DMC-GF5</ID>
@@ -4254,9 +4104,6 @@
 		</CFA>
 		<Crop x="0" y="0" width="-128" height="0"/>
 		<Sensor black="150" white="3956"/>
-		<Hints>
-			<Hint name="zero_is_bad" value=""/>
-		</Hints>
 	</Camera>
 	<Camera make="Panasonic" model = "DMC-GF5" mode= "1:1">
 		<ID make="Panasonic" model="DMC-GF5">Panasonic DMC-GF5</ID>
@@ -4268,9 +4115,6 @@
 		</CFA>
 		<Crop x="0" y="0" width="-16" height="0"/>
 		<Sensor black="150" white="3956"/>
-		<Hints>
-			<Hint name="zero_is_bad" value=""/>
-		</Hints>
 	</Camera>
 	<Camera make="Panasonic" model = "DMC-GF6">
 		<ID make="Panasonic" model="DMC-GF6">Panasonic DMC-GF6</ID>
@@ -4282,9 +4126,6 @@
 		</CFA>
 		<Crop x="0" y="0" width="-208" height="0"/>
 		<Sensor black="150" white="3956"/>
-		<Hints>
-			<Hint name="zero_is_bad" value=""/>
-		</Hints>
 	</Camera>
 	<Camera make="Panasonic" model = "DMC-GF6" mode= "4:3">
 		<ID make="Panasonic" model="DMC-GF6">Panasonic DMC-GF6</ID>
@@ -4296,9 +4137,6 @@
 		</CFA>
 		<Crop x="0" y="0" width="-208" height="0"/>
 		<Sensor black="150" white="3956"/>
-		<Hints>
-			<Hint name="zero_is_bad" value=""/>
-		</Hints>
 	</Camera>
 	<Camera make="Panasonic" model="DMC-GF7">
 		<ID make="Panasonic" model="DMC-GF7">Panasonic DMC-GF7</ID>
@@ -4310,9 +4148,6 @@
 		</CFA>
 		<Crop x="0" y="0" width="-208" height="0"/>
 		<Sensor black="143" white="4095"/>
-		<Hints>
-			<Hint name="zero_is_bad" value=""/>
-		</Hints>
 	</Camera>
 	<Camera make="Panasonic" model="DMC-GF7" mode="4:3">
 		<ID make="Panasonic" model="DMC-GF7">Panasonic DMC-GF7</ID>
@@ -4324,9 +4159,39 @@
 		</CFA>
 		<Crop x="0" y="0" width="-208" height="0"/>
 		<Sensor black="143" white="4095"/>
-		<Hints>
-			<Hint name="zero_is_bad" value=""/>
-		</Hints>
+	</Camera>
+	<Camera make="Panasonic" model="DMC-GF7" mode="1:1">
+		<ID make="Panasonic" model="DMC-GF7">Panasonic DMC-GF7</ID>
+		<CFA width="2" height="2">
+			<Color x="0" y="0">BLUE</Color>
+			<Color x="1" y="0">GREEN</Color>
+			<Color x="0" y="1">GREEN</Color>
+			<Color x="1" y="1">RED</Color>
+		</CFA>
+		<Crop x="0" y="0" width="-32" height="0"/>
+		<Sensor black="143" white="4095"/>
+	</Camera>
+	<Camera make="Panasonic" model="DMC-GF7" mode="3:2">
+		<ID make="Panasonic" model="DMC-GF7">Panasonic DMC-GF7</ID>
+		<CFA width="2" height="2">
+			<Color x="0" y="0">BLUE</Color>
+			<Color x="1" y="0">GREEN</Color>
+			<Color x="0" y="1">GREEN</Color>
+			<Color x="1" y="1">RED</Color>
+		</CFA>
+		<Crop x="0" y="0" width="-208" height="0"/>
+		<Sensor black="143" white="4095"/>
+	</Camera>
+	<Camera make="Panasonic" model="DMC-GF7" mode="16:9">
+		<ID make="Panasonic" model="DMC-GF7">Panasonic DMC-GF7</ID>
+		<CFA width="2" height="2">
+			<Color x="0" y="0">BLUE</Color>
+			<Color x="1" y="0">GREEN</Color>
+			<Color x="0" y="1">GREEN</Color>
+			<Color x="1" y="1">RED</Color>
+		</CFA>
+		<Crop x="0" y="0" width="-208" height="0"/>
+		<Sensor black="143" white="4095"/>
 	</Camera>
 	<Camera make="Panasonic" model = "DMC-GH2">
 		<ID make="Panasonic" model="DMC-GH2">Panasonic DMC-GH2</ID>
@@ -4338,9 +4203,6 @@
 		</CFA>
 		<Crop x="0" y="0" width="-216" height="0"/>
 		<Sensor black="15" white="3800"/>
-		<Hints>
-			<Hint name="zero_is_bad" value=""/>
-		</Hints>
 	</Camera>
 	<Camera make="Panasonic" model = "DMC-GH2" mode="4:3">
 		<ID make="Panasonic" model="DMC-GH2">Panasonic DMC-GH2</ID>
@@ -4352,9 +4214,6 @@
 		</CFA>
 		<Crop x="0" y="0" width="-136" height="0"/>
 		<Sensor black="15" white="3800"/>
-		<Hints>
-			<Hint name="zero_is_bad" value=""/>
-		</Hints>
 	</Camera>
 	<Camera make="Panasonic" model = "DMC-GH2" mode="16:9">
 		<ID make="Panasonic" model="DMC-GH2">Panasonic DMC-GH2</ID>
@@ -4366,9 +4225,6 @@
 		</CFA>
 		<Crop x="0" y="0" width="-216" height="0"/>
 		<Sensor black="15" white="3800"/>
-		<Hints>
-			<Hint name="zero_is_bad" value=""/>
-		</Hints>
 	</Camera>
 	<Camera make="Panasonic" model = "DMC-GH2" mode="3:2">
 		<ID make="Panasonic" model="DMC-GH2">Panasonic DMC-GH2</ID>
@@ -4380,9 +4236,6 @@
 		</CFA>
 		<Crop x="0" y="0" width="-216" height="0"/>
 		<Sensor black="15" white="3800"/>
-		<Hints>
-			<Hint name="zero_is_bad" value=""/>
-		</Hints>
 	</Camera>
 	<Camera make="Panasonic" model = "DMC-GH2" mode="1:1">
 		<ID make="Panasonic" model="DMC-GH2">Panasonic DMC-GH2</ID>
@@ -4394,9 +4247,6 @@
 		</CFA>
 		<Crop x="0" y="0" width="-168" height="0"/>
 		<Sensor black="15" white="3800"/>
-		<Hints>
-			<Hint name="zero_is_bad" value=""/>
-		</Hints>
 	</Camera>
 	<Camera make="Panasonic" model = "DMC-GH1" mode="16:9">
 		<ID make="Panasonic" model="DMC-GH1">Panasonic DMC-GH1</ID>
@@ -4422,9 +4272,6 @@
 		<Aliases>
 			<Alias>DMC-FZ38</Alias>
 		</Aliases>
-		<Hints>
-			<Hint name="zero_is_bad" value=""/>
-		</Hints>
 	</Camera>
 	<Camera make="Panasonic" model = "DMC-FZ35">
 		<ID make="Panasonic" model="DMC-FZ35">Panasonic DMC-FZ35</ID>
@@ -4440,9 +4287,6 @@
 		<Aliases>
 			<Alias>DMC-FZ38</Alias>
 		</Aliases>
-		<Hints>
-			<Hint name="zero_is_bad" value=""/>
-		</Hints>
 	</Camera>
 	<Camera make="Panasonic" model = "DMC-FZ45">
 		<CFA width="2" height="2">
@@ -4456,9 +4300,6 @@
 		<Aliases>
 			<Alias>DMC-FZ40</Alias>
 		</Aliases>
-		<Hints>
-			<Hint name="zero_is_bad" value=""/>
-		</Hints>
 	</Camera>
 	<Camera make="Panasonic" model = "DMC-FZ45" mode = "4:3">
 		<CFA width="2" height="2">
@@ -4472,9 +4313,6 @@
 		<Aliases>
 			<Alias>DMC-FZ40</Alias>
 		</Aliases>
-		<Hints>
-			<Hint name="zero_is_bad" value=""/>
-		</Hints>
 	</Camera>
 	<Camera make="Panasonic" model = "DMC-FZ70">
 		<ID make="Panasonic" model="DMC-FZ70">Panasonic DMC-FZ70</ID>
@@ -4489,9 +4327,6 @@
 		<Aliases>
 			<Alias>DMC-FZ72</Alias>
 		</Aliases>
-		<Hints>
-			<Hint name="zero_is_bad" value=""/>
-		</Hints>
 	</Camera>
 	<Camera make="Panasonic" model = "DMC-FZ70" mode="4:3">
 		<ID make="Panasonic" model="DMC-FZ70">Panasonic DMC-FZ70</ID>
@@ -4506,9 +4341,48 @@
 		<Aliases>
 			<Alias>DMC-FZ72</Alias>
 		</Aliases>
-		<Hints>
-			<Hint name="zero_is_bad" value=""/>
-		</Hints>
+	</Camera>
+	<Camera make="Panasonic" model="DMC-FZ70" mode="1:1">
+		<ID make="Panasonic" model="DMC-FZ70">Panasonic DMC-FZ70</ID>
+		<CFA width="2" height="2">
+			<Color x="0" y="0">RED</Color>
+			<Color x="1" y="0">GREEN</Color>
+			<Color x="0" y="1">GREEN</Color>
+			<Color x="1" y="1">BLUE</Color>
+		</CFA>
+		<Crop x="0" y="0" width="0" height="0"/>
+		<Sensor black="144" white="3956"/>
+		<Aliases>
+			<Alias>DMC-FZ72</Alias>
+		</Aliases>
+	</Camera>
+	<Camera make="Panasonic" model="DMC-FZ70" mode="3:2">
+		<ID make="Panasonic" model="DMC-FZ70">Panasonic DMC-FZ70</ID>
+		<CFA width="2" height="2">
+			<Color x="0" y="0">RED</Color>
+			<Color x="1" y="0">GREEN</Color>
+			<Color x="0" y="1">GREEN</Color>
+			<Color x="1" y="1">BLUE</Color>
+		</CFA>
+		<Crop x="0" y="0" width="-182" height="0"/>
+		<Sensor black="144" white="3956"/>
+		<Aliases>
+			<Alias>DMC-FZ72</Alias>
+		</Aliases>
+	</Camera>
+	<Camera make="Panasonic" model="DMC-FZ70" mode="16:9">
+		<ID make="Panasonic" model="DMC-FZ70">Panasonic DMC-FZ70</ID>
+		<CFA width="2" height="2">
+			<Color x="0" y="0">RED</Color>
+			<Color x="1" y="0">GREEN</Color>
+			<Color x="0" y="1">GREEN</Color>
+			<Color x="1" y="1">BLUE</Color>
+		</CFA>
+		<Crop x="0" y="0" width="-182" height="0"/>
+		<Sensor black="144" white="3956"/>
+		<Aliases>
+			<Alias>DMC-FZ72</Alias>
+		</Aliases>
 	</Camera>
 	<Camera make="Panasonic" model = "DMC-FZ100">
 		<ID make="Panasonic" model="DMC-FZ100">Panasonic DMC-FZ100</ID>
@@ -4520,9 +4394,6 @@
 		</CFA>
 		<Crop x="0" y="0" width="-200" height="0"/>
 		<Sensor black="120" white="3986"/>
-		<Hints>
-			<Hint name="zero_is_bad" value=""/>
-		</Hints>
 	</Camera>
 	<Camera make="Panasonic" model = "DMC-FZ100" mode="4:3">
 		<ID make="Panasonic" model="DMC-FZ100">Panasonic DMC-FZ100</ID>
@@ -4534,9 +4405,6 @@
 		</CFA>
 		<Crop x="0" y="0" width="-200" height="0"/>
 		<Sensor black="120" white="3986"/>
-		<Hints>
-			<Hint name="zero_is_bad" value=""/>
-		</Hints>
 	</Camera>
 	<Camera make="Panasonic" model="DMC-FZ1000">
 		<ID make="Panasonic" model="DMC-FZ1000">Panasonic DMC-FZ1000</ID>
@@ -4603,9 +4471,6 @@
 		</CFA>
 		<Crop x="0" y="0" width="-154" height="0"/>
 		<Sensor black="150" white="3956"/>
-		<Hints>
-			<Hint name="zero_is_bad" value=""/>
-		</Hints>
 	</Camera>
 	<Camera make="Panasonic" model = "DMC-GX1" mode = "4:3">
 		<ID make="Panasonic" model="DMC-GX1">Panasonic DMC-GX1</ID>
@@ -4617,9 +4482,6 @@
 		</CFA>
 		<Crop x="0" y="0" width="-154" height="0"/>
 		<Sensor black="150" white="3956"/>
-		<Hints>
-			<Hint name="zero_is_bad" value=""/>
-		</Hints>
 	</Camera>
 	<Camera make="Panasonic" model = "DMC-GX1" mode = "3:2">
 		<ID make="Panasonic" model="DMC-GX1">Panasonic DMC-GX1</ID>
@@ -4631,9 +4493,6 @@
 		</CFA>
 		<Crop x="0" y="0" width="-170" height="0"/>
 		<Sensor black="150" white="3956"/>
-		<Hints>
-			<Hint name="zero_is_bad" value=""/>
-		</Hints>
 	</Camera>
 	<Camera make="Panasonic" model = "DMC-GX1" mode = "16:9">
 		<ID make="Panasonic" model="DMC-GX1">Panasonic DMC-GX1</ID>
@@ -4645,9 +4504,6 @@
 		</CFA>
 		<Crop x="0" y="0" width="-170" height="0"/>
 		<Sensor black="150" white="3956"/>
-		<Hints>
-			<Hint name="zero_is_bad" value=""/>
-		</Hints>
 	</Camera>
 	<Camera make="Panasonic" model = "DMC-GX1" mode = "1:1">
 		<ID make="Panasonic" model="DMC-GX1">Panasonic DMC-GX1</ID>
@@ -4659,9 +4515,6 @@
 		</CFA>
 		<Crop x="0" y="0" width="-198" height="0"/>
 		<Sensor black="150" white="3956"/>
-		<Hints>
-			<Hint name="zero_is_bad" value=""/>
-		</Hints>
 	</Camera>
 	<Camera make="Panasonic" model = "DMC-GX7">
 		<ID make="Panasonic" model="DMC-GX7">Panasonic DMC-GX7</ID>
@@ -4673,9 +4526,6 @@
 		</CFA>
 		<Crop x="0" y="0" width="-208" height="0"/>
 		<Sensor black="150" white="3956"/>
-		<Hints>
-			<Hint name="zero_is_bad" value=""/>
-		</Hints>
 	</Camera>
 	<Camera make="Panasonic" model = "DMC-GX7" mode = "4:3">
 		<ID make="Panasonic" model="DMC-GX7">Panasonic DMC-GX7</ID>
@@ -4687,9 +4537,6 @@
 		</CFA>
 		<Crop x="0" y="0" width="-208" height="0"/>
 		<Sensor black="150" white="3956"/>
-		<Hints>
-			<Hint name="zero_is_bad" value=""/>
-		</Hints>
 	</Camera>
 	<Camera make="Panasonic" model = "DMC-GX7" mode = "3:2">
 		<ID make="Panasonic" model="DMC-GX7">Panasonic DMC-GX7</ID>
@@ -4701,9 +4548,6 @@
 		</CFA>
 		<Crop x="0" y="0" width="-208" height="0"/>
 		<Sensor black="150" white="3956"/>
-		<Hints>
-			<Hint name="zero_is_bad" value=""/>
-		</Hints>
 	</Camera>
 	<Camera make="Panasonic" model = "DMC-GX7" mode = "16:9">
 		<ID make="Panasonic" model="DMC-GX7">Panasonic DMC-GX7</ID>
@@ -4715,9 +4559,6 @@
 		</CFA>
 		<Crop x="0" y="0" width="-208" height="0"/>
 		<Sensor black="150" white="3956"/>
-		<Hints>
-			<Hint name="zero_is_bad" value=""/>
-		</Hints>
 	</Camera>
 	<Camera make="Panasonic" model = "DMC-GX7" mode = "1:1">
 		<ID make="Panasonic" model="DMC-GX7">Panasonic DMC-GX7</ID>
@@ -4729,23 +4570,28 @@
 		</CFA>
 		<Crop x="0" y="0" width="-32" height="0"/>
 		<Sensor black="150" white="3956"/>
-		<Hints>
-			<Hint name="zero_is_bad" value=""/>
-		</Hints>
 	</Camera>
-	<Camera make="Panasonic" model = "DMC-LF1" mode="4:3">
-		<ID make="Panasonic" model="DMC-LF1">Panasonic DMC-LF1</ID>
+	<Camera make="Panasonic" model="DMC-GX8">
+		<ID make="Panasonic" model="DMC-GX8">Panasonic DMC-GX8</ID>
 		<CFA width="2" height="2">
-			<Color x="0" y="0">RED</Color>
-			<Color x="1" y="0">GREEN</Color>
-			<Color x="0" y="1">GREEN</Color>
-			<Color x="1" y="1">BLUE</Color>
+			<Color x="0" y="0">GREEN</Color>
+			<Color x="1" y="0">BLUE</Color>
+			<Color x="0" y="1">RED</Color>
+			<Color x="1" y="1">GREEN</Color>
 		</CFA>
-		<Crop x="0" y="0" width="-130" height="0"/>
-		<Sensor black="150" white="3956"/>
-		<Hints>
-			<Hint name="zero_is_bad" value=""/>
-		</Hints>
+		<Crop x="0" y="0" width="-64" height="0"/>
+		<Sensor black="143" white="4095"/>
+	</Camera>
+	<Camera make="Panasonic" model="DMC-GX8" mode="4:3">
+		<ID make="Panasonic" model="DMC-GX8">Panasonic DMC-GX8</ID>
+		<CFA width="2" height="2">
+			<Color x="0" y="0">GREEN</Color>
+			<Color x="1" y="0">BLUE</Color>
+			<Color x="0" y="1">RED</Color>
+			<Color x="1" y="1">GREEN</Color>
+		</CFA>
+		<Crop x="0" y="0" width="-64" height="0"/>
+		<Sensor black="143" white="4095"/>
 	</Camera>
 	<!-- Default guess -->
 	<Camera make="Panasonic" model = "DMC-LF1">
@@ -4757,10 +4603,51 @@
 			<Color x="1" y="1">BLUE</Color>
 		</CFA>
 		<Crop x="0" y="0" width="-130" height="0"/>
-		<Sensor black="150" white="3956"/>
-		<Hints>
-			<Hint name="zero_is_bad" value=""/>
-		</Hints>
+		<Sensor black="143" white="3971"/>
+	</Camera>
+	<Camera make="Panasonic" model = "DMC-LF1" mode="4:3">
+		<ID make="Panasonic" model="DMC-LF1">Panasonic DMC-LF1</ID>
+		<CFA width="2" height="2">
+			<Color x="0" y="0">RED</Color>
+			<Color x="1" y="0">GREEN</Color>
+			<Color x="0" y="1">GREEN</Color>
+			<Color x="1" y="1">BLUE</Color>
+		</CFA>
+		<Crop x="0" y="0" width="-126" height="0"/>
+		<Sensor black="143" white="3956"/>
+	</Camera>
+	<Camera make="Panasonic" model="DMC-LF1" mode="3:2">
+		<ID make="Panasonic" model="DMC-LF1">Panasonic DMC-LF1</ID>
+		<CFA width="2" height="2">
+			<Color x="0" y="0">RED</Color>
+			<Color x="1" y="0">GREEN</Color>
+			<Color x="0" y="1">GREEN</Color>
+			<Color x="1" y="1">BLUE</Color>
+		</CFA>
+		<Crop x="0" y="0" width="-126" height="0"/>
+		<Sensor black="143" white="3971"/>
+	</Camera>
+	<Camera make="Panasonic" model="DMC-LF1" mode="16:9">
+		<ID make="Panasonic" model="DMC-LF1">Panasonic DMC-LF1</ID>
+		<CFA width="2" height="2">
+			<Color x="0" y="0">RED</Color>
+			<Color x="1" y="0">GREEN</Color>
+			<Color x="0" y="1">GREEN</Color>
+			<Color x="1" y="1">BLUE</Color>
+		</CFA>
+		<Crop x="0" y="0" width="-126" height="0"/>
+		<Sensor black="143" white="3956"/>
+	</Camera>
+	<Camera make="Panasonic" model="DMC-LF1" mode="1:1">
+		<ID make="Panasonic" model="DMC-LF1">Panasonic DMC-LF1</ID>
+		<CFA width="2" height="2">
+			<Color x="0" y="0">RED</Color>
+			<Color x="1" y="0">GREEN</Color>
+			<Color x="0" y="1">GREEN</Color>
+			<Color x="1" y="1">BLUE</Color>
+		</CFA>
+		<Crop x="0" y="0" width="-16" height="0"/>
+		<Sensor black="142" white="3971"/>
 	</Camera>
 	<Camera make="Panasonic" model = "DMC-LX3">
 		<ID make="Panasonic" model="DMC-LX3">Panasonic DMC-LX3</ID>
@@ -4772,9 +4659,6 @@
 		</CFA>
 		<Crop x="0" y="0" width="-84" height="0"/>
 		<Sensor black="15" white="3971"/>
-		<Hints>
-			<Hint name="zero_is_bad" value=""/>
-		</Hints>
 	</Camera>
 	<Camera make="Panasonic" model = "DMC-LX3" mode="16:9">
 		<ID make="Panasonic" model="DMC-LX3">Panasonic DMC-LX3</ID>
@@ -4786,9 +4670,6 @@
 		</CFA>
 		<Crop x="0" y="0" width="3990" height="2250"/>
 		<Sensor black="15" white="3971"/>
-		<Hints>
-			<Hint name="zero_is_bad" value=""/>
-		</Hints>
 	</Camera>
 	<Camera make="Panasonic" model = "DMC-LX3" mode="4:3">
 		<ID make="Panasonic" model="DMC-LX3">Panasonic DMC-LX3</ID>
@@ -4800,9 +4681,6 @@
 		</CFA>
 		<Crop x="0" y="0" width="3666" height="2754"/>
 		<Sensor black="15" white="3971"/>
-		<Hints>
-			<Hint name="zero_is_bad" value=""/>
-		</Hints>
 	</Camera>
 	<Camera make="Panasonic" model = "DMC-LX3" mode="3:2">
 		<ID make="Panasonic" model="DMC-LX3">Panasonic DMC-LX3</ID>
@@ -4814,9 +4692,6 @@
 		</CFA>
 		<Crop x="0" y="0" width="-44" height="0"/>
 		<Sensor black="15" white="3971"/>
-		<Hints>
-			<Hint name="zero_is_bad" value=""/>
-		</Hints>
 	</Camera>
 	<Camera make="LEICA" model="DIGILUX 2" decoder_version="2">
 		<ID make="Leica" model="Digilux 2">Leica Digilux 2</ID>
@@ -5060,9 +4935,6 @@
 		</CFA>
 		<Crop x="0" y="0" width="-84" height="0"/>
 		<Sensor black="15" white="3971"/>
-		<Hints>
-			<Hint name="zero_is_bad" value=""/>
-		</Hints>
 	</Camera>
 	<Camera make="LEICA" model = "D-LUX 4" mode="16:9">
 		<ID make="Leica" model="D-LUX 4">Leica D-LUX 4</ID>
@@ -5074,9 +4946,6 @@
 		</CFA>
 		<Crop x="0" y="0" width="3990" height="2250"/>
 		<Sensor black="15" white="3971"/>
-		<Hints>
-			<Hint name="zero_is_bad" value=""/>
-		</Hints>
 	</Camera>
 	<Camera make="LEICA" model = "D-LUX 4" mode="4:3">
 		<ID make="Leica" model="D-LUX 4">Leica D-LUX 4</ID>
@@ -5088,9 +4957,6 @@
 		</CFA>
 		<Crop x="0" y="0" width="3666" height="2754"/>
 		<Sensor black="15" white="3971"/>
-		<Hints>
-			<Hint name="zero_is_bad" value=""/>
-		</Hints>
 	</Camera>
 	<Camera make="LEICA" model = "D-LUX 4" mode="3:2">
 		<ID make="Leica" model="D-LUX 4">Leica D-LUX 4</ID>
@@ -5102,9 +4968,6 @@
 		</CFA>
 		<Crop x="0" y="0" width="-44" height="0"/>
 		<Sensor black="15" white="3971"/>
-		<Hints>
-			<Hint name="zero_is_bad" value=""/>
-		</Hints>
 	</Camera>
 
 	<Camera make="Panasonic" model = "DMC-LX5">
@@ -5117,9 +4980,6 @@
 		</CFA>
 		<Crop x="0" y="0" width="-200" height="-4"/>
 		<Sensor black="150" white="3986"/>
-		<Hints>
-			<Hint name="zero_is_bad" value=""/>
-		</Hints>
 	</Camera>
 	<Camera make="Panasonic" model = "DMC-LX5" mode="4:3">
 		<ID make="Panasonic" model="DMC-LX5">Panasonic DMC-LX5</ID>
@@ -5131,9 +4991,6 @@
 		</CFA>
 		<Crop x="0" y="0" width="-200" height="-4"/>
 		<Sensor black="150" white="3986"/>
-		<Hints>
-			<Hint name="zero_is_bad" value=""/>
-		</Hints>
 	</Camera>
 	<Camera make="Panasonic" model = "DMC-LX5" mode="3:2">
 		<ID make="Panasonic" model="DMC-LX5">Panasonic DMC-LX5</ID>
@@ -5145,9 +5002,6 @@
 		</CFA>
 		<Crop x="0" y="0" width="-74" height="-4"/>
 		<Sensor black="150" white="3986"/>
-		<Hints>
-			<Hint name="zero_is_bad" value=""/>
-		</Hints>
 	</Camera>
 	<Camera make="Panasonic" model = "DMC-LX5" mode="16:9">
 		<ID make="Panasonic" model="DMC-LX5">Panasonic DMC-LX5</ID>
@@ -5159,9 +5013,6 @@
 		</CFA>
 		<Crop x="0" y="0" width="-104" height="-4"/>
 		<Sensor black="150" white="3986"/>
-		<Hints>
-			<Hint name="zero_is_bad" value=""/>
-		</Hints>
 	</Camera>
 	<Camera make="Panasonic" model = "DMC-LX5" mode="1:1">
 		<ID make="Panasonic" model="DMC-LX5">Panasonic DMC-LX5</ID>
@@ -5173,9 +5024,6 @@
 		</CFA>
 		<Crop x="0" y="0" width="-220" height="-4"/>
 		<Sensor black="150" white="3986"/>
-		<Hints>
-			<Hint name="zero_is_bad" value=""/>
-		</Hints>
 	</Camera>
 	<!-- Leica D-Lux 5 is the same camera as LX-5 -->
 	<Camera make="LEICA" model = "D-LUX 5">
@@ -5188,9 +5036,6 @@
 		</CFA>
 		<Crop x="0" y="0" width="-200" height="-4"/>
 		<Sensor black="150" white="3986"/>
-		<Hints>
-			<Hint name="zero_is_bad" value=""/>
-		</Hints>
 	</Camera>
 	<Camera make="LEICA" model = "D-LUX 5" mode="4:3">
 		<ID make="Leica" model="D-LUX 5">Leica D-LUX 5</ID>
@@ -5202,9 +5047,6 @@
 		</CFA>
 		<Crop x="0" y="0" width="-200" height="-4"/>
 		<Sensor black="150" white="3986"/>
-		<Hints>
-			<Hint name="zero_is_bad" value=""/>
-		</Hints>
 	</Camera>
 	<Camera make="LEICA" model = "D-LUX 5" mode="3:2">
 		<ID make="Leica" model="D-LUX 5">Leica D-LUX 5</ID>
@@ -5216,9 +5058,6 @@
 		</CFA>
 		<Crop x="0" y="0" width="-74" height="-4"/>
 		<Sensor black="150" white="3986"/>
-		<Hints>
-			<Hint name="zero_is_bad" value=""/>
-		</Hints>
 	</Camera>
 	<Camera make="LEICA" model = "D-LUX 5" mode="16:9">
 		<ID make="Leica" model="D-LUX 5">Leica D-LUX 5</ID>
@@ -5230,9 +5069,6 @@
 		</CFA>
 		<Crop x="0" y="0" width="-104" height="-4"/>
 		<Sensor black="150" white="3986"/>
-		<Hints>
-			<Hint name="zero_is_bad" value=""/>
-		</Hints>
 	</Camera>
 	<Camera make="LEICA" model = "D-LUX 5" mode="1:1">
 		<ID make="Leica" model="D-LUX 5">Leica D-LUX 5</ID>
@@ -5244,9 +5080,6 @@
 		</CFA>
 		<Crop x="0" y="0" width="-220" height="-4"/>
 		<Sensor black="150" white="3986"/>
-		<Hints>
-			<Hint name="zero_is_bad" value=""/>
-		</Hints>
 	</Camera>
 	<Camera make="Panasonic" model = "DMC-LX7">
 		<ID make="Panasonic" model="DMC-LX7">Panasonic DMC-LX7</ID>
@@ -5258,9 +5091,6 @@
 		</CFA>
 		<Crop x="0" y="0" width="-34" height="0"/>
 		<Sensor black="150" white="3971"/>
-		<Hints>
-			<Hint name="zero_is_bad" value=""/>
-		</Hints>
 	</Camera>
 	<Camera make="Panasonic" model = "DMC-LX7" mode="4:3">
 		<ID make="Panasonic" model="DMC-LX7">Panasonic DMC-LX7</ID>
@@ -5272,9 +5102,6 @@
 		</CFA>
 		<Crop x="0" y="0" width="-34" height="0"/>
 		<Sensor black="150" white="3971"/>
-		<Hints>
-			<Hint name="zero_is_bad" value=""/>
-		</Hints>
 	</Camera>
 	<Camera make="Panasonic" model = "DMC-LX7" mode="3:2">
 		<ID make="Panasonic" model="DMC-LX7">Panasonic DMC-LX7</ID>
@@ -5286,9 +5113,6 @@
 		</CFA>
 		<Crop x="0" y="0" width="-128" height="0"/>
 		<Sensor black="150" white="3971"/>
-		<Hints>
-			<Hint name="zero_is_bad" value=""/>
-		</Hints>
 	</Camera>
 	<Camera make="Panasonic" model = "DMC-LX7" mode="16:9">
 		<ID make="Panasonic" model="DMC-LX7">Panasonic DMC-LX7</ID>
@@ -5300,9 +5124,6 @@
 		</CFA>
 		<Crop x="0" y="0" width="-160" height="0"/>
 		<Sensor black="150" white="3971"/>
-		<Hints>
-			<Hint name="zero_is_bad" value=""/>
-		</Hints>
 	</Camera>
 	<Camera make="Panasonic" model = "DMC-LX7" mode="1:1">
 		<ID make="Panasonic" model="DMC-LX7">Panasonic DMC-LX7</ID>
@@ -5314,9 +5135,6 @@
 		</CFA>
 		<Crop x="0" y="0" width="-48" height="0"/>
 		<Sensor black="150" white="3971"/>
-		<Hints>
-			<Hint name="zero_is_bad" value=""/>
-		</Hints>
 	</Camera>
 	<!-- LEICA D-LUX 6 is the same camera as Panasonic DMC-LX7 -->
 	<Camera make="LEICA" model = "D-LUX 6">
@@ -5329,9 +5147,6 @@
 		</CFA>
 		<Crop x="0" y="0" width="-34" height="0"/>
 		<Sensor black="150" white="3971"/>
-		<Hints>
-			<Hint name="zero_is_bad" value=""/>
-		</Hints>
 	</Camera>
 	<Camera make="LEICA" model = "D-LUX 6" mode="4:3">
 		<ID make="Leica" model="D-LUX 6">Leica D-LUX 6</ID>
@@ -5343,9 +5158,6 @@
 		</CFA>
 		<Crop x="0" y="0" width="-34" height="0"/>
 		<Sensor black="150" white="3971"/>
-		<Hints>
-			<Hint name="zero_is_bad" value=""/>
-		</Hints>
 	</Camera>
 	<Camera make="LEICA" model = "D-LUX 6" mode="3:2">
 		<ID make="Leica" model="D-LUX 6">Leica D-LUX 6</ID>
@@ -5357,9 +5169,6 @@
 		</CFA>
 		<Crop x="0" y="0" width="-128" height="0"/>
 		<Sensor black="150" white="3971"/>
-		<Hints>
-			<Hint name="zero_is_bad" value=""/>
-		</Hints>
 	</Camera>
 	<Camera make="LEICA" model = "D-LUX 6" mode="16:9">
 		<ID make="Leica" model="D-LUX 6">Leica D-LUX 6</ID>
@@ -5371,9 +5180,6 @@
 		</CFA>
 		<Crop x="0" y="0" width="-160" height="0"/>
 		<Sensor black="150" white="3971"/>
-		<Hints>
-			<Hint name="zero_is_bad" value=""/>
-		</Hints>
 	</Camera>
 	<Camera make="LEICA" model = "D-LUX 6" mode="1:1">
 		<ID make="Leica" model="D-LUX 6">Leica D-LUX 6</ID>
@@ -5385,9 +5191,6 @@
 		</CFA>
 		<Crop x="0" y="0" width="-48" height="0"/>
 		<Sensor black="150" white="3971"/>
-		<Hints>
-			<Hint name="zero_is_bad" value=""/>
-		</Hints>
 	</Camera>
 	<Camera make="Panasonic" model="DMC-LX1" mode="16:9">
 		<ID make="Panasonic" model="DMC-LX1">Panasonic DMC-LX1</ID>
@@ -5733,6 +5536,17 @@
 		</CFA>
 		<Crop x="0" y="0" width="3880" height="2604"/>
 		<Sensor black="0" white="4095"/>
+	</Camera>
+	<Camera make="RICOH IMAGING COMPANY, LTD." model="PENTAX K-S1">
+		<ID make="Pentax" model="K-S1">Pentax K-S1</ID>
+		<CFA width="2" height="2">
+			<Color x="0" y="0">RED</Color>
+			<Color x="1" y="0">GREEN</Color>
+			<Color x="0" y="1">GREEN</Color>
+			<Color x="1" y="1">BLUE</Color>
+		</CFA>
+		<Crop x="0" y="0" width="0" height="0"/>
+		<Sensor black="32" white="4062"/>
 	</Camera>
 	<Camera make="RICOH IMAGING COMPANY, LTD." model="PENTAX K-S2">
 		<ID make="Pentax" model="K-S2">Pentax K-S2</ID>
@@ -6149,6 +5963,17 @@
 	</Camera>
 	<Camera make="SONY" model="DSC-RX10">
 		<ID make="Sony" model="DSC-RX10">Sony DSC-RX10</ID>
+		<CFA width="2" height="2">
+			<Color x="0" y="0">RED</Color>
+			<Color x="1" y="0">GREEN</Color>
+			<Color x="0" y="1">GREEN</Color>
+			<Color x="1" y="1">BLUE</Color>
+		</CFA>
+		<Crop x="0" y="0" width="-8" height="0"/>
+		<Sensor black="800" white="16300"/>
+	</Camera>
+	<Camera make="SONY" model="DSC-RX10M2">
+		<ID make="Sony" model="DSC-RX10M2">Sony DSC-RX10M2</ID>
 		<CFA width="2" height="2">
 			<Color x="0" y="0">RED</Color>
 			<Color x="1" y="0">GREEN</Color>
@@ -6616,7 +6441,18 @@
 			<Color x="0" y="1">GREEN</Color>
 			<Color x="1" y="1">BLUE</Color>
 		</CFA>
-		<Crop x="0" y="0" width="-26" height="0"/>
+		<Crop x="0" y="0" width="-32" height="0"/>
+		<Sensor black="512" white="16300"/>
+	</Camera>
+	<Camera make="SONY" model="ILCE-7SM2">
+		<ID make="Sony" model="ILCE-7SM2">Sony ILCE-7SM2</ID>
+		<CFA width="2" height="2">
+			<Color x="0" y="0">RED</Color>
+			<Color x="1" y="0">GREEN</Color>
+			<Color x="0" y="1">GREEN</Color>
+			<Color x="1" y="1">BLUE</Color>
+		</CFA>
+		<Crop x="0" y="0" width="-32" height="0"/>
 		<Sensor black="512" white="16300"/>
 	</Camera>
 	<Camera make="SONY" model="DSC-RX1">
@@ -7367,6 +7203,9 @@
 		</CFA>
 		<Crop x="0" y="0" width="-60" height="0"/>
 		<Sensor black="511" white="16383"/>
+		<Hints>
+			<Hint name="sr2_format" value=""/>
+		</Hints>
 	</Camera>
 	<Camera make="Mamiya-OP Co.,Ltd." model="MAMIYA ZD">
 		<ID make="Mamiya" model="ZD">Mamiya ZD</ID>
@@ -7378,9 +7217,6 @@
 		</CFA>
 		<Crop x="0" y="0" width="0" height="0"/>
 		<Sensor black="0" white="4000"/>
-		<Hints>
-			<Hint name="override_whitebalance" value="12740092,10000000,11964914"/>
-		</Hints>
 	</Camera>
 	<Camera make="Creo/Leaf" model="Leaf Aptus 22(LF3779     )/Hasselblad H1">
 		<ID make="Leaf" model="Aptus 22">Leaf Aptus 22</ID>
@@ -7856,7 +7692,6 @@
 			<Hint name="filesize" value="6573120"/>
 			<Hint name="full_width" value="2672"/>
 			<Hint name="full_height" value="1968"/>
-			<Hint name="override_whitebalance" value="1564987,1000000,1710746"/>
 		</Hints>
 		<BlackAreas>
 			<Vertical x="2632" width="40"/>
@@ -7886,7 +7721,6 @@
 			<Hint name="filesize" value="7710960"/>
 			<Hint name="full_width" value="2888"/>
 			<Hint name="full_height" value="2136"/>
-			<Hint name="override_whitebalance" value="1582762,1000000,1718605"/>
 		</Hints>
 		<BlackAreas>
 			<Vertical x="0" width="40"/>
@@ -7903,7 +7737,6 @@
 			<Hint name="filesize" value="9219600"/>
 			<Hint name="full_width" value="3152"/>
 			<Hint name="full_height" value="2340"/>
-			<Hint name="override_whitebalance" value="1568679,1000000,1602855"/>
 		</Hints>
 		<BlackAreas>
 			<Vertical x="0" width="30"/>
@@ -7933,7 +7766,6 @@
 			<Hint name="filesize" value="10341600"/>
 			<Hint name="full_width" value="3336"/>
 			<Hint name="full_height" value="2480"/>
-			<Hint name="override_whitebalance" value="1524730,1000000,2009988"/>
 		</Hints>
 		<BlackAreas>
 			<Vertical x="3306" width="30"/>
@@ -7950,7 +7782,6 @@
 			<Hint name="filesize" value="10383120"/>
 			<Hint name="full_width" value="3344"/>
 			<Hint name="full_height" value="2484"/>
-			<Hint name="override_whitebalance" value="1593248,957204,1460876"/>
 		</Hints>
 		<BlackAreas>
 			<Vertical x="0" width="30"/>
@@ -7967,7 +7798,6 @@
 			<Hint name="filesize" value="12945240"/>
 			<Hint name="full_width" value="3736"/>
 			<Hint name="full_height" value="2772"/>
-			<Hint name="override_whitebalance" value="1838080,1000000,1556674"/>
 		</Hints>
 		<BlackAreas>
 			<Vertical x="3686" width="50"/>
@@ -7984,7 +7814,6 @@
 			<Hint name="filesize" value="15636240"/>
 			<Hint name="full_width" value="4104"/>
 			<Hint name="full_height" value="3048"/>
-			<Hint name="override_whitebalance" value="2110416,1000000,1770211"/>
 		</Hints>
 		<BlackAreas>
 			<Vertical x="0" width="45"/>
@@ -8001,7 +7830,6 @@
 			<Hint name="filesize" value="15467760"/>
 			<Hint name="full_width" value="3720"/>
 			<Hint name="full_height" value="2772"/>
-			<Hint name="override_whitebalance" value="1614148,979180,2115417"/>
 		</Hints>
 		<BlackAreas>
 			<Vertical x="3690" width="30"/>

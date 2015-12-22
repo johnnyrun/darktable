@@ -60,6 +60,7 @@
 #include "control/jobs/control_jobs.h"
 #include "control/signal.h"
 #include "control/conf.h"
+#include "gui/guides.h"
 #include "gui/gtk.h"
 #include "gui/presets.h"
 #include "lua/init.h"
@@ -392,26 +393,13 @@ int dt_init(int argc, char *argv[], const int init_gui, lua_State *L)
   _dt_sigsegv_old_handler = signal(SIGSEGV, &_dt_sigsegv_handler);
 #endif
 
-#ifndef __GNUC_PREREQ
-// on OSX, gcc-4.6 and clang chokes if this is not here.
-#if defined __GNUC__ && defined __GNUC_MINOR__
-#define __GNUC_PREREQ(maj, min) ((__GNUC__ << 16) + __GNUC_MINOR__ >= ((maj) << 16) + (min))
-#else
-#define __GNUC_PREREQ(maj, min) 0
-#endif
-#endif
-#ifndef __has_builtin
-// http://clang.llvm.org/docs/LanguageExtensions.html#feature-checking-macros
-#define __has_builtin(x) false
-#endif
-
 #ifndef __SSE3__
 #error "Unfortunately we depend on SSE3 instructions at this time."
 #error "Please contribute a backport patch (or buy a newer processor)."
 #else
   int sse3_supported = 0;
 
-#if(__GNUC_PREREQ(4, 8) || __has_builtin(__builtin_cpu_supports))
+#ifdef HAVE_BUILTIN_CPU_SUPPORTS
   // NOTE: _may_i_use_cpu_feature() looks better, but only avaliable in ICC
   sse3_supported = __builtin_cpu_supports("sse3");
 #else
@@ -736,7 +724,7 @@ int dt_init(int argc, char *argv[], const int init_gui, lua_State *L)
   dt_loc_init_plugindir(moduledir_from_command);
   if(dt_loc_init_tmp_dir(tmpdir_from_command))
   {
-    printf(_("ERROR : invalid temporary directory : %s\n"), darktable.tmpdir);
+    fprintf(stderr, "error: invalid temporary directory: %s\n", darktable.tmpdir);
     return usage(argv[0]);
   }
   dt_loc_init_user_config_dir(configdir_from_command);
@@ -868,6 +856,8 @@ int dt_init(int argc, char *argv[], const int init_gui, lua_State *L)
   // Initialize the password storage engine
   darktable.pwstorage = dt_pwstorage_new();
 
+  darktable.guides = dt_guides_init();
+
 #ifdef HAVE_GRAPHICSMAGICK
   /* GraphicsMagick init */
   InitializeMagick(darktable.progname);
@@ -930,6 +920,7 @@ int dt_init(int argc, char *argv[], const int init_gui, lua_State *L)
     dt_control_load_config(darktable.control);
   }
 
+  dt_control_gui_mode_t mode = DT_LIBRARY;
   if(init_gui)
   {
     // init the gui part of views
@@ -980,12 +971,8 @@ int dt_init(int argc, char *argv[], const int init_gui, lua_State *L)
     if(loaded_images == 1 && only_single_images)
     {
       dt_control_set_mouse_over_id(last_id);
-      dt_ctl_switch_mode_to(DT_DEVELOP);
+      mode = DT_DEVELOP;
     }
-    else
-      dt_ctl_switch_mode_to(DT_LIBRARY);
-#else
-    dt_ctl_switch_mode_to(DT_LIBRARY);
 #endif
   }
 
@@ -1001,6 +988,8 @@ int dt_init(int argc, char *argv[], const int init_gui, lua_State *L)
 #ifdef USE_LUA
   dt_lua_init(darktable.lua_state.state, lua_command);
 #endif
+
+  if(init_gui) dt_ctl_switch_mode_to(mode);
 
   // last but not least construct the popup that asks the user about images whose xmp files are newer than the
   // db entry
@@ -1073,6 +1062,8 @@ void dt_cleanup()
   DestroyMagick();
 #endif
 
+  dt_guides_cleanup(darktable.guides);
+
   dt_database_destroy(darktable.db);
 
   if(init_gui)
@@ -1118,7 +1109,7 @@ void dt_gettime(char *datetime, size_t datetime_len)
 
 void *dt_alloc_align(size_t alignment, size_t size)
 {
-#if defined(__MACH__) || defined(__APPLE__) || (defined(__FreeBSD_version) && __FreeBSD_version < 700013)
+#if defined(__FreeBSD_version) && __FreeBSD_version < 700013
   return malloc(size);
 #elif defined(__WIN32__)
   return _aligned_malloc(size, alignment);

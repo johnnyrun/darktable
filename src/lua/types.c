@@ -341,6 +341,22 @@ static int autotype_newindex(lua_State *L)
   return (lua_gettop(L) - pos_set + 1);
 }
 
+
+static int autotype_tostring(lua_State *L)
+{
+  if(luaL_getmetafield(L,1,"__real_tostring")) {
+    lua_insert(L,1);
+    lua_call(L,1,1);
+    return 1;
+  } else {
+    char tmp[256];
+    luaL_getmetafield(L,1,"__luaA_TypeName");
+    snprintf(tmp,sizeof(tmp),"%s (%p)",lua_tostring(L,-1),lua_topointer(L,1));
+    lua_pushstring(L,tmp);
+    return 1;
+  }
+}
+
 /*************************/
 /* PUSH AND TO FUNCTIONS */
 /*************************/
@@ -460,8 +476,11 @@ static void gpointer_tofunc(lua_State *L, luaA_Type type_id, void *cout, int ind
     snprintf(error_msg,sizeof(error_msg),"%s expected",luaA_typename(L,type_id));
     luaL_argerror(L,index,error_msg);
   } 
-  void* udata = lua_touserdata(L,index);
+  gpointer* udata = lua_touserdata(L,index);
   memcpy(cout, udata, sizeof(gpointer));
+  if(!*udata) {
+    luaL_error(L,"Attempting to access of type %s after its destruction\n",luaA_typename(L,type_id));
+  }
 }
 
 static int unknown_pushfunc(lua_State *L, luaA_Type type_id, const void *cin)
@@ -694,6 +713,11 @@ static void init_metatable(lua_State *L, luaA_Type type_id)
 
   lua_newtable(L);
   lua_setfield(L, -2, "__set");
+
+  lua_pushvalue(L, -1);
+  lua_pushcclosure(L, autotype_tostring, 1);
+  lua_setfield(L, -2, "__tostring");
+
   // leave metatable on top of stack
 }
 
@@ -821,10 +845,46 @@ luaA_Type dt_lua_init_int_type_type(lua_State *L, luaA_Type type_id)
   return type_id;
 }
 
+static int gpointer_wrapper(lua_State*L) 
+{
+  gpointer *udata = (gpointer*)lua_touserdata(L,1);
+  if(!*udata) {
+    luaL_getmetafield(L,1,"__luaA_TypeName");
+    luaL_error(L,"Attempting to access an invalid object of type %s",lua_tostring(L,-1));
+  }
+  lua_CFunction callback = lua_tocfunction(L,lua_upvalueindex(1));
+  return callback(L);
+}
+
 
 luaA_Type dt_lua_init_gpointer_type_type(lua_State *L, luaA_Type type_id)
 {
   init_metatable(L, type_id);
+
+  lua_getfield(L,-1,"__next");
+  lua_pushcclosure(L, gpointer_wrapper,1);
+  lua_setfield(L, -2, "__next");
+
+  lua_getfield(L,-1,"__index");
+  lua_pushcclosure(L, gpointer_wrapper,1);
+  lua_setfield(L, -2, "__index");
+
+  lua_getfield(L,-1,"__newindex");
+  lua_pushcclosure(L, gpointer_wrapper,1);
+  lua_setfield(L, -2, "__newindex");
+
+  lua_getfield(L,-1,"__pairs");
+  lua_pushcclosure(L, gpointer_wrapper,1);
+  lua_setfield(L, -2, "__pairs");
+
+  lua_getfield(L,-1,"__ipairs");
+  lua_pushcclosure(L, gpointer_wrapper,1);
+  lua_setfield(L, -2, "__ipairs");
+
+  lua_getfield(L,-1,"__tostring");
+  lua_pushcclosure(L, gpointer_wrapper,1);
+  lua_setfield(L, -2, "__tostring");
+
   lua_pop(L, 1);
 
   luaA_conversion_type(L, type_id, gpointer_pushfunc, gpointer_tofunc);
@@ -845,6 +905,28 @@ void dt_lua_type_gpointer_alias_type(lua_State*L,luaA_Type type_id,void* pointer
   lua_settable(L,-3);
   lua_pop(L,1);
 
+
+}
+
+void dt_lua_type_gpointer_drop(lua_State*L, void* pointer)
+{
+  luaL_getsubtable(L, LUA_REGISTRYINDEX, "dt_lua_gpointer_values");
+
+  lua_pushlightuserdata(L, pointer);
+  lua_gettable(L,-2);
+  gpointer *udata = (gpointer*)lua_touserdata(L,-1);
+  if(lua_isnil(L,-1)) {
+    lua_pop(L,2);
+    return; // this table is weak, the object has been gc
+  }
+  *udata = NULL;
+  lua_pop(L,1);
+
+  lua_pushlightuserdata(L, pointer);
+  lua_pushnil(L);
+  lua_settable(L,-3);
+
+  lua_pop(L,1);
 
 }
 
@@ -874,6 +956,52 @@ gboolean dt_lua_typeisa_type(lua_State *L, luaA_Type obj_type, luaA_Type type_id
 
 void dt_lua_type_setmetafield_type(lua_State*L,luaA_Type type_id,const char* method_name)
 {
+  // These metafields should never be overridden by user code
+  if( 
+      !strcmp(method_name,"__index") ||
+      !strcmp(method_name,"__newindex") ||
+      !strcmp(method_name,"__number_index") ||
+      !strcmp(method_name,"__number_newindex") ||
+      !strcmp(method_name,"__pairs") ||
+      !strcmp(method_name,"__ipairs") ||
+      !strcmp(method_name,"__next") ||
+      !strcmp(method_name,"__inext") ||
+      !strcmp(method_name,"__get") ||
+      !strcmp(method_name,"__set") ||
+      !strcmp(method_name,"__len") ||
+      !strcmp(method_name,"__luaA_Type") ||
+      !strcmp(method_name,"__luaA_TypeName") ||
+      !strcmp(method_name,"__luaA_ParentMetatable") ||
+      !strcmp(method_name,"__init") ||
+      !strcmp(method_name,"__values") ||
+      !strcmp(method_name,"__singleton") ||
+      !strcmp(method_name,"__pusher") ||
+      !strcmp(method_name,"__getter") ||
+      !strcmp(method_name,"__mode") ||
+      0) {
+        luaL_error(L,"non-core lua code is not allowed to change meta-field %s\n",method_name);
+  } else if(!strcmp(method_name,"__tostring")) {
+    luaL_getmetatable(L, luaA_typename(L, type_id));
+    lua_pushvalue(L,-2);
+    lua_setfield(L, -2, "__real_tostring");
+    lua_pop(L, 2); // pop the metatable and the value
+    return;
+  // whitelist for specific types
+  } else if(
+      // if you add a type here, make sure it handles inheritence of metamethods itself
+      // typically, set the metamethod not for the parent type but just after inheritence
+      ( !strcmp(method_name,"__associated_object")&& dt_lua_typeisa_type(L,type_id,luaA_type_find(L,"dt_imageio_module_format_t"))) ||
+      ( !strcmp(method_name,"__associated_object")&& dt_lua_typeisa_type(L,type_id,luaA_type_find(L,"dt_imageio_module_storage_t"))) ||
+      ( !strcmp(method_name,"__gc")&& dt_lua_typeisa_type(L,type_id,luaA_type_find(L,"dt_style_t"))) ||
+      ( !strcmp(method_name,"__gc")&& dt_lua_typeisa_type(L,type_id,luaA_type_find(L,"dt_style_item_t"))) ||
+      ( !strcmp(method_name,"__gc")&& dt_lua_typeisa_type(L,type_id,luaA_type_find(L,"lua_widget"))) ||
+      ( !strcmp(method_name,"__call")&& dt_lua_typeisa_type(L,type_id,luaA_type_find(L,"lua_widget"))) ||
+      ( !strcmp(method_name,"__gtk_signals")&& dt_lua_typeisa_type(L,type_id,luaA_type_find(L,"lua_widget"))) ||
+      0) {
+    // Nothign to be done
+  } else {
+    luaL_error(L,"metafield not handled :%s for type %s\n",method_name,luaA_typename(L,type_id));
+  }
   luaL_getmetatable(L, luaA_typename(L, type_id));
   lua_pushvalue(L,-2);
   lua_setfield(L, -2, method_name);
@@ -917,6 +1045,23 @@ int dt_lua_init_early_types(lua_State *L)
   lua_setmetatable(L, -2);
 
   lua_setfield(L, LUA_REGISTRYINDEX, "dt_lua_gpointer_values");
+
+  luaA_enum(L,dt_lua_orientation_t);
+  luaA_enum_value_name(L,dt_lua_orientation_t,GTK_ORIENTATION_HORIZONTAL,"horizontal");
+  luaA_enum_value_name(L,dt_lua_orientation_t,GTK_ORIENTATION_VERTICAL,"vertical");
+
+  luaA_enum(L, dt_lua_align_t);
+  luaA_enum_value_name(L, dt_lua_align_t, GTK_ALIGN_FILL, "fill");
+  luaA_enum_value_name(L, dt_lua_align_t, GTK_ALIGN_START, "start");
+  luaA_enum_value_name(L, dt_lua_align_t, GTK_ALIGN_END, "end");
+  luaA_enum_value_name(L, dt_lua_align_t, GTK_ALIGN_CENTER, "center");
+  luaA_enum_value_name(L, dt_lua_align_t, GTK_ALIGN_BASELINE, "baseline");
+
+  luaA_enum(L, dt_lua_ellipsize_mode_t);
+  luaA_enum_value_name(L, dt_lua_ellipsize_mode_t, PANGO_ELLIPSIZE_NONE, "none");
+  luaA_enum_value_name(L, dt_lua_ellipsize_mode_t, PANGO_ELLIPSIZE_START, "start");
+  luaA_enum_value_name(L, dt_lua_ellipsize_mode_t, PANGO_ELLIPSIZE_MIDDLE, "middle");
+  luaA_enum_value_name(L, dt_lua_ellipsize_mode_t, PANGO_ELLIPSIZE_END, "end");
 
   return 0;
 }

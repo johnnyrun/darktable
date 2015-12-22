@@ -598,38 +598,41 @@ static gboolean borders_draw(GtkWidget *widget, cairo_t *cr, dt_iop_module_t *se
   dt_iop_borders_gui_data_t *g = (dt_iop_borders_gui_data_t *)self->gui_data;
   dt_iop_borders_params_t *p = (dt_iop_borders_params_t *)self->params;
 
-  if(fabsf(p->color[0] - self->picked_output_color[0]) < 0.0001f
-     && fabsf(p->color[1] - self->picked_output_color[1]) < 0.0001f
-     && fabsf(p->color[2] - self->picked_output_color[2]) < 0.0001f)
+  // interrupt if no valid color reading
+  if(self->picked_color_min[0] == INFINITY) return FALSE;
+
+  if(fabsf(p->color[0] - self->picked_color[0]) < 0.0001f
+     && fabsf(p->color[1] - self->picked_color[1]) < 0.0001f
+     && fabsf(p->color[2] - self->picked_color[2]) < 0.0001f)
   {
     // interrupt infinite loops
     return FALSE;
   }
 
-  if(fabsf(p->frame_color[0] - self->picked_output_color[0]) < 0.0001f
-     && fabsf(p->frame_color[1] - self->picked_output_color[1]) < 0.0001f
-     && fabsf(p->frame_color[2] - self->picked_output_color[2]) < 0.0001f)
+  if(fabsf(p->frame_color[0] - self->picked_color[0]) < 0.0001f
+     && fabsf(p->frame_color[1] - self->picked_color[1]) < 0.0001f
+     && fabsf(p->frame_color[2] - self->picked_color[2]) < 0.0001f)
   {
     // interrupt infinite loops
     return FALSE;
   }
 
-  GdkRGBA c = (GdkRGBA){.red = self->picked_output_color[0],
-                        .green = self->picked_output_color[1],
-                        .blue = self->picked_output_color[2],
+  GdkRGBA c = (GdkRGBA){.red = self->picked_color[0],
+                        .green = self->picked_color[1],
+                        .blue = self->picked_color[2],
                         .alpha = 1.0 };
   if(g->active_colorpick == g->frame_colorpick)
   {
-    p->frame_color[0] = self->picked_output_color[0];
-    p->frame_color[1] = self->picked_output_color[1];
-    p->frame_color[2] = self->picked_output_color[2];
+    p->frame_color[0] = self->picked_color[0];
+    p->frame_color[1] = self->picked_color[1];
+    p->frame_color[2] = self->picked_color[2];
     gtk_color_chooser_set_rgba(GTK_COLOR_CHOOSER(g->frame_colorpick), &c);
   }
   else
   {
-    p->color[0] = self->picked_output_color[0];
-    p->color[1] = self->picked_output_color[1];
-    p->color[2] = self->picked_output_color[2];
+    p->color[0] = self->picked_color[0];
+    p->color[1] = self->picked_color[1];
+    p->color[2] = self->picked_color[2];
     gtk_color_chooser_set_rgba(GTK_COLOR_CHOOSER(g->colorpick), &c);
   }
 
@@ -886,8 +889,8 @@ void gui_update(struct dt_iop_module_t *self)
 void init(dt_iop_module_t *module)
 {
   // module->data = malloc(sizeof(dt_iop_borders_data_t));
-  module->params = malloc(sizeof(dt_iop_borders_params_t));
-  module->default_params = malloc(sizeof(dt_iop_borders_params_t));
+  module->params = calloc(1, sizeof(dt_iop_borders_params_t));
+  module->default_params = calloc(1, sizeof(dt_iop_borders_params_t));
   module->default_enabled = 0;
   module->params_size = sizeof(dt_iop_borders_params_t);
   module->gui_data = NULL;
@@ -896,8 +899,6 @@ void init(dt_iop_module_t *module)
 
 void cleanup(dt_iop_module_t *module)
 {
-  free(module->gui_data);
-  module->gui_data = NULL;
   free(module->params);
   module->params = NULL;
 }

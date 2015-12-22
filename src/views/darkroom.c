@@ -67,6 +67,14 @@ static gboolean _brush_size_up_callback(GtkAccelGroup *accel_group, GObject *acc
                                         GdkModifierType modifier, gpointer data);
 static gboolean _brush_size_down_callback(GtkAccelGroup *accel_group, GObject *acceleratable, guint keyval,
                                           GdkModifierType modifier, gpointer data);
+static gboolean _brush_hardness_up_callback(GtkAccelGroup *accel_group, GObject *acceleratable, guint keyval,
+                                            GdkModifierType modifier, gpointer data);
+static gboolean _brush_hardness_down_callback(GtkAccelGroup *accel_group, GObject *acceleratable, guint keyval,
+                                              GdkModifierType modifier, gpointer data);
+static gboolean _brush_opacity_up_callback(GtkAccelGroup *accel_group, GObject *acceleratable, guint keyval,
+                                           GdkModifierType modifier, gpointer data);
+static gboolean _brush_opacity_down_callback(GtkAccelGroup *accel_group, GObject *acceleratable, guint keyval,
+                                             GdkModifierType modifier, gpointer data);
 
 static void _update_softproof_gamut_checking(dt_develop_t *d);
 
@@ -957,9 +965,8 @@ static void _overexposed_quickbutton_clicked(GtkWidget *w, gpointer user_data)
 static gboolean _overexposed_close_popup(GtkWidget *widget, GdkEvent *event, gpointer user_data)
 {
   dt_develop_t *d = (dt_develop_t *)user_data;
-  g_signal_handler_disconnect(widget, d->overexposed.destroy_signal_handler);
-  d->overexposed.destroy_signal_handler = 0;
-  gtk_widget_hide(d->overexposed.floating_window);
+  if(!gtk_widget_is_visible(darktable.bauhaus->popup_window))
+    gtk_widget_hide(d->overexposed.floating_window);
   return FALSE;
 }
 
@@ -984,8 +991,7 @@ static gboolean _overexposed_show_popup(gpointer user_data)
   gtk_window_present(GTK_WINDOW(d->overexposed.floating_window));
 
   // when the mouse moves back over the main window we close the popup.
-  d->overexposed.destroy_signal_handler
-      = g_signal_connect(window, "focus-in-event", G_CALLBACK(_overexposed_close_popup), user_data);
+  g_signal_connect(d->overexposed.floating_window, "focus-out-event", G_CALLBACK(_overexposed_close_popup), user_data);
 
   return FALSE;
 }
@@ -1071,9 +1077,8 @@ static void _softproof_quickbutton_clicked(GtkWidget *w, gpointer user_data)
 static gboolean _profile_close_popup(GtkWidget *widget, GdkEvent *event, gpointer user_data)
 {
   dt_develop_t *d = (dt_develop_t *)user_data;
-  g_signal_handler_disconnect(widget, d->profile.destroy_signal_handler);
-  d->profile.destroy_signal_handler = 0;
-  gtk_widget_hide(d->profile.floating_window);
+  if(!gtk_widget_is_visible(darktable.bauhaus->popup_window))
+    gtk_widget_hide(d->profile.floating_window);
   return FALSE;
 }
 
@@ -1098,8 +1103,7 @@ static gboolean _softproof_show_popup(gpointer user_data)
   gtk_window_present(GTK_WINDOW(d->profile.floating_window));
 
   // when the mouse moves back over the main window we close the popup.
-  d->profile.destroy_signal_handler
-  = g_signal_connect(window, "focus-in-event", G_CALLBACK(_profile_close_popup), user_data);
+  g_signal_connect(d->profile.floating_window, "focus-out-event", G_CALLBACK(_profile_close_popup), user_data);
 
   return FALSE;
 }
@@ -1163,8 +1167,7 @@ static gboolean _gamut_show_popup(gpointer user_data)
   gtk_window_present(GTK_WINDOW(d->profile.floating_window));
 
   // when the mouse moves back over the main window we close the popup.
-  d->profile.destroy_signal_handler
-  = g_signal_connect(window, "focus-in-event", G_CALLBACK(_profile_close_popup), user_data);
+  g_signal_connect(d->profile.floating_window, "focus-out-event", G_CALLBACK(_profile_close_popup), user_data);
 
   return FALSE;
 }
@@ -1327,7 +1330,7 @@ static gboolean _brush_size_up_callback(GtkAccelGroup *accel_group, GObject *acc
 {
   dt_develop_t *dev = (dt_develop_t *)data;
 
-  dt_masks_events_mouse_scrolled(dev->gui_module, 0, 0, 0, 0);
+  if(dev->form_visible) dt_masks_events_mouse_scrolled(dev->gui_module, 0, 0, 0, 0);
   return TRUE;
 }
 static gboolean _brush_size_down_callback(GtkAccelGroup *accel_group, GObject *acceleratable, guint keyval,
@@ -1335,7 +1338,41 @@ static gboolean _brush_size_down_callback(GtkAccelGroup *accel_group, GObject *a
 {
   dt_develop_t *dev = (dt_develop_t *)data;
 
-  dt_masks_events_mouse_scrolled(dev->gui_module, 0, 0, 1, 0);
+  if(dev->form_visible) dt_masks_events_mouse_scrolled(dev->gui_module, 0, 0, 1, 0);
+  return TRUE;
+}
+
+static gboolean _brush_hardness_up_callback(GtkAccelGroup *accel_group, GObject *acceleratable, guint keyval,
+                                            GdkModifierType modifier, gpointer data)
+{
+  dt_develop_t *dev = (dt_develop_t *)data;
+
+  if(dev->form_visible) dt_masks_events_mouse_scrolled(dev->gui_module, 0, 0, 0, GDK_SHIFT_MASK);
+  return TRUE;
+}
+static gboolean _brush_hardness_down_callback(GtkAccelGroup *accel_group, GObject *acceleratable, guint keyval,
+                                              GdkModifierType modifier, gpointer data)
+{
+  dt_develop_t *dev = (dt_develop_t *)data;
+
+  if(dev->form_visible) dt_masks_events_mouse_scrolled(dev->gui_module, 0, 0, 1, GDK_SHIFT_MASK);
+  return TRUE;
+}
+
+static gboolean _brush_opacity_up_callback(GtkAccelGroup *accel_group, GObject *acceleratable, guint keyval,
+                                           GdkModifierType modifier, gpointer data)
+{
+  dt_develop_t *dev = (dt_develop_t *)data;
+
+  if(dev->form_visible) dt_masks_events_mouse_scrolled(dev->gui_module, 0, 0, 0, GDK_CONTROL_MASK);
+  return TRUE;
+}
+static gboolean _brush_opacity_down_callback(GtkAccelGroup *accel_group, GObject *acceleratable, guint keyval,
+                                             GdkModifierType modifier, gpointer data)
+{
+  dt_develop_t *dev = (dt_develop_t *)data;
+
+  if(dev->form_visible) dt_masks_events_mouse_scrolled(dev->gui_module, 0, 0, 1, GDK_CONTROL_MASK);
   return TRUE;
 }
 
@@ -1722,11 +1759,16 @@ void leave(dt_view_t *self)
   }
 
   // clear gui.
+
+  dt_pthread_mutex_lock(&dev->preview_pipe_mutex);
+  dt_pthread_mutex_lock(&dev->pipe_mutex);
+
   dev->gui_leaving = 1;
-  dt_pthread_mutex_lock(&dev->history_mutex);
+
   dt_dev_pixelpipe_cleanup_nodes(dev->pipe);
   dt_dev_pixelpipe_cleanup_nodes(dev->preview_pipe);
 
+  dt_pthread_mutex_lock(&dev->history_mutex);
   while(dev->history)
   {
     dt_dev_history_item_t *hist = (dt_dev_history_item_t *)(dev->history->data);
@@ -1754,6 +1796,9 @@ void leave(dt_view_t *self)
 
   dt_pthread_mutex_unlock(&dev->history_mutex);
 
+  dt_pthread_mutex_unlock(&dev->pipe_mutex);
+  dt_pthread_mutex_unlock(&dev->preview_pipe_mutex);
+
   // cleanup visible masks
   if(dev->form_gui)
   {
@@ -1765,12 +1810,8 @@ void leave(dt_view_t *self)
 
   // take care of the overexposed window
   if(dev->overexposed.timeout > 0) g_source_remove(dev->overexposed.timeout);
-  if(dev->overexposed.destroy_signal_handler > 0)
-  {
-    g_signal_handler_disconnect(dt_ui_main_window(darktable.gui->ui), dev->overexposed.destroy_signal_handler);
-    dev->overexposed.destroy_signal_handler = 0;
-    gtk_widget_hide(dev->overexposed.floating_window);
-  }
+  gtk_widget_hide(dev->overexposed.floating_window);
+  gtk_widget_hide(dev->profile.floating_window);
 
   dt_print(DT_DEBUG_CONTROL, "[run_job-] 11 %f in darkroom mode\n", dt_get_wtime());
 }
@@ -2064,36 +2105,6 @@ void scrolled(dt_view_t *self, double x, double y, int up, int state)
   dt_control_queue_redraw();
 }
 
-
-void border_scrolled(dt_view_t *view, double x, double y, int which, int up)
-{
-  dt_develop_t *dev = (dt_develop_t *)view->data;
-  float zoom_x, zoom_y;
-  const dt_dev_zoom_t zoom = dt_control_get_dev_zoom();
-  const int closeup = dt_control_get_dev_closeup();
-  zoom_x = dt_control_get_dev_zoom_x();
-  zoom_y = dt_control_get_dev_zoom_y();
-  if(which > 1)
-  {
-    if(up)
-      zoom_x -= 0.02;
-    else
-      zoom_x += 0.02;
-  }
-  else
-  {
-    if(up)
-      zoom_y -= 0.02;
-    else
-      zoom_y += 0.02;
-  }
-  dt_dev_check_zoom_bounds(dev, &zoom_x, &zoom_y, zoom, closeup, NULL, NULL);
-  dt_control_set_dev_zoom_x(zoom_x);
-  dt_control_set_dev_zoom_y(zoom_y);
-  dt_dev_invalidate(dev);
-  dt_control_queue_redraw();
-}
-
 int key_released(dt_view_t *self, guint key, guint state)
 {
   const dt_control_accels_t *accels = &darktable.control->accels;
@@ -2197,8 +2208,16 @@ void init_key_accels(dt_view_t *self)
   dt_accel_register_view(self, NC_("accel", "gamut check"), GDK_KEY_g, GDK_CONTROL_MASK);
 
   // brush size +/-
-  dt_accel_register_view(self, NC_("accel", "brush larger"), GDK_KEY_bracketright, 0);
-  dt_accel_register_view(self, NC_("accel", "brush smaller"), GDK_KEY_bracketleft, 0);
+  dt_accel_register_view(self, NC_("accel", "increase brush size"), GDK_KEY_bracketright, 0);
+  dt_accel_register_view(self, NC_("accel", "decrease brush size"), GDK_KEY_bracketleft, 0);
+
+  // brush hardness +/-
+  dt_accel_register_view(self, NC_("accel", "increase brush hardness"), GDK_KEY_braceright, 0);
+  dt_accel_register_view(self, NC_("accel", "decrease brush hardness"), GDK_KEY_braceleft, 0);
+
+  // brush opacity +/-
+  dt_accel_register_view(self, NC_("accel", "increase brush opacity"), GDK_KEY_greater, 0);
+  dt_accel_register_view(self, NC_("accel", "decrease brush opacity"), GDK_KEY_less, 0);
 
   // fullscreen view
   dt_accel_register_view(self, NC_("accel", "full preview"), GDK_KEY_z, 0);
@@ -2248,9 +2267,21 @@ void connect_key_accels(dt_view_t *self)
 
   // brush size +/-
   closure = g_cclosure_new(G_CALLBACK(_brush_size_up_callback), (gpointer)self->data, NULL);
-  dt_accel_connect_view(self, "brush larger", closure);
+  dt_accel_connect_view(self, "increase brush size", closure);
   closure = g_cclosure_new(G_CALLBACK(_brush_size_down_callback), (gpointer)self->data, NULL);
-  dt_accel_connect_view(self, "brush smaller", closure);
+  dt_accel_connect_view(self, "decrease brush size", closure);
+
+  // brush hardness +/-
+  closure = g_cclosure_new(G_CALLBACK(_brush_hardness_up_callback), (gpointer)self->data, NULL);
+  dt_accel_connect_view(self, "increase brush hardness", closure);
+  closure = g_cclosure_new(G_CALLBACK(_brush_hardness_down_callback), (gpointer)self->data, NULL);
+  dt_accel_connect_view(self, "decrease brush hardness", closure);
+
+  // brush opacity +/-
+  closure = g_cclosure_new(G_CALLBACK(_brush_opacity_up_callback), (gpointer)self->data, NULL);
+  dt_accel_connect_view(self, "increase brush opacity", closure);
+  closure = g_cclosure_new(G_CALLBACK(_brush_opacity_down_callback), (gpointer)self->data, NULL);
+  dt_accel_connect_view(self, "decrease brush opacity", closure);
 }
 
 // modelines: These editor modelines have been set for all relevant files by tools/update_modelines.sh

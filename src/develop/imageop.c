@@ -195,6 +195,7 @@ int dt_iop_load_module_so(dt_iop_module_so_t *module, const char *libname, const
 {
   g_strlcpy(module->op, op, 20);
   module->data = NULL;
+  dt_print(DT_DEBUG_CONTROL, "[iop_load_module] loading iop `%s' from %s\n", op, libname);
   module->module = g_module_open(libname, G_MODULE_BIND_LAZY | G_MODULE_BIND_LOCAL);
   if(!module->module) goto error;
   int (*version)();
@@ -429,8 +430,8 @@ static int dt_iop_load_module_by_so(dt_iop_module_t *module, dt_iop_module_so_t 
   module->init(module);
 
   /* initialize blendop params and default values */
-  module->blend_params = g_malloc0(sizeof(dt_develop_blend_params_t));
-  module->default_blendop_params = g_malloc0(sizeof(dt_develop_blend_params_t));
+  module->blend_params = calloc(1, sizeof(dt_develop_blend_params_t));
+  module->default_blendop_params = calloc(1, sizeof(dt_develop_blend_params_t));
   memcpy(module->default_blendop_params, &_default_blendop_params, sizeof(dt_develop_blend_params_t));
   memcpy(module->blend_params, &_default_blendop_params, sizeof(dt_develop_blend_params_t));
 
@@ -942,10 +943,14 @@ static void _iop_panel_label(GtkWidget *lab, dt_iop_module_t *module)
 
 static void _iop_gui_update_header(dt_iop_module_t *module)
 {
+  GList *childs = gtk_container_get_children(GTK_CONTAINER(module->header));
+
   /* get the enable button spacer and button */
-  GtkWidget *eb = g_list_nth_data(gtk_container_get_children(GTK_CONTAINER(module->header)), 0);
-  GtkWidget *ebs = g_list_nth_data(gtk_container_get_children(GTK_CONTAINER(module->header)), 1);
-  GtkWidget *lab = g_list_nth_data(gtk_container_get_children(GTK_CONTAINER(module->header)), 5);
+  GtkWidget *eb = g_list_nth_data(childs, 0);
+  GtkWidget *ebs = g_list_nth_data(childs, 1);
+  GtkWidget *lab = g_list_nth_data(childs, 5);
+
+  g_list_free(childs);
 
   // set panel name to display correct multi-instance
   _iop_panel_label(lab, module);
@@ -971,7 +976,9 @@ void dt_iop_gui_update_header(dt_iop_module_t *module)
 static void _iop_gui_update_label(dt_iop_module_t *module)
 {
   if(!module->header) return;
-  GtkWidget *lab = g_list_nth_data(gtk_container_get_children(GTK_CONTAINER(module->header)), 5);
+  GList *childs = gtk_container_get_children(GTK_CONTAINER(module->header));
+  GtkWidget *lab = g_list_nth_data(childs, 5);
+  g_list_free(childs);
   _iop_panel_label(lab, module);
 }
 
@@ -1563,7 +1570,9 @@ static void dt_iop_gui_set_single_expanded(dt_iop_module_t *module, gboolean exp
   gint flags = CPF_DIRECTION_DOWN;
 
   /* get arrow icon widget */
-  icon = g_list_last(gtk_container_get_children(GTK_CONTAINER(header)))->data;
+  GList *childs = gtk_container_get_children(GTK_CONTAINER(header));
+  icon = g_list_last(childs)->data;
+  g_list_free(childs);
   if(!expanded) flags = CPF_DIRECTION_LEFT;
 
   dtgtk_icon_set_paint(icon, dtgtk_cairo_paint_solid_arrow, flags);
@@ -1646,7 +1655,9 @@ void dt_iop_gui_update_expanded(dt_iop_module_t *module)
   gint flags = CPF_DIRECTION_DOWN;
 
   /* get arrow icon widget */
-  icon = g_list_last(gtk_container_get_children(GTK_CONTAINER(header)))->data;
+  GList *childs = gtk_container_get_children(GTK_CONTAINER(header));
+  icon = g_list_last(childs)->data;
+  g_list_free(childs);
   if(!expanded) flags = CPF_DIRECTION_LEFT;
 
   dtgtk_icon_set_paint(icon, dtgtk_cairo_paint_solid_arrow, flags);
@@ -1680,6 +1691,10 @@ static gboolean _iop_plugin_header_button_press(GtkWidget *w, GdkEventButton *e,
 
   if(e->button == 1)
   {
+    // make gtk scroll to the module once it updated its allocation size
+    if(dt_conf_get_bool("darkroom/ui/scroll_to_module"))
+      darktable.gui->scroll_to[1] = module->expander;
+
     gboolean collapse_others = !dt_conf_get_bool("darkroom/ui/single_module") != !(e->state & GDK_SHIFT_MASK);
     dt_iop_gui_set_expanded(module, !module->expanded, collapse_others);
 
@@ -1701,7 +1716,7 @@ static GdkPixbuf *load_image(const char *filename, int size)
   GError *error = NULL;
   if(!g_file_test(filename, G_FILE_TEST_IS_REGULAR)) return NULL;
 
-  GdkPixbuf *pixbuf = gdk_pixbuf_new_from_file_at_size(filename, size, size, &error);
+  GdkPixbuf *pixbuf = dt_gdk_pixbuf_new_from_file_at_size(filename, size, size, &error);
   if(!pixbuf)
   {
     fprintf(stderr, "error loading file `%s': %s\n", filename, error->message);
@@ -1758,6 +1773,7 @@ GtkWidget *dt_iop_gui_get_expander(dt_iop_module_t *module)
 
   /* add module icon */
   GdkPixbuf *pixbuf;
+  cairo_surface_t *surface;
   char filename[PATH_MAX] = { 0 };
   char datadir[PATH_MAX] = { 0 };
   dt_loc_get_datadir(datadir, sizeof(datadir));
@@ -1787,9 +1803,11 @@ GtkWidget *dt_iop_gui_get_expander(dt_iop_module_t *module)
   pixbuf = gdk_pixbuf_new_from_data(fallback_pixel, GDK_COLORSPACE_RGB, TRUE, 8, 1, 1, 4, NULL, NULL);
 
 got_image:
-  hw[idx] = gtk_image_new_from_pixbuf(pixbuf);
+  surface = dt_gdk_cairo_surface_create_from_pixbuf(pixbuf, 1, NULL);
+  hw[idx] = gtk_image_new_from_surface(surface);
   gtk_widget_set_margin_start(GTK_WIDGET(hw[idx]), DT_PIXEL_APPLY_DPI(5));
   gtk_widget_set_size_request(GTK_WIDGET(hw[idx++]), bs, bs);
+  cairo_surface_destroy(surface);
   g_object_unref(pixbuf);
 
   /* add module label */

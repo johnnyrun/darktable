@@ -21,7 +21,6 @@ option(USE_DARKTABLE_PROFILING OFF)
 option(CUSTOM_CFLAGS "Don't override compiler optimization flags." OFF)
 option(BUILD_USERMANUAL "Build all the versions of the usermanual." OFF)
 option(BINARY_PACKAGE_BUILD "Sets march optimization to generic" OFF)
-option(APRIL_FOOLS "Add the \"file manager\" (a shell) to lighttable mode" OFF)
 option(USE_XMLLINT "Run xmllint to test if darktableconfig.xml is valid" ON)
 option(USE_OPENJPEG "Enable JPEG 2000 support" ON)
 option(USE_WEBP "Enable WebP export support" ON)
@@ -66,8 +65,6 @@ if(APPLE)
 	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -D_DARWIN_C_SOURCE")
 	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D_DARWIN_C_SOURCE")
 	add_definitions("-DOS_OBJECT_USE_OBJC=0")
-	# Make sure we don't use functions unavailable in OS X 10.6 and later (only works with system compiler, vanilla gcc from macports ignores this)
-	add_definitions("-D__MAC_OS_X_VERSION_MAX_ALLOWED=1060")
 endif(APPLE)
 
 if(CMAKE_COMPILER_IS_GNUCC)
@@ -86,27 +83,47 @@ endif(WIN32)
 
 # Check if this is source package build
 if(NOT IS_DIRECTORY ${CMAKE_SOURCE_DIR}/.git)
-	set(SOURCE_PACKAGE 1)
+  set(SOURCE_PACKAGE 1)
+else()
+  set(SOURCE_PACKAGE 0)
 endif()
 
 #
 # Set package version
 #
-if(NOT SOURCE_PACKAGE)
-  # this part is setting the corresponding CMake variable which gets used for example when creating a source package
-  EXECUTE_PROCESS(COMMAND git describe --tags HEAD #OUTPUT_VARIABLE PROJECT_VERSION OUTPUT_STRIP_TRAILING_WHITESPACE
-      COMMAND sed "s,^release-,,;s,-,+,;s,-,~,;" OUTPUT_STRIP_TRAILING_WHITESPACE OUTPUT_VARIABLE PROJECT_VERSION
-      WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
-
-  # and here we write out the version into a .h file suitable to be used in the code.
-  # the file only gets written when the version is actually different to avoid unneeded recompiles
-  add_custom_target(
-    generate_version ALL
-    COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/tools/create_version_h.sh ${CMAKE_CURRENT_BINARY_DIR}/src/version_gen.h
-    COMMENT "Updating version string"
+set(DO_GENERATE_VERSION Off)
+file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/src/") # the src/ subdirectory won't exist yet
+if(DEFINED PROJECT_VERSION)
+  #project version is defined by -D on the cmake command line
+  # only use that value, do not upate it at make time
+  execute_process(
+    COMMAND ${CMAKE_SOURCE_DIR}/tools/create_version_h.sh ${CMAKE_CURRENT_BINARY_DIR}/src/version_gen.h ${PROJECT_VERSION}
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
   )
-endif(NOT SOURCE_PACKAGE)
+else(DEFINED PROJECT_VERSION)
+  if(NOT SOURCE_PACKAGE) # i.e., a git checkout
+    # this part is setting the corresponding CMake variable which gets used for example when creating a source package
+    execute_process(
+      COMMAND git describe --tags --dirty
+      COMMAND sed "s,^release-,,;s,-,+,;s,-,~,;" OUTPUT_STRIP_TRAILING_WHITESPACE OUTPUT_VARIABLE PROJECT_VERSION
+      WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+    add_custom_target(generate_version ALL
+      COMMAND ${CMAKE_SOURCE_DIR}/tools/create_version_h.sh ${CMAKE_CURRENT_BINARY_DIR}/src/version_gen.h
+      COMMENT "Updating version string"
+      WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+    )
+    set(DO_GENERATE_VERSION On)
+  elseif(NOT EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/src/version_gen.h)
+  # no need to create version_gen.h if it's already shipped. that is for example the case with our release tarballs
+#   else(NOT SOURCE_PACKAGE)
+    set(PROJECT_VERSION "archive-$Format:%H$")
+    execute_process(
+      COMMAND ${CMAKE_SOURCE_DIR}/tools/create_version_h.sh ${CMAKE_CURRENT_BINARY_DIR}/src/version_gen.h ${PROJECT_VERSION}
+      WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+    )
+  endif(NOT SOURCE_PACKAGE)
+endif(DEFINED PROJECT_VERSION)
+
 
 #
 # Initial cmake/debian/postinst and prerm script for debian package

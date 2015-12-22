@@ -118,12 +118,73 @@ typedef struct dt_imageio_pdf_t
 
 // clang-format on
 
+#ifdef USE_LUA
+int orientation_member(lua_State*L)
+{
+  dt_imageio_pdf_t *d = (dt_imageio_pdf_t *)lua_touserdata(L,1);
+  dt_lua_orientation_t orientation;
+  if(lua_gettop(L) != 3)
+  {
+    if(d->params.orientation == ORIENTATION_LANDSCAPE) {
+      orientation = GTK_ORIENTATION_HORIZONTAL;
+    } else {
+      orientation = GTK_ORIENTATION_VERTICAL;
+    }
+    luaA_push(L,dt_lua_orientation_t,&orientation);
+    return 1;
+  }
+  else
+  {
+    luaA_to(L,dt_lua_orientation_t,&orientation,3);
+    if(orientation == GTK_ORIENTATION_HORIZONTAL) {
+      d->params.orientation = ORIENTATION_LANDSCAPE;
+    } else {
+      d->params.orientation = ORIENTATION_PORTRAIT;
+    }
+    return 0;
+  }
+}
+
+
 void init(dt_imageio_module_format_t *self)
 {
-#ifdef USE_LUA
-  // TODO
-#endif
+  lua_State* L = darktable.lua_state.state ;
+
+  luaA_enum(L, _pdf_pages_t);
+  luaA_enum_value_name(L, _pdf_pages_t, PAGES_ALL, "all");
+  luaA_enum_value_name(L, _pdf_pages_t, PAGES_SINGLE, "single");
+  luaA_enum_value_name(L, _pdf_pages_t, PAGES_CONTACT, "contact");
+
+  luaA_enum(L, _pdf_mode_t);
+  luaA_enum_value_name(L, _pdf_mode_t, MODE_NORMAL, "normal");
+  luaA_enum_value_name(L, _pdf_mode_t, MODE_DRAFT, "draft");
+  luaA_enum_value_name(L, _pdf_mode_t, MODE_DEBUG, "debug");
+
+  luaA_enum(L, dt_pdf_stream_encoder_t);
+  luaA_enum_value_name(L, dt_pdf_stream_encoder_t, DT_PDF_STREAM_ENCODER_ASCII_HEX, "uncompressed");
+  luaA_enum_value_name(L, dt_pdf_stream_encoder_t, DT_PDF_STREAM_ENCODER_FLATE, "deflate");
+
+  dt_lua_register_module_member_indirect(L, self, dt_imageio_pdf_t, params,dt_imageio_pdf_params_t,title, char_128);
+  dt_lua_register_module_member_indirect(L, self, dt_imageio_pdf_t, params,dt_imageio_pdf_params_t,size, char_64);
+  dt_lua_register_module_member_indirect(L, self, dt_imageio_pdf_t, params,dt_imageio_pdf_params_t,border, char_64);
+  dt_lua_register_module_member_indirect(L, self, dt_imageio_pdf_t, params,dt_imageio_pdf_params_t,dpi, float);
+  dt_lua_register_module_member_indirect(L, self, dt_imageio_pdf_t, params,dt_imageio_pdf_params_t,rotate, bool);
+  dt_lua_register_module_member_indirect(L, self, dt_imageio_pdf_t, params,dt_imageio_pdf_params_t,pages, _pdf_pages_t);
+  dt_lua_register_module_member_indirect(L, self, dt_imageio_pdf_t, params,dt_imageio_pdf_params_t,icc, bool);
+  dt_lua_register_module_member_indirect(L, self, dt_imageio_pdf_t, params,dt_imageio_pdf_params_t,mode, _pdf_mode_t);
+  dt_lua_register_module_member_indirect(L, self, dt_imageio_pdf_t, params,dt_imageio_pdf_params_t,compression, dt_pdf_stream_encoder_t);
+
+
+
+  lua_pushcfunction(L, orientation_member);
+  dt_lua_type_register_type(L, self->parameter_lua_type, "orientation");
 }
+#else // USE_LUA
+void init(dt_imageio_module_format_t *self)
+{
+  // we need an empty init, even when compiled without Lua
+}
+#endif // USE_LUA
 
 void cleanup(dt_imageio_module_format_t *self)
 {
@@ -345,6 +406,11 @@ const char *extension(dt_imageio_module_data_t *data)
 const char *name()
 {
   return _("PDF");
+}
+
+int flags(dt_imageio_module_data_t *data)
+{
+  return FORMAT_FLAGS_NO_TMPFILE;
 }
 
 int dimension(struct dt_imageio_module_format_t *self, dt_imageio_module_data_t *data, uint32_t *width, uint32_t *height)
@@ -608,8 +674,8 @@ void gui_init(dt_imageio_module_format_t *self)
   dt_bauhaus_combobox_add(d->pages, _("all"));
   dt_bauhaus_combobox_add(d->pages, _("single images"));
   dt_bauhaus_combobox_add(d->pages, _("contact sheet"));
-  gtk_grid_attach(grid, GTK_WIDGET(d->pages), 0, ++line, 2, 1);
-  g_signal_connect(G_OBJECT(d->pages), "value-changed", G_CALLBACK(pages_toggle_callback), self);
+//   gtk_grid_attach(grid, GTK_WIDGET(d->pages), 0, ++line, 2, 1);
+//   g_signal_connect(G_OBJECT(d->pages), "value-changed", G_CALLBACK(pages_toggle_callback), self);
   g_object_set(G_OBJECT(d->pages), "tooltip-text", _("what pages should be added to the pdf"), (char *)NULL);
   dt_bauhaus_combobox_set(d->pages, dt_conf_get_int("plugins/imageio/format/pdf/pages"));
   gtk_widget_set_sensitive(d->pages, FALSE); // TODO

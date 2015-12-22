@@ -430,8 +430,8 @@ static int dt_ellipse_events_button_released(struct dt_iop_module_t *module, flo
     }
 
     // we remove the shape
-    dt_masks_form_remove(module, dt_masks_get_from_id(darktable.develop, parentid), form);
     dt_dev_masks_list_remove(darktable.develop, form->formid, parentid);
+    dt_masks_form_remove(module, dt_masks_get_from_id(darktable.develop, parentid), form);
     return 1;
   }
   if(gui->form_dragging)
@@ -1242,7 +1242,7 @@ static int dt_ellipse_get_mask(dt_iop_module_t *module, dt_dev_pixelpipe_iop_t *
 
   if(darktable.unmuted & DT_DEBUG_PERF)
     dt_print(DT_DEBUG_MASKS, "[masks %s] ellipse fill took %0.04f sec\n", form->name, dt_get_wtime() - start2);
-  start2 = dt_get_wtime();
+//   start2 = dt_get_wtime();
 
   return 1;
 }
@@ -1387,7 +1387,7 @@ static int dt_ellipse_get_mask_roi(dt_iop_module_t *module, dt_dev_pixelpipe_iop
 
   if(darktable.unmuted & DT_DEBUG_PERF)
     dt_print(DT_DEBUG_MASKS, "[masks %s] ellipse fill took %0.04f sec\n", form->name, dt_get_wtime() - start2);
-  start2 = dt_get_wtime();
+//   start2 = dt_get_wtime();
 
   return 1;
 }

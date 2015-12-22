@@ -81,7 +81,7 @@ typedef unsigned int u_int;
 #include "common/poison.h"
 #endif
 
-#define DT_MODULE_VERSION 10 // version of dt's module interface
+#define DT_MODULE_VERSION 11 // version of dt's module interface
 
 // every module has to define this:
 #ifdef _DEBUG
@@ -212,6 +212,7 @@ typedef struct darktable_t
   char *configdir;
   char *cachedir;
   dt_lua_state_t lua_state;
+  GList *guides;
 } darktable_t;
 
 typedef struct

@@ -36,7 +36,7 @@
           <row>
             <entry>
               This module is used to tweak the exposure. It is directly linked to the histogram
-              panel. Indeed, if you correct exposure graphically, using the <emphasis>histogram
+              panel. If you correct exposure graphically, using the <emphasis>histogram
               </emphasis> (see <xref linkend="histogram"/>), you automatically activate the
               exposure module. The histogram simply acts as a view for the exposure module.
             </entry>
@@ -145,14 +145,14 @@
     </sect5>
 
     <sect5>
-      <title>auto</title>
+      <title>clipping threshold</title>
       <para>
-        Activating this checkbox makes darktable calculate a correct exposure for the
-        rectangular view appearing in the centre of the image. You can draw your own selection
-        using your mouse. An adjustment slider to the right of the auto exposure checkbox lets
-        you define what percentage of bright values are to be clipped out in the calculation.
-        This feature is not to be confused with the <quote>automatic</quote> mode of the
-        exposure module and is only available in <quote>manual</quote> mode.
+        darktable can calculate correct black level and exposure values for your image based on
+        the content of a rectangular area. The adjustment slider lets you define what percentage
+        of bright values are to be clipped out in the calculation. Pressing the
+        <inlinegraphic fileref="&icon_module_picker;" scalefit="1" width="2%" align="center" />
+        icon starts the calculation and lets you draw a rectangular area of your choice using
+        your mouse. This feature is only available in <quote>manual</quote> mode.
       </para>
     </sect5>
 
@@ -174,20 +174,6 @@
         the white point of the camera. The white point is camera specific and defines the
         highest lightness value that the camera sensor can detect. Only available in
         <quote>automatic</quote> mode.
-      </para>
-    </sect5>
-
-    <sect5>
-      <title>histogram of</title>
-      <para>
-        Defines what image data to take as a histogram for the <quote>automatic</quote> exposure
-        correction&nbsp;&ndash; either <quote>pre-processed image</quote> which is the input
-        that the exposure module receives with some modules like <emphasis>demosaic</emphasis>
-        and <emphasis>white balance</emphasis> already applied, or <quote>source raw
-        data</quote> which is the unprocessed data of your raw file. Note that this option does
-        not relate to the histogram you see in the <emphasis>histogram</emphasis> panel (see
-        <xref linkend="histogram"/>)&nbsp;&ndash; the latter representing the final result of
-        the pixelpipe with <emphasis>all</emphasis> the active modules being applied.
       </para>
     </sect5>
 

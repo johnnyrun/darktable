@@ -699,7 +699,7 @@ static int _path_get_points_border(dt_develop_t *dev, dt_masks_form_t *form, int
       if(darktable.unmuted & DT_DEBUG_PERF)
         dt_print(DT_DEBUG_MASKS, "[masks %s] path_points end took %0.04f sec\n", form->name,
                  dt_get_wtime() - start2);
-      start2 = dt_get_wtime();
+//       start2 = dt_get_wtime();
       return 1;
     }
   }
@@ -1238,8 +1238,8 @@ static int dt_path_events_button_pressed(struct dt_iop_module_t *module, float p
     }
 
     // we remove the shape
-    dt_masks_form_remove(module, dt_masks_get_from_id(darktable.develop, parentid), form);
     dt_dev_masks_list_remove(darktable.develop, form->formid, parentid);
+    dt_masks_form_remove(module, dt_masks_get_from_id(darktable.develop, parentid), form);
     return 1;
   }
 

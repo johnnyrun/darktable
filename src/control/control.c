@@ -84,6 +84,8 @@ int dt_control_write_config(dt_control_t *c)
   dt_conf_set_int("ui_last/window_h", allocation.height);
   dt_conf_set_bool("ui_last/maximized",
                    (gdk_window_get_state(gtk_widget_get_window(widget)) & GDK_WINDOW_STATE_MAXIMIZED));
+  dt_conf_set_bool("ui_last/fullscreen",
+                   (gdk_window_get_state(gtk_widget_get_window(widget)) & GDK_WINDOW_STATE_FULLSCREEN));
 
   return 0;
 }
@@ -108,6 +110,7 @@ void dt_control_init(dt_control_t *s)
   pthread_cond_init(&s->cond, NULL);
   dt_pthread_mutex_init(&s->cond_mutex, NULL);
   dt_pthread_mutex_init(&s->queue_mutex, NULL);
+  dt_pthread_mutex_init(&s->res_mutex, NULL);
   dt_pthread_mutex_init(&s->run_mutex, NULL);
   dt_pthread_mutex_init(&(s->global_mutex), NULL);
   dt_pthread_mutex_init(&(s->progress_system.mutex), NULL);
@@ -164,12 +167,6 @@ int dt_control_running()
 
 void dt_control_quit()
 {
-#ifdef HAVE_MAP
-  // since map mode doesn't like to quit we just switch to lighttable mode. hacky, but it works :(
-  if(dt_conf_get_int("ui_last/view") == DT_MAP) // we are in map mode where no expose is running
-    dt_ctl_switch_mode_to(DT_LIBRARY);
-#endif
-
   dt_gui_gtk_quit();
   // thread safe quit, 1st pass:
   dt_pthread_mutex_lock(&darktable.control->cond_mutex);
@@ -177,8 +174,8 @@ void dt_control_quit()
   darktable.control->running = 0;
   dt_pthread_mutex_unlock(&darktable.control->run_mutex);
   dt_pthread_mutex_unlock(&darktable.control->cond_mutex);
-  // let gui pick up the running = 0 state and die
-  gtk_widget_queue_draw(dt_ui_center(darktable.gui->ui));
+
+  gtk_main_quit();
 }
 
 void dt_control_shutdown(dt_control_t *s)
@@ -212,6 +209,7 @@ void dt_control_cleanup(dt_control_t *s)
   dt_pthread_mutex_destroy(&s->queue_mutex);
   dt_pthread_mutex_destroy(&s->cond_mutex);
   dt_pthread_mutex_destroy(&s->log_mutex);
+  dt_pthread_mutex_destroy(&s->res_mutex);
   dt_pthread_mutex_destroy(&s->run_mutex);
   dt_pthread_mutex_destroy(&s->progress_system.mutex);
   if(s->accelerator_list)

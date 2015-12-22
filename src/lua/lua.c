@@ -23,23 +23,34 @@
 void dt_lua_debug_stack_internal(lua_State *L, const char *function, int line)
 {
   printf("lua stack at %s:%d", function, line);
-  if(!L) 
+  if(!L)
   {
-    printf("Stack in NULL\n");
+    printf(" Stack is NULL\n");
     return;
-  } else {
-    printf("\n");
+  }
+  else
+  {
+    printf("(size %d),\n",lua_gettop(L)); //usefull to detect underflows
   }
   for(int i = 1; i <= lua_gettop(L); i++)
   {
+#if 1
     printf("\t%d:%s %s\n", i, lua_typename(L, lua_type(L, i)), luaL_tolstring(L, i, NULL));
-    lua_pop(L, 1);
+    lua_pop(L, 1); // remove the result of luaL_tolstring() from the stack
+#else
+    // no tolstring when stack is really screwed up 
+    printf("\t%d:%s %p\n", i, lua_typename(L, lua_type(L, i)),lua_topointer(L,i));
+#endif
   }
 }
+
 void dt_lua_debug_table_internal(lua_State *L, int t, const char *function, int line)
 {
+  t = lua_absindex(L,t);
   /* table is in the stack at index 't' */
-  printf("lua table at index %d at %s:%d\n", t, function, line);
+  lua_len(L,t);
+  printf("lua table at index %d at %s:%d (length %f)\n", t, function, line,lua_tonumber(L,-1));
+  lua_pop(L,1);
   if(lua_type(L, t) != LUA_TTABLE)
   {
     printf("\tnot a table: %s\n", lua_typename(L, lua_type(L, t)));
@@ -49,7 +60,12 @@ void dt_lua_debug_table_internal(lua_State *L, int t, const char *function, int 
   while(lua_next(L, t ) != 0)
   {
     /* uses 'key' (at index -2) and 'value' (at index -1) */
-    printf("%s - %s\n", luaL_checkstring(L, -2), lua_typename(L, lua_type(L, -1)));
+    if(lua_type(L,-2) != LUA_TNUMBER) {
+      printf("%s - %s\n", lua_tostring(L, -2), lua_typename(L, lua_type(L, -1)));
+    } else {
+      printf("%f - %s\n", luaL_checknumber(L, -2), lua_typename(L, lua_type(L, -1)));
+    }
+
     /* removes 'value'; keeps 'key' for next iteration */
     lua_pop(L, 1);
   }
@@ -97,17 +113,17 @@ void dt_lua_init_lock()
   dt_pthread_mutex_lock(&darktable.lua_state.mutex);
 }
 
-void dt_lua_lock_internal(const char *function, int line)
+void dt_lua_lock_internal(const char *function, const char *file, int line, gboolean silent)
 {
-  if(!darktable.lua_state.ending && pthread_equal(darktable.control->gui_thread, pthread_self()) != 0)
+  if(!silent && !darktable.lua_state.ending && pthread_equal(darktable.control->gui_thread, pthread_self()) != 0)
   {
     dt_print(DT_DEBUG_LUA, "LUA WARNING locking from the gui thread should be avoided\n");
     //g_assert(false);
   }
 
   dt_pthread_mutex_lock(&darktable.lua_state.mutex);
-#ifdef _DEBU
-  dt_print(DT_DEBUG_LUA,"LUA DEBUG : %s called from %s %d\n",__FUNCTION__,function,line);
+#ifdef _DEBUG
+  dt_print(DT_DEBUG_LUA,"LUA DEBUG : %s called from %s:%d (%s)\n", __FUNCTION__, file, line, function);
 #endif
 }
 void dt_lua_unlock_internal(const char *function, int line)

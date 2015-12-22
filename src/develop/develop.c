@@ -188,7 +188,6 @@ void dt_dev_invalidate_all(dt_develop_t *dev)
 
 void dt_dev_process_preview_job(dt_develop_t *dev)
 {
-  dt_mipmap_buffer_t buf;
   if(dev->image_loading)
   {
     // raw is already loading, no use starting another file access, we wait.
@@ -196,11 +195,19 @@ void dt_dev_process_preview_job(dt_develop_t *dev)
   }
 
   dt_pthread_mutex_lock(&dev->preview_pipe_mutex);
+
+  if(dev->gui_leaving)
+  {
+    dt_pthread_mutex_unlock(&dev->preview_pipe_mutex);
+    return;
+  }
+
   dt_control_log_busy_enter();
   dev->preview_pipe->input_timestamp = dev->timestamp;
   dev->preview_status = DT_DEV_PIXELPIPE_RUNNING;
 
   // lock if there, issue a background load, if not (best-effort for mip f).
+  dt_mipmap_buffer_t buf;
   dt_mipmap_cache_get(darktable.mipmap_cache, &buf, dev->image_storage.id, DT_MIPMAP_F, DT_MIPMAP_BEST_EFFORT,
                       'r');
   if(!buf.buf)
@@ -276,6 +283,13 @@ restart:
 void dt_dev_process_image_job(dt_develop_t *dev)
 {
   dt_pthread_mutex_lock(&dev->pipe_mutex);
+
+  if(dev->gui_leaving)
+  {
+    dt_pthread_mutex_unlock(&dev->pipe_mutex);
+    return;
+  }
+
   dt_control_log_busy_enter();
   // let gui know to draw preview instead of us, if it's there:
   dev->image_status = DT_DEV_PIXELPIPE_RUNNING;
@@ -725,11 +739,15 @@ void dt_dev_reload_history_items(dt_develop_t *dev)
     {
       // we have to ensure that the name of the widget is correct
       GtkWidget *wlabel;
-      GtkWidget *header = gtk_bin_get_child(
-          GTK_BIN(g_list_nth_data(gtk_container_get_children(GTK_CONTAINER(module->expander)), 0)));
+      GList *childs = gtk_container_get_children(GTK_CONTAINER(module->expander));
+      GtkWidget *header = gtk_bin_get_child(GTK_BIN(g_list_nth_data(childs, 0)));
+      g_list_free(childs);
 
       /* get arrow icon widget */
-      wlabel = g_list_nth(gtk_container_get_children(GTK_CONTAINER(header)), 5)->data;
+      childs = gtk_container_get_children(GTK_CONTAINER(header));
+      wlabel = g_list_nth(childs, 5)->data;
+      g_list_free(childs);
+
       gchar *label = dt_history_item_get_name_html(module);
       gtk_label_set_markup(GTK_LABEL(wlabel), label);
       g_free(label);
@@ -1150,7 +1168,8 @@ void dt_dev_read_history(dt_develop_t *dev)
   DT_DEBUG_SQLITE3_BIND_INT(stmt, 1, dev->image_storage.id);
   if(sqlite3_step(stmt) == SQLITE_ROW) // seriously, this should never fail
   {
-    dev->history_end = sqlite3_column_int(stmt, 0);
+    if(sqlite3_column_type(stmt, 0) != SQLITE_NULL)
+      dev->history_end = sqlite3_column_int(stmt, 0);
   }
 
   if(dev->gui_attached)

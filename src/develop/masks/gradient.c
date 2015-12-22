@@ -222,8 +222,8 @@ static int dt_gradient_events_button_released(struct dt_iop_module_t *module, fl
     }
 
     // we remove the shape
-    dt_masks_form_remove(module, dt_masks_get_from_id(darktable.develop, parentid), form);
     dt_dev_masks_list_remove(darktable.develop, form->formid, parentid);
+    dt_masks_form_remove(module, dt_masks_get_from_id(darktable.develop, parentid), form);
     return 1;
   }
 
@@ -672,11 +672,13 @@ static int dt_gradient_get_points_border(dt_develop_t *dev, float x, float y, fl
 
   int r2 = dt_gradient_get_points(dev, x2, y2, rotation, &points2, &points_count2);
 
+  int res = 0;
+
   if(r1 && r2 && points_count1 > 4 && points_count2 > 4)
   {
     int k = 0;
     *points = malloc(2 * ((points_count1 - 3) + (points_count2 - 3) + 1) * sizeof(float));
-    if(*points == NULL) return 0;
+    if(*points == NULL) goto end;
     *points_count = (points_count1 - 3) + (points_count2 - 3) + 1;
     for(int i = 3; i < points_count1; i++)
     {
@@ -692,15 +694,14 @@ static int dt_gradient_get_points_border(dt_develop_t *dev, float x, float y, fl
       (*points)[k * 2 + 1] = points2[i * 2 + 1];
       k++;
     }
-    free(points1);
-    free(points2);
-    return 1;
+    res = 1;
+    goto end;
   }
   else if(r1 && points_count1 > 4)
   {
     int k = 0;
     *points = malloc(2 * ((points_count1 - 3)) * sizeof(float));
-    if(*points == NULL) return 0;
+    if(*points == NULL) goto end;
     *points_count = points_count1 - 3;
     for(int i = 3; i < points_count1; i++)
     {
@@ -708,14 +709,14 @@ static int dt_gradient_get_points_border(dt_develop_t *dev, float x, float y, fl
       (*points)[k * 2 + 1] = points1[i * 2 + 1];
       k++;
     }
-    free(points1);
-    return 1;
+    res = 1;
+    goto end;
   }
   else if(r2 && points_count2 > 4)
   {
     int k = 0;
     *points = malloc(2 * ((points_count2 - 3)) * sizeof(float));
-    if(*points == NULL) return 0;
+    if(*points == NULL) goto end;
     *points_count = points_count2 - 3;
 
     for(int i = 3; i < points_count2; i++)
@@ -724,11 +725,15 @@ static int dt_gradient_get_points_border(dt_develop_t *dev, float x, float y, fl
       (*points)[k * 2 + 1] = points2[i * 2 + 1];
       k++;
     }
-    free(points2);
-    return 1;
+    res = 1;
+    goto end;
   }
 
-  return 0;
+end:
+  free(points1);
+  free(points2);
+
+  return res;
 }
 
 static int dt_gradient_get_area(dt_iop_module_t *module, dt_dev_pixelpipe_iop_t *piece, dt_masks_form_t *form,
@@ -901,7 +906,7 @@ static int dt_gradient_get_mask(dt_iop_module_t *module, dt_dev_pixelpipe_iop_t 
   if(darktable.unmuted & DT_DEBUG_PERF)
     dt_print(DT_DEBUG_MASKS, "[masks %s] gradient fill took %0.04f sec\n", form->name,
              dt_get_wtime() - start2);
-  start2 = dt_get_wtime();
+//   start2 = dt_get_wtime();
 
   return 1;
 }
@@ -1025,7 +1030,7 @@ static int dt_gradient_get_mask_roi(dt_iop_module_t *module, dt_dev_pixelpipe_io
   if(darktable.unmuted & DT_DEBUG_PERF)
     dt_print(DT_DEBUG_MASKS, "[masks %s] gradient fill took %0.04f sec\n", form->name,
              dt_get_wtime() - start2);
-  start2 = dt_get_wtime();
+//   start2 = dt_get_wtime();
 
   return 1;
 }
