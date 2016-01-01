@@ -1619,7 +1619,6 @@ static gboolean star_key_accel_callback(GtkAccelGroup *accel_group, GObject *acc
                                         GdkModifierType modifier, gpointer data)
 {
   dt_view_t *self = darktable.view_manager->proxy.lighttable.view;
-  dt_library_t *lib = (dt_library_t *)self->data;
   int num = GPOINTER_TO_INT(data);
   int32_t mouse_over_id;
   int next_image_rowid = -1;
