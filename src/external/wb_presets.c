@@ -1718,6 +1718,14 @@ const wb_data wb_preset[] =
   { "Fujifilm", "X100S", "6700K", 0,		{ 2.076159, 1, 1.291391, 0 } },
   { "Fujifilm", "X100S", "10000K", 0,		{ 2.360927, 1, 1.079470, 0 } },
 
+  { "Fujifilm", "X100T", Daylight           , 0, { 1.930464, 1, 1.539735, 0 } },
+  { "Fujifilm", "X100T", Cloudy             , 0, { 2.109272, 1, 1.324503, 0 } },
+  { "Fujifilm", "X100T", Incandescent       , 0, { 1.238411, 1, 2.307947, 0 } },
+  { "Fujifilm", "X100T", DayWhiteFluorescent, 0, { 2.102649, 1, 1.589404, 0 } },
+  { "Fujifilm", "X100T", DaylightFluorescent, 0, { 2.456954, 1, 1.334437, 0 } },
+  { "Fujifilm", "X100T", WhiteFluorescent   , 0, { 2.013245, 1, 1.970199, 0 } },
+  { "Fujifilm", "X100T", Underwater         , 0, { 1.927152, 1, 1.549669, 0 } },
+
   { "Fujifilm", "X-M1", Daylight, 0,                  { 1.943709, 1, 1.824503, 0 } },
   { "Fujifilm", "X-M1", Cloudy, 0,                    { 2.139073, 1, 1.599338, 0 } },
   { "Fujifilm", "X-M1", DaylightFluorescent, 0,      { 2.440397, 1, 1.592715, 0 } },
@@ -2009,6 +2017,13 @@ const wb_data wb_preset[] =
   { "Nikon", "1 V1", Flash, 0,			{ 2.101563, 1, 1.335938, 0 } },
   { "Nikon", "1 V1", Cloudy, 0,			{ 1.960938, 1, 1.406250, 0 } },
   { "Nikon", "1 V1", Shade, 0,			{ 2.257813, 1, 1.277344, 0 } },
+
+  { "Nikon", "1 V3", DirectSunlight      , 0, { 2.722656, 1, 1.796875, 0 } },
+  { "Nikon", "1 V3", Shade               , 0, { 3.359375, 1, 1.507812, 0 } },
+  { "Nikon", "1 V3", Cloudy              , 0, { 2.910156, 1, 1.644531, 0 } },
+  { "Nikon", "1 V3", Incandescent        , 0, { 1.738281, 1, 2.679688, 0 } },
+  { "Nikon", "1 V3", CoolWhiteFluorescent, 0, { 2.429688, 1, 2.406250, 0 } },
+  { "Nikon", "1 V3", Flash               , 0, { 3.152344, 1, 1.562500, 0 } },
 
   { "Nikon", "1 J3", Incandescent, 0,		{ 1.484375, 1, 2.308594, 0 } },
   { "Nikon", "1 J3", CoolWhiteFluorescent, 0,	{ 2.003906, 1, 2.160156, 0 } },
@@ -2740,13 +2755,19 @@ const wb_data wb_preset[] =
   { "Nikon", "D800E", "2700K", 0,		{ 1.179688, 1, 2.488281, 0 } },
   { "Nikon", "D800E", "5000K", 0,		{ 1.929688, 1, 1.417969, 0 } },
 
-  /* D810 with firmware C: 1.01 L: 2.005 */
-  { "Nikon", "D810", Incandescent, 0,		{ 1.253906, 1, 2.136719, 0 } },
-  { "Nikon", "D810", CoolWhiteFluorescent, 0,	{ 1.789063, 1, 1.96875, 0 } },
-  { "Nikon", "D810", DirectSunlight, 0,		{ 1.953125, 1, 1.335938, 0 } },
-  { "Nikon", "D810", Flash, 0,			{ 2.183594, 1, 1.171875, 0 } },
-  { "Nikon", "D810", Cloudy, 0,			{ 2.089844, 1, 1.210938, 0 } },
-  { "Nikon", "D810", Shade, 0,			{ 2.410156, 1, 1.089844, 0 } },
+  /* D810 with firmware C: 1.10 L: 2.009 */
+  { "Nikon", "D810", DirectSunlight                 , 0, { 1.953125, 1, 1.335938, 0 } },
+  { "Nikon", "D810", Shade                          , 0, { 2.410156, 1, 1.089844, 0 } },
+  { "Nikon", "D810", Cloudy                         , 0, { 2.089844, 1, 1.210938, 0 } },
+  { "Nikon", "D810", Incandescent                   , 0, { 1.253906, 1, 2.136719, 0 } },
+  { "Nikon", "D810", WarmWhiteFluorescent           , 0, { 1.253906, 1, 1.917969, 0 } },
+  { "Nikon", "D810", CoolWhiteFluorescent           , 0, { 1.789062, 1, 1.968750, 0 } },
+  { "Nikon", "D810", DayWhiteFluorescent            , 0, { 1.820312, 1, 1.355469, 0 } },
+  { "Nikon", "D810", DaylightFluorescent            , 0, { 2.074219, 1, 1.093750, 0 } },
+  { "Nikon", "D810", WhiteFluorescent               , 0, { 1.445312, 1, 2.210938, 0 } },
+  { "Nikon", "D810", HighTempMercuryVaporFluorescent, 0, { 2.414062, 1, 1.320312, 0 } },
+  { "Nikon", "D810", SodiumVaporFluorescent         , 0, { 1.164062, 1, 2.320312, 0 } },
+  { "Nikon", "D810", Flash                          , 0, { 2.183594, 1, 1.171875, 0 } },
 
   { "Nikon", "D40", Incandescent, -3,		{ 1.492188, 1, 2.164063, 0 } },
   { "Nikon", "D40", Incandescent, -2,		{ 1.437500, 1, 2.367188, 0 } },

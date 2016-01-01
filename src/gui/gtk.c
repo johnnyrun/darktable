@@ -781,15 +781,6 @@ int dt_gui_gtk_init(dt_gui_gtk_t *gui, int argc, char *argv[])
   gtk_window_add_accel_group(GTK_WINDOW(dt_ui_main_window(darktable.gui->ui)),
                              darktable.control->accelerators);
 
-  // set constant width from conf key
-  int panel_width = dt_conf_get_int("panel_width");
-  if(panel_width < 20 || panel_width > 1000)
-  {
-    // fix for unset/insane values.
-    panel_width = 300 * gui->dpi_factor;
-    dt_conf_set_int("panel_width", panel_width);
-  }
-
   //  dt_gui_background_jobs_init();
 
   /* Have the delete event (window close) end the program */
@@ -1034,6 +1025,15 @@ static void init_widgets(dt_gui_gtk_t *gui)
   gui->ui->main_window = widget;
 
   configure_ppd_dpi(gui);
+
+  // set constant width from conf key
+  int panel_width = dt_conf_get_int("panel_width");
+  if(panel_width < 20 || panel_width > 1000)
+  {
+    // fix for unset/insane values.
+    panel_width = 300 * gui->dpi_factor;
+    dt_conf_set_int("panel_width", panel_width);
+  }
 
   gtk_window_set_default_size(GTK_WINDOW(widget), DT_PIXEL_APPLY_DPI(900), DT_PIXEL_APPLY_DPI(500));
 
