@@ -807,10 +807,28 @@ int dt_view_image_expose(dt_view_image_over_t *image_over, uint32_t imgid, cairo
   const gboolean draw_history = !image_only;
   const gboolean draw_metadata = !image_only;
   const gboolean draw_audio = !image_only;
+  int selected = 0, is_grouped = 0;
 
   cairo_save(cr);
-  float bgcol = 0.4, fontcol = 0.425, bordercol = 0.1, outlinecol = 0.2;
-  int selected = 0, is_grouped = 0;
+
+  GtkWidget *widget = dt_ui_main_window(darktable.gui->ui);
+  GtkStyleContext *context = gtk_widget_get_style_context(widget);
+  GdkRGBA bg_color;
+  GdkRGBA font_color;
+  GdkRGBA border_color;
+  GdkRGBA star_color;
+  GdkRGBA outline_color;
+  if (!gtk_style_context_lookup_color(context, "lt_image_background", &bg_color))
+    gdk_rgba_parse(&bg_color, "#6d6d6d");
+  if (!gtk_style_context_lookup_color(context, "lt_image_font", &font_color))
+    gdk_rgba_parse(&font_color, "#81807e");
+  if (!gtk_style_context_lookup_color(context, "lt_image_outline", &outline_color))
+    gdk_rgba_parse(&outline_color, "#333333");
+  if (!gtk_style_context_lookup_color(context, "lt_image_border", &border_color))
+    gdk_rgba_parse(&border_color, "#1a1a1a");
+  if (!gtk_style_context_lookup_color(context, "lt_image_border_selected", &star_color))
+    gdk_rgba_parse(&border_color, "#e6e6e6");
+
   // this is a gui thread only thing. no mutex required:
   const int imgsel = dt_control_get_mouse_over_id(); //  darktable.control->global_settings.lib_image_mouse_over_id;
 
@@ -830,15 +848,28 @@ int dt_view_image_expose(dt_view_image_over_t *image_over, uint32_t imgid, cairo
 
   if(selected == 1 && zoom != 1) // If zoom == 1 there is no need to set colors here
   {
-    outlinecol = 0.4;
-    bgcol = 0.6;
-    fontcol = 0.5;
+    if (!gtk_style_context_lookup_color(context, "lt_image_outline_selected", &outline_color))
+      gdk_rgba_parse(&outline_color, "#666666");
+    if (!gtk_style_context_lookup_color(context, "lt_image_background_selected", &bg_color))
+      gdk_rgba_parse(&bg_color, "#999999");
+    if (!gtk_style_context_lookup_color(context, "lt_image_font_selected", &font_color))
+      gdk_rgba_parse(&font_color, "#7f7f7f");
+    if (!gtk_style_context_lookup_color(context, "lt_image_border_selected", &border_color))
+      gdk_rgba_parse(&border_color, "#e6e6e6");
   }
   if(imgsel == imgid || zoom == 1)
   {
-    bgcol = 0.8; // mouse over
-    fontcol = 0.7;
-    outlinecol = 0.6;
+    //mouse over
+    if (!gtk_style_context_lookup_color(context, "lt_image_background_hover", &bg_color))
+      gdk_rgba_parse(&bg_color, "#cccccc");
+    if (!gtk_style_context_lookup_color(context, "lt_image_font_hover", &font_color))
+      gdk_rgba_parse(&font_color, "#b2b2b2");
+    if (!gtk_style_context_lookup_color(context, "lt_image_outline_hover", &outline_color))
+      gdk_rgba_parse(&outline_color, "#999999");
+
+    // lt_image_border_selected wins over lt_image_border_hover
+    if (!(selected == 1 && zoom != 1) && !gtk_style_context_lookup_color(context, "lt_image_border_hover", &border_color))
+      gdk_rgba_parse(&border_color, "#b2b2b2");
     // if the user points at this image, we really want it:
     if(!img) img = dt_image_cache_get(darktable.image_cache, imgid, 'r');
   }
@@ -878,10 +909,10 @@ int dt_view_image_expose(dt_view_image_over_t *image_over, uint32_t imgid, cairo
     cairo_line_to(cr, x0 + radius, y1);
     cairo_curve_to(cr, x0 + off1, y1, x0, y1 - off1, x0, y1 - radius);
     cairo_close_path(cr);
-    cairo_set_source_rgb(cr, bgcol, bgcol, bgcol);
+    cairo_set_source_rgb(cr, bg_color.red, bg_color.green, bg_color.blue);
     cairo_fill_preserve(cr);
     cairo_set_line_width(cr, 0.005 * width);
-    cairo_set_source_rgb(cr, outlinecol, outlinecol, outlinecol);
+    cairo_set_source_rgb(cr, outline_color.red, outline_color.green, outline_color.blue);
     cairo_stroke(cr);
 
     if(img)
@@ -889,7 +920,7 @@ int dt_view_image_expose(dt_view_image_over_t *image_over, uint32_t imgid, cairo
       const char *ext = img->filename + strlen(img->filename);
       while(ext > img->filename && *ext != '.') ext--;
       ext++;
-      cairo_set_source_rgb(cr, fontcol, fontcol, fontcol);
+      cairo_set_source_rgb(cr, font_color.red, font_color.green, font_color.blue);
       cairo_select_font_face(cr, "sans-serif", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_BOLD);
       cairo_set_font_size(cr, .25 * width);
       cairo_text_extents_t text_extends;
@@ -1028,7 +1059,7 @@ int dt_view_image_expose(dt_view_image_over_t *image_over, uint32_t imgid, cairo
     else
     {
       // border around image
-      cairo_set_source_rgb(cr, bordercol, bordercol, bordercol);
+      cairo_set_source_rgb(cr, border_color.red, border_color.green, border_color.blue);
       if(buf.buf && (selected || zoom == 1))
       {
         const float border = zoom == 1 ? 16 / scale : 2 / scale;
@@ -1057,7 +1088,6 @@ int dt_view_image_expose(dt_view_image_over_t *image_over, uint32_t imgid, cairo
           cairo_new_sub_path(cr);
           cairo_rectangle(cr, -border, -border, buf.width + 2. * border, buf.height + 2. * border);
           cairo_stroke_preserve(cr);
-          cairo_set_source_rgb(cr, 1.0 - bordercol, 1.0 - bordercol, 1.0 - bordercol);
           cairo_fill(cr);
         }
       }
@@ -1081,7 +1111,7 @@ int dt_view_image_expose(dt_view_image_over_t *image_over, uint32_t imgid, cairo
     {
       // draw mouseover hover effects, set event hook for mouse button down!
       cairo_set_line_width(cr, 1.5);
-      cairo_set_source_rgb(cr, outlinecol, outlinecol, outlinecol);
+      cairo_set_source_rgb(cr, outline_color.red, outline_color.green, outline_color.blue);
       cairo_set_line_join(cr, CAIRO_LINE_JOIN_ROUND);
       float r1, r2;
       if(zoom != 1)
@@ -1123,9 +1153,9 @@ int dt_view_image_expose(dt_view_image_over_t *image_over, uint32_t imgid, cairo
             else if((img->flags & 0x7) > k)
             {
               cairo_fill_preserve(cr);
-              cairo_set_source_rgb(cr, 1.0 - bordercol, 1.0 - bordercol, 1.0 - bordercol);
+              cairo_set_source_rgb(cr, star_color.red, star_color.green, star_color.blue);
               cairo_stroke(cr);
-              cairo_set_source_rgb(cr, outlinecol, outlinecol, outlinecol);
+              cairo_set_source_rgb(cr, outline_color.red, outline_color.green, outline_color.blue);
             }
             else
               cairo_stroke(cr);
@@ -1158,7 +1188,7 @@ int dt_view_image_expose(dt_view_image_over_t *image_over, uint32_t imgid, cairo
       cairo_line_to(cr, x - r2, y + r2);
       cairo_close_path(cr);
       cairo_stroke(cr);
-      cairo_set_source_rgb(cr, outlinecol, outlinecol, outlinecol);
+      cairo_set_source_rgb(cr, outline_color.red, outline_color.green, outline_color.blue);
       cairo_set_line_width(cr, 1.5);
 
       if(draw_audio)
@@ -1212,7 +1242,7 @@ int dt_view_image_expose(dt_view_image_over_t *image_over, uint32_t imgid, cairo
           _y = y - (.17 * .04) * fscale;
         }
         cairo_save(cr);
-        if(img && (imgid != img->group_id)) cairo_set_source_rgb(cr, fontcol, fontcol, fontcol);
+        if(img && (imgid != img->group_id)) cairo_set_source_rgb(cr, font_color.red, font_color.green, font_color.blue);
         dtgtk_cairo_paint_grouping(cr, _x, _y, s, s, 23);
         cairo_restore(cr);
         // mouse is over the grouping icon

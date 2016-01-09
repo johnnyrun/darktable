@@ -11,6 +11,20 @@
 
 @define-color dark_bg_color #350000;
 
+@define-color lt_image_background #6d6d6d;
+@define-color lt_image_background_hover #cccccc;
+@define-color lt_image_background_selected #999999;
+@define-color lt_image_border #1a1a1a;
+@define-color lt_image_border_hover #1a1a1a;
+@define-color lt_image_border_selected #e6e6e6;
+@define-color lt_image_font #81807e;
+@define-color lt_image_font_hover #b2b2b2;
+@define-color lt_image_font_selected #7f7f7f;
+@define-color lt_image_outline #333333;
+@define-color lt_image_outline_hover #999999;
+@define-color lt_image_outline_selected #666666;
+
+
 * {
   font: Sans 8;
   color: @fg_color;
